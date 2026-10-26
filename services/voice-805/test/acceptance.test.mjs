@@ -484,7 +484,7 @@ test("partial message survives caller hangup but cannot initiate an unconfirmed 
   assert.equal(s.engine.snapshot().unresolvedCount, 1);
   assert.throws(
     () => s.engine.callback(m.id, "mike", id()),
-    /confirmed callback/,
+    /saved message with a valid callback/,
   );
 });
 test("an unconfirmed transcript keeps its warning and STOP footer when the text is long", async (t) => {
@@ -505,7 +505,7 @@ test("an unconfirmed transcript keeps its warning and STOP footer when the text 
   s.engine.ended(c.id, c.sid, id());
   const notices = s.store.list("notification");
   const stored = s.store.list("message")[0];
-  const captured = "shutters ".repeat(400).slice(0, 2000);
+  const captured = "shutters ".repeat(400).trim();
   assert.equal(stored.text, captured);
   assert.equal(stored.text.includes(TRANSCRIPT_SHORTENED_NOTICE), false);
   assert.equal(notices.length, 2);

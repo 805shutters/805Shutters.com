@@ -6,7 +6,7 @@ import { transcriptNoticeBody } from "./transcript-sms.mjs";
 export const MESSAGE_WINDOW_MS = 300000;
 
 // Message intake can run during the listening welcome, while staff are still ringing.
-// A human owner or any later phase stops it. Message confirmation requires the played spoken yes.
+// A human owner or any later phase stops it. A complete caller message can be saved without a spoken confirmation.
 export function intakeActive(call) {
   return Boolean(
     call &&
@@ -109,8 +109,8 @@ export class Engine {
       const prior = this.store.get("callback", commandId);
       if (prior) return this.store.get("call", prior.callId);
       const m = this.store.get("message", messageId);
-      if (!m || !m.confirmed || !e164.test(m.callback))
-        throw new Conflict("A confirmed callback number is required");
+      if (!m || !(m.completed || m.confirmed) || !e164.test(m.callback))
+        throw new Conflict("A saved message with a valid callback number is required");
       if (
         this.store
           .list("call")
@@ -251,8 +251,8 @@ export class Engine {
       const existing = this.store.get("notification", `reply:${commandId}`);
       if (existing) return existing;
       const m = this.store.get("message", messageId);
-      if (!m || !m.confirmed || !e164.test(m.callback))
-        throw new Conflict("A confirmed callback number is required");
+      if (!m || !(m.completed || m.confirmed) || !e164.test(m.callback))
+        throw new Conflict("A saved message with a valid callback number is required");
       if (this.store.get("text-preference", m.callback)?.blocked)
         throw new Conflict("This recipient has opted out of texts.");
       this.store.put("log", {
@@ -661,7 +661,7 @@ export class Engine {
         .slice(0, 40),
       message: String(data.message || "")
         .trim()
-        .slice(0, 2000),
+        .slice(0, 12000),
       confirmed: false,
     });
   }
@@ -771,13 +771,12 @@ export class Engine {
       const name = String(data.name || "").trim(),
         text = String(data.message || "").trim(),
         callback = String(data.callback || "").trim();
+      const completed = data.completed === true;
       if (
-        !name ||
-        name.length > 120 ||
-        !text ||
-        text.length > 2000 ||
-        !e164.test(callback) ||
-        data.confirmed !== true
+        (!completed && !name) || name.length > 120 || !text ||
+        text.length > (completed ? 12000 : 2000) ||
+        (callback ? !e164.test(callback) : !completed) ||
+        (!completed && data.confirmed !== true)
       )
         throw new Conflict(
           "A name, confirmed callback number and confirmed message are required.",
@@ -788,7 +787,8 @@ export class Engine {
         name,
         callback,
         text,
-        confirmed: true,
+        confirmed: !completed,
+        ...(completed ? { completed: true } : {}),
         createdAt: Date.now(),
         toolId,
         status: "open",

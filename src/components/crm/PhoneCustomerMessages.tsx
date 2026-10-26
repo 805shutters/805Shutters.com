@@ -51,13 +51,13 @@ export function PhoneCustomerMessages({
         >
           <strong>
             {m.kind === "sms" ? "Incoming text: " : ""}
-            {m.name}
+            {m.name || "Caller"}
           </strong>
           <p>
             {m.callback} · {m.status}
           </p>
           <p className="whitespace-pre-wrap">{m.text}</p>
-          {m.confirmed === false && (
+          {m.confirmed === false && !m.completed && (
             <p>Incomplete message — caller did not confirm these details.</p>
           )}
           {m.followupNote && <p>Follow-up: {m.followupNote}</p>}

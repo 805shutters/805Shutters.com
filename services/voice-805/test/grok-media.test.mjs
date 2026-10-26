@@ -1,3 +1,4 @@
+import { MESSAGE_SAVED } from '../message-intake.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { FALLBACK_RESERVE_MS, FORCE_DEADLINE_MS, GrokMediaSession, HOST_WALL_MS, INPUT_TRANSCRIPTION, MEDIA_SESSION_MS, TURN_SETTLE_MS, pcmByteLength, playbackWaitMs, STATE_BOUND_MS } from '../grok-media.mjs';
@@ -38,7 +39,8 @@ function fixture(match='unmatched') {
 function lastLine(f){return [...f.ai.sent].reverse().find(item=>item.item?.content?.[0]?.text)?.item.content[0].text||'';}
 async function ready(f){await f.begin();await f.audio();await f.mark();assert.equal(f.session.stage,'collect');}
 async function speak(f,text){const id='spoken-'+Math.random();await f.say(text,id);if(['result','readback'].includes(f.session.stage)){await f.audio(id);await f.mark();}}
-async function messageMode(f){await ready(f);await speak(f,'yes');assert.match(lastLine(f),/What message/);await speak(f,'Please call me about my shutters');assert.match(lastLine(f),/name/);await f.say('Test Caller','name');assert.equal(f.session.stage,'readback');}
+async function messageMode(f){await ready(f);await speak(f,'yes');assert.match(lastLine(f),/What message/);await f.say('Please call me about my shutters','message');}
+
 function openPlayback(f,ms){return f.timers.filter(timer=>timer.ms===ms&&!timer.cleared).at(-1);}
 
 test('spoken yes and no are classified without trusting a model boolean',()=>{
@@ -47,17 +49,13 @@ test('spoken yes and no are classified without trusting a model boolean',()=>{
  assert.equal(spokenDecision(''),'silence');assert.equal(spokenDecision('maybe'),'ambiguous');assert.equal(spokenDecision('confirmed true'),'ambiguous');
 });
 
-test('a yes before the played readback does not book, and the same yes after the mark still does not',async()=>{
- const f=fixture();await messageMode(f);await f.audio('readback');
- assert.equal(f.session.stage,'readback-playback');
- await f.say('yes','early-yes');
- assert.equal(f.store.list('message').length,0);
- await f.mark();
- await f.say('yes','early-yes');
- assert.equal(f.store.list('message').length,0);
+test('message closes once without a name, readback, yes, or late-echo restart',async()=>{
+ const f=fixture();await messageMode(f);assert.equal(f.session.stage,'result');assert.equal(lastLine(f),MESSAGE_SAVED);
+ const before=f.ai.sent.filter(x=>x.item?.type==='force_message').length;
+ await f.audio('closing');await f.say('yes','late');await f.grok({type:'input_audio_buffer.speech_started',item_id:'echo'});await f.say('Please call me about my shutters','echo');
+ assert.equal(f.session.stage,'result-playback');assert.equal(f.ai.sent.filter(x=>x.item?.type==='force_message').length,before);
+ await f.mark();assert.equal(f.session.closed,true);assert.equal(f.store.list('message').length,1);assert.equal(f.store.list('message')[0].completed,true);
  assert.equal(f.store.get('call',f.call.id).booking,undefined);
- assert.equal(f.store.get('call',f.call.id).intent?.confirmedAt,undefined);
- f.session.finish();
 });
 
 test('wrong account, call, format and reused start cannot attach',async()=>{
@@ -174,18 +172,15 @@ test('scripted audio is released only after exact text and complete audio are ve
  assert.equal(f.socket.sent.filter(x=>x.event==='media').length,before+1);f.session.finish();
 });
 
-test('missing, mismatched and cancelled output never arms readback or a booking',async()=>{
+test('missing, mismatched and cancelled closing audio is never played',async()=>{
  for(const kind of ['missing','mismatch','cancelled']){
   const f=fixture();await messageMode(f);const before=f.socket.sent.filter(x=>x.event==='media').length;
-  await f.grok({type:'response.created',response:{id:kind}});
-  await f.grok({type:'response.output_audio.delta',response_id:kind,delta:'QkFE'});
+  await f.grok({type:'response.created',response:{id:kind}});await f.grok({type:'response.output_audio.delta',response_id:kind,delta:'QkFE'});
   if(kind!=='missing')await f.grok({type:'response.output_audio_transcript.done',response_id:kind,transcript:kind==='mismatch'?'silent':lastLine(f)});
   await f.grok({type:'response.done',response:{id:kind,status:kind==='cancelled'?'cancelled':'completed'}});
-  assert.equal(f.socket.sent.filter(x=>x.event==='media').length,before);
-  assert.equal(f.session.stage,'readback');assert.equal(f.store.get('call',f.call.id).intent.playedAt,undefined);
-  await f.say('yes','unsafe-yes');assert.equal(f.store.list('message').length,0);
-  await openPlayback(f,FORCE_DEADLINE_MS).fn();await f.session.chain;
-  assert.equal(f.session.closed,true);assert.equal(f.store.list('message').length,0);
+  assert.equal(f.socket.sent.filter(x=>x.event==='media').length,before);assert.equal(f.session.stage,'result');
+  assert.equal(f.store.list('message').length,1);assert.equal(f.store.list('message')[0].crmVerified,true);
+  await openPlayback(f,FORCE_DEADLINE_MS).fn();await f.session.chain;assert.equal(f.session.closed,true);
  }
 });
 
@@ -366,79 +361,75 @@ test('a read error closes without waiting for the media limit', async () => {
  assert.equal(f.store.get('call', f.call.id).booking, undefined);
 });
 
-test('exact message-only opening, no scheduling tools, and caller-ID reuse',async()=>{
+test('exact opening takes a message then closes, with no scheduling tools and caller-ID reuse',async()=>{
  const f=fixture();await ready(f);
  assert.equal(RECEPTIONIST_OPENING,"I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.");
  assert.doesNotMatch(COMMON_GREETING,/help you schedule|book an appointment/i);
  assert.equal(f.ai.sent.filter(e=>e.type==='session.update').every(e=>(e.session.tools||[]).length===0),true);
- await speak(f,'yes');assert.match(lastLine(f),/What message/);await speak(f,'Please call about my shutters');assert.match(lastLine(f),/name/);
- await f.say('Pat Example');assert.equal(f.session.stage,'readback');assert.match(lastLine(f),/1 8 0 5 5 5 5 0 1 9 9/);
- assert.doesNotMatch(f.ai.sent.map(x=>x.item?.content?.[0]?.text||'').join(' '),/What phone|What day|What time|address/);
- f.session.finish();
+ await speak(f,'yes');assert.match(lastLine(f),/What message/);await speak(f,'Please call about my shutters');
+ assert.equal(lastLine(f),MESSAGE_SAVED);assert.equal(f.session.closed,true);assert.equal(f.store.list('message')[0].callback,'+18055550199');
+ assert.doesNotMatch(f.ai.sent.map(x=>x.item?.content?.[0]?.text||'').join(' '),/What phone|What day|What time|address|your name|say yes/);
 });
+
 test('permission decline ends politely without message, booking, notification or recording',async()=>{
  const f=fixture();await ready(f);await speak(f,'No thank you');assert.equal(f.session.closed,true);
  assert.equal(f.store.get('call',f.call.id).phase,'ended');assert.equal(f.store.list('message').length,0);assert.equal(f.store.list('notification').length,0);
  assert.equal(f.store.list('effect').some(x=>x.type==='record'),false);
 });
-test('verified message persists once, keeps transcript/summary, and prepares only gated staff notices',async()=>{
- const f=fixture();let writes=0;f.session.saveCrm=async()=>{writes++;return {verified:true,id:'row',call_sid:f.call.sid};};
- await messageMode(f);await f.audio('readback');await f.mark();await f.say('yes','final');await f.say('yes','final');
- const message=f.store.list('message')[0];assert.equal(writes,1);assert.equal(message.confirmed,true);assert.equal(message.crmVerified,true);
- assert.deepEqual(f.store.list('notification').map(n=>n.recipient).sort(),['jessica','mike']);assert.equal(f.store.list('notification').every(n=>n.status==='pending'&&n.purpose==='transcript'),true);
- assert.match(lastLine(f),/message has been saved/);await f.audio('saved');await f.mark();
- const c=f.store.get('call',f.call.id);assert.equal(c.phase,'ended');assert.equal(c.summary.outcome,'message');assert.match(c.summary.text,/shutters/);assert.equal(c.callerTranscript.at(-1).text,'yes');
- assert.equal(c.booking,undefined);assert.equal(c.bookingIntent,undefined);
+test('verified message persists once, keeps transcript and summary, and queues gated staff notices',async()=>{
+ const f=fixture();let writes=0;f.session.saveCrm=async()=>{writes++;return {verified:true,id:'row',call_sid:f.call.sid};};await messageMode(f);await f.say('Please call me about my shutters','message');
+ const message=f.store.list('message')[0];assert.equal(writes,1);assert.equal(message.completed,true);assert.equal(message.confirmed,false);assert.equal(message.crmVerified,true);assert.equal(message.name,'');
+ assert.deepEqual(f.store.list('notification').map(n=>n.recipient).sort(),['jessica','mike']);assert.equal(f.store.list('notification').every(n=>n.status==='pending'&&n.purpose==='transcript'&&!n.body.includes('UNCONFIRMED')),true);
+ assert.equal(lastLine(f),MESSAGE_SAVED);await f.audio('saved');await f.mark();const c=f.store.get('call',f.call.id);
+ assert.equal(c.phase,'ended');assert.equal(c.summary.outcome,'message');assert.match(c.summary.text,/shutters/);assert.equal(c.callerTranscript.at(-1).text,'Please call me about my shutters');assert.equal(c.booking,undefined);
 });
-test('volunteered name, number and long message survive readback without repeated field questions',async()=>{
- const f=fixture();await ready(f);const text='This is Pat Example. Call me at 8055550123. '+('The living room shade needs service and the upstairs shutter needs a new handle. ').repeat(8);
- await f.say(text);assert.equal(f.session.stage,'readback');const s=f.store.get('call',f.call.id).schedule;
- assert.equal(s.name,'Pat Example');assert.equal(s.phone,'+18055550123');assert.equal(s.messageText,('The living room shade needs service and the upstairs shutter needs a new handle. ').repeat(8).trim());assert.ok(lastLine(f).includes(s.messageText));assert.equal(f.store.get('call',f.call.id).callerTranscript.at(-1).text,text.trim());
- f.session.finish();
+
+test('volunteered name, number and a long complete message save without repeating details',async()=>{
+ const f=fixture();await ready(f);const text='This is Pat Example. Call me at 8055550123. '+('The living room shade needs service and the upstairs shutter needs a new handle. ').repeat(30);
+ await f.say(text);assert.equal(f.session.stage,'result');const state=f.store.get('call',f.call.id).schedule;
+ assert.equal(state.name,'Pat Example');assert.equal(state.phone,'+18055550123');assert.equal(state.messageText,text.trim());assert.equal(f.store.list('message')[0].text,text.trim());assert.equal(lastLine(f),MESSAGE_SAVED);f.session.finish();
 });
-test('blocked caller gets one callback question and spoken digits are repeated in readback',async()=>{
- const f=fixture();f.store.put('call',{...f.store.get('call',f.call.id),from:'anonymous'});await ready(f);
- for(const text of ['yes','Please call me about shades','Pat Example'])await speak(f,text);
- assert.equal(f.store.get('call',f.call.id).schedule.awaiting,'phone');await f.say('eight zero five five five five zero one two three');
- assert.equal(f.store.get('call',f.call.id).schedule.phone,'+18055550123');assert.equal(f.session.stage,'readback');f.session.finish();
+
+test('blocked caller can provide a callback before the message, with no question after it',async()=>{
+ const f=fixture();f.store.put('call',{...f.store.get('call',f.call.id),from:'anonymous'});await ready(f);await speak(f,'yes');assert.match(lastLine(f),/phone number/);
+ await speak(f,'eight zero five five five five zero one two three');assert.match(lastLine(f),/What message/);await f.say('Please call me about shades');
+ assert.equal(f.store.list('message')[0].callback,'+18055550123');assert.equal(lastLine(f),MESSAGE_SAVED);f.session.finish();
 });
-test('corrections replace message and callback and require a new played readback',async()=>{
- const f=fixture();await messageMode(f);await f.audio('old');await f.mark();await f.say('Change the message to please call me about the kitchen blind');
- assert.equal(f.session.stage,'readback');assert.match(lastLine(f),/kitchen blind/);assert.equal(f.store.list('message').length,0);
- await f.audio('revised');await f.mark();await f.say('No, my number is 8055550123');
- assert.equal(f.session.stage,'readback');assert.match(lastLine(f),/1 8 0 5 5 5 5 0 1 2 3/);await f.audio('number');await f.mark();await f.say('yes');
- assert.equal(f.store.list('message')[0].callback,'+18055550123');assert.equal(f.store.list('message')[0].text,'please call me about the kitchen blind');f.session.finish();
+
+test('a blocked caller who leaves a message immediately is not interviewed afterward',async()=>{
+ const f=fixture();f.store.put('call',{...f.store.get('call',f.call.id),from:'anonymous'});await ready(f);await f.say('Please tell the team I found my receipt.');
+ assert.equal(lastLine(f),MESSAGE_SAVED);assert.equal(f.store.list('message')[0].callback,'');assert.equal(f.store.list('message')[0].completed,true);f.session.finish();
 });
-test('appointment requests become callback messages and injected booking tools cannot act',async()=>{
+
+test('appointment requests are saved as messages and injected booking tools cannot act',async()=>{
  const f=fixture();let bookingCalls=0;f.session.schedule=async()=>{bookingCalls++;throw Error('not allowed');};await ready(f);
- await speak(f,'Please schedule an appointment Friday at ten at my house');assert.match(lastLine(f),/callback/);assert.match(lastLine(f),/name/);
+ await f.say('Please schedule an appointment Friday at ten at my house');assert.equal(lastLine(f),MESSAGE_SAVED);
  for(const name of ['find_appointments','prepare_appointment','commit','prepare_message'])await f.session.tool({name,arguments:'{}',call_id:name});
- assert.equal(bookingCalls,0);assert.equal(f.store.get('call',f.call.id).bookingIntent,undefined);
- await f.say('Pat Example');assert.equal(f.session.stage,'readback');assert.match(lastLine(f),/Please schedule an appointment Friday at ten at my house/);
- await f.audio('readback');await f.mark();await f.say('yes');assert.equal(f.store.list('message').length,1);assert.equal(bookingCalls,0);assert.equal(f.store.get('call',f.call.id).booking,undefined);f.session.finish();
+ assert.equal(bookingCalls,0);assert.equal(f.store.get('call',f.call.id).bookingIntent,undefined);assert.equal(f.store.list('message')[0].text,'Please schedule an appointment Friday at ten at my house');f.session.finish();
 });
-test('CRM failure never claims save, retries idempotently, and retains durable retry work',async()=>{
+
+test('CRM failure never promises relay, retries idempotently, and retains durable retry work',async()=>{
  for(const succeeds of [false,true]){
   const f=fixture();let attempts=0;f.session.saveCrm=async()=>{attempts++;if(!succeeds||attempts===1)throw Error('database down');return {verified:true,id:'row',call_sid:f.call.sid};};
-  await messageMode(f);await f.audio('readback');await f.mark();await f.say('yes');assert.equal(attempts,2);assert.equal(f.store.list('message').length,1);
-  if(succeeds)assert.match(lastLine(f),/message has been saved/);else {assert.match(lastLine(f),/could not verify/);assert.doesNotMatch(lastLine(f),/has been saved/);assert.equal(f.store.list('effect').some(x=>x.type==='sync-message'&&x.status==='pending'),true);assert.doesNotMatch(fallback(f.engine,f.store.get('call',f.call.id),'voicemail',null,f.c),/written message is saved|<Record/);}
-  f.session.finish();
+  await messageMode(f);assert.equal(attempts,2);assert.equal(f.store.list('message').length,1);
+  if(succeeds)assert.equal(lastLine(f),MESSAGE_SAVED);else {assert.match(lastLine(f),/could not verify/);assert.notEqual(lastLine(f),MESSAGE_SAVED);assert.equal(f.store.list('effect').some(x=>x.type==='sync-message'&&x.status==='pending'),true);assert.doesNotMatch(fallback(f.engine,f.store.get('call',f.call.id),'voicemail',null,f.c),/written message is saved|<Record/);}f.session.finish();
  }
 });
-test('unclear replies and silence are bounded and never save without a yes',async()=>{
+
+test('unclear replies and silence are bounded and never save an absent message',async()=>{
  for(const mode of ['unclear','silence']){
-  const f=fixture();await ready(f);
-  if(mode==='unclear'){await speak(f,'perhaps');await speak(f,'maybe');}else {await f.session.silence();await f.audio('retry');await f.mark();await f.session.silence();await f.audio('bye');await f.mark();}
+  const f=fixture();await ready(f);if(mode==='unclear'){await speak(f,'perhaps');await speak(f,'maybe');}else {await f.session.silence();await f.audio('retry');await f.mark();await f.session.silence();await f.audio('bye');await f.mark();}
   assert.equal(f.session.closed,true);assert.equal(f.store.list('message').length,0);
  }
- const f=fixture();await messageMode(f);await f.audio('readback');await f.mark();await f.session.silence();assert.equal(f.store.list('message').length,0);await f.audio('repeat');await f.mark();await f.session.silence();await f.audio('end');await f.mark();assert.equal(f.store.list('message').filter(m=>m.confirmed).length,0);
 });
-test('readback interruption waits for the full correction, never accepts an early yes',async()=>{
- const f=fixture();await messageMode(f);await f.audio('readback');await f.grok({type:'input_audio_buffer.speech_started',item_id:'change'});
- const before=f.ai.sent.length;await f.say('Change the message to','change');assert.equal(f.ai.sent.length,before);
- await f.grok({type:'input_audio_buffer.speech_stopped',item_id:'change'});await f.say('Change the message to call about the bedroom shade','change');await f.timers.findLast(t=>t.ms===TURN_SETTLE_MS&&!t.cleared).fn();await f.session.chain;
- assert.equal(f.session.stage,'readback');assert.match(lastLine(f),/bedroom shade/);assert.equal(f.store.list('message').length,0);f.session.finish();
+
+test('message is not closed while the caller is still completing a caption',async()=>{
+ const f=fixture();await ready(f);await f.grok({type:'input_audio_buffer.speech_started',item_id:'body'});const before=f.ai.sent.length;
+ await f.say('Please call','body');assert.equal(f.ai.sent.length,before);assert.equal(f.store.list('message').length,0);
+ await f.grok({type:'input_audio_buffer.speech_stopped',item_id:'body'});await f.say('Please call about the bedroom shade','body');await f.timers.findLast(t=>t.ms===TURN_SETTLE_MS&&!t.cleared).fn();await f.session.chain;
+ assert.equal(lastLine(f),MESSAGE_SAVED);assert.equal(f.store.list('message')[0].text,'Please call about the bedroom shade');f.session.finish();
 });
+
 test('caller speech prefixes, history, duplicates and stray generated speech do not lose message details',async()=>{
  for(const order of ['history-first','duplicate','vad-prefix','auto-first']){
   const f=fixture();await ready(f);await speak(f,'yes');
@@ -448,12 +439,12 @@ test('caller speech prefixes, history, duplicates and stray generated speech do 
   if(order==='vad-prefix'){await f.timers.findLast(t=>t.ms===TURN_SETTLE_MS&&!t.cleared).fn();await f.session.chain;}
   if(order==='duplicate')await f.say('My living room shade needs service','body');
   if(order==='auto-first'){await f.grok({type:'response.created',response:{id:'bad'}});await f.grok({type:'response.output_audio.delta',response_id:'bad',delta:'U0lMRU5U'});await f.grok({type:'response.output_audio_transcript.done',response_id:'bad',transcript:'silent'});await f.grok({type:'response.done',response:{id:'bad',status:'completed'}});assert.equal(f.socket.sent.some(x=>x.media?.payload==='U0lMRU5U'),false);}
-  assert.match(lastLine(f),/name/);assert.equal(f.store.get('call',f.call.id).schedule.messageText,'My living room shade needs service');await f.audio('name');await f.mark();f.session.finish();
+  assert.equal(lastLine(f),MESSAGE_SAVED);assert.equal(f.store.get('call',f.call.id).schedule.messageText,'My living room shade needs service');await f.audio('name');await f.mark();f.session.finish();
  }
 });
-test('hangup retains an unconfirmed transcript and a reconnect cannot duplicate the call stream',async()=>{
+test('hangup after a completed message retains it and a reconnect cannot duplicate the call stream',async()=>{
  const f=fixture();await ready(f);await speak(f,'Please call about my shutters');await f.carrier({event:'stop',streamSid:f.streamSid});
- const m=f.store.list('message')[0];assert.equal(m.confirmed,false);assert.equal(m.text,'Please call about my shutters');assert.equal(f.store.list('effect').some(x=>x.type==='sync-message'),true);
+ const m=f.store.list('message')[0];assert.equal(m.completed,true);assert.equal(m.text,'Please call about my shutters');assert.equal(f.store.list('effect').some(x=>x.type==='sync-message'),true);
  const other=new GrokMediaSession({socket:new Socket(),call:f.call,state:f.state,worker:f.worker,connect:()=>new Socket(),clock:f.session.clock});await other.carrier(f.start);assert.equal(other.closed,true);assert.equal(f.store.list('message').length,1);
 });
 test('staff pickup interrupts the message question without saving or resuming the bot',async()=>{
@@ -468,14 +459,14 @@ test('sentence pauses merge the complete message before the next question; late 
  }
  await f.timers.findLast(t=>t.ms===TURN_SETTLE_MS&&!t.cleared).fn();await f.session.chain;
  const expected='The bedroom shade is broken. Please call after lunch. I also need a replacement part.';
- assert.equal(f.store.get('call',f.call.id).schedule.messageText,expected);assert.match(lastLine(f),/name/);
+ assert.equal(f.store.get('call',f.call.id).schedule.messageText,expected);assert.equal(lastLine(f),MESSAGE_SAVED);
  await f.say('Please call after lunch.','second');assert.equal(f.ai.sent.filter(x=>x.item?.type==='force_message').length,before+1);f.session.finish();
 });
 test('carrier hangup or socket failure retains captions still waiting for a natural pause',async()=>{
  for(const stop of [true,false]){
   const f=fixture();await ready(f);await speak(f,'yes');await f.grok({type:'input_audio_buffer.speech_started',item_id:'last'});await f.say('Please call about my broken shade.','last');
   if(stop)await f.carrier({event:'stop',streamSid:f.streamSid});else {await f.session.fail('Carrier connection closed');f.engine.ended(f.call.id,f.call.sid,'end');}
-  assert.equal(f.store.list('message')[0].confirmed,false);assert.equal(f.store.list('message')[0].text,'Please call about my broken shade.');f.session.finish();
+  assert.equal(f.store.list('message')[0].confirmed,false);assert.equal(f.store.list('message')[0].completed,undefined);assert.equal(f.store.list('message')[0].text,'Please call about my broken shade.');f.session.finish();
  }
 });
 

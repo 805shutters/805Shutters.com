@@ -127,36 +127,31 @@ async function renderSavedDesk(state: any, expected: string, transcript: string)
     expect(host.textContent).toContain(transcript);
     expect(host.querySelectorAll('article[id^="phone-message-"]')).toHaveLength(1);
     const details = host.querySelector('details'); expect(details?.textContent).toContain(transcript);
+    const messages = await state.transact((_e: any, store: any) => store.list('message'));
+    if (messages[0]?.completed) expect(host.textContent).not.toContain('Incomplete message');
   } finally { await act(async () => root.unmount()); host.remove(); }
 }
-it.each(['short', 'long', 'corrected', 'blocked'])('message %s: complete SQL save, restart, signed CRM fetch and Message Center display', async scenario => {
-  const f = await fixture(scenario === 'blocked' ? 'anonymous' : undefined);
-  const original = scenario === 'long' ? 'My living room shade sticks halfway down. '.repeat(25) + 'Please call me after lunch.' : 'Please call me about my shutters.';
-  let expected = original;
-  try {
-    await f.say('yes'); await f.play(); await f.say(original); await f.play(); await f.say('Pat Example');
-    if (scenario === 'blocked') { expect(f.session.prompt.text).toMatch(/phone number/); await f.play(); await f.say('eight zero five five five five zero one two three'); }
-    expect(f.session.stage).toBe('readback');
-    await f.say('yes', 'early-yes'); expect((await db.query('select * from crm_callback_items')).rows).toHaveLength(0); await f.play();
-    if (scenario === 'corrected') { expected = 'The bedroom blind is broken.'; await f.say('Change the message to ' + expected); await f.play(); }
-    await f.say('yes', 'confirmed'); expect(f.session.prompt.text).toMatch(/has been saved/); await f.play();
-    await f.say('yes', 'confirmed');
-    const saved = (await db.query<any>('select * from crm_callback_items')).rows;
-    expect(saved).toHaveLength(1); expect(saved[0].reason).toBe('Confirmed message: ' + expected);
-    expect(saved[0].transcript).toContain(original); expect(saved[0].recording_url).toBe(''); expect(saved[0].appointment_id).toBeNull();
-    expect(saved[0].callback_number).toBe(scenario === 'blocked' ? '+18055550123' : '+18055550199');
-    expect((await db.query('select * from crm_calendar_events')).rows).toHaveLength(0);
-    const restarted = new SupabaseState(client, config);
-    expect((await restarted.readCall(f.call.id)).summary.text).toContain(expected);
-    await renderSavedDesk(restarted, expected, original);
-  } finally { f.session.finish(); }
-}, 30000);
+it.each(['short', 'long', 'volunteered', 'blocked'])('message %s: complete SQL save without readback, restart and CRM display', async scenario => {
+ const f=await fixture(scenario==='blocked'?'anonymous':undefined);
+ const original=scenario==='long'?'My living room shade sticks halfway down. '.repeat(75)+'Please call me after lunch.':scenario==='volunteered'?'This is Pat Example. Please call about repairs.':'Please call me about my shutters.';
+ try {
+  await f.say('yes');if(scenario==='blocked')expect(f.session.prompt.text).toMatch(/phone number/);await f.play();
+  if(scenario==='blocked'){await f.say('eight zero five five five five zero one two three');await f.play();}
+  await f.say(original,'message');expect(f.session.prompt.text).toBe("Thank you very much. We'll relay the message. Have a great day.");
+  await f.say(original,'message');await f.play();expect(f.session.closed).toBe(true);
+  const saved=(await db.query<any>('select * from crm_callback_items')).rows;
+  expect(saved).toHaveLength(1);expect(saved[0].reason).toBe('Received message: '+original);expect(saved[0].transcript).toContain(original);
+  expect(saved[0].caller_name).toBe(scenario==='volunteered'?'Pat Example':'');expect(saved[0].recording_url).toBe('');expect(saved[0].appointment_id).toBeNull();
+  expect(saved[0].callback_number).toBe(scenario==='blocked'?'+18055550123':'+18055550199');expect((await db.query('select * from crm_calendar_events')).rows).toHaveLength(0);
+  const restarted=new SupabaseState(client,config);expect((await restarted.readCall(f.call.id)).summary.outcome).toBe('message');
+  await renderSavedDesk(restarted,original,original);
+ } finally {f.session.finish();}
+},30000);
 it.each(['write', 'read'])('a failed %s is retried idempotently; exhausted failure remains recoverable after disconnect', async failure => {
   const f = await fixture();
   try {
-    await f.say('This is Pat Example. Please call about repairs.'); await f.play();
     if (failure === 'write') failWrites = 2; else failReads = 2;
-    await f.say('yes'); expect(f.session.prompt.text).not.toMatch(/has been saved/); await f.play();
+    await f.say('This is Pat Example. Please call about repairs.'); expect(f.session.prompt.text).toMatch(/could not verify/); await f.play();
     const restarted = new SupabaseState(client, config);
     let writes = 0;
     const worker = new SupabaseWorker(restarted, {}, { transcriptSmsSendingEnabled: () => false, syncMessage: async (call: any, message: any) => { writes++; return savePhoneMessage(client, call, message); } });
@@ -174,7 +169,8 @@ it.each(['write', 'read'])('a failed %s is retried idempotently; exhausted failu
 it('hangup saves an explicitly unconfirmed draft, retries the CRM write, and displays its full text', async () => {
   const f = await fixture();
   try {
-    await f.say('Please call me about my kitchen shutters.'); await f.play();
+    await f.session.grok({type:'input_audio_buffer.speech_started',item_id:'partial'});
+    await f.say('Please call me about my kitchen shutters.','partial');
     await f.session.carrier({ event: 'stop', streamSid: 'MZ' + '2'.repeat(32) });
     const worker = new SupabaseWorker(f.state, {}, { transcriptSmsSendingEnabled: () => false, syncMessage: (call: any, message: any) => savePhoneMessage(client, call, message) });
     await f.state.transact((_e: any, s: any) => { for (const e of s.list('effect')) if (e.type !== 'sync-message') s.put('effect', { ...e, status: 'done' }); });
@@ -190,7 +186,7 @@ it('hangup saves an explicitly unconfirmed draft, retries the CRM write, and dis
 
 // Replay the actual synthetic provider captures, not hand-written transcript
 // expectations, through production SQL, a fresh reader and the CRM UI.
-const providerReport = JSON.parse(readFileSync('docs/phone-system/message-provider-verification-20261025.json', 'utf8'));
+const providerReport = { cases: ['message-provider-verification-20261025.json', 'simple-message-provider-verification-20261025.json'].flatMap(file => JSON.parse(readFileSync('docs/phone-system/' + file, 'utf8')).cases) };
 it.each(providerReport.cases as any[])('provider audio $caseName survives SQL and CRM retrieval unchanged', async captured => {
   expect(captured.pass).toBe(true);
   const state = new SupabaseState(client, config);
@@ -205,7 +201,7 @@ it.each(providerReport.cases as any[])('provider audio $caseName survives SQL an
     await savePhoneMessage(client, captured.call, message);
     const rows = (await db.query<any>('select * from crm_callback_items')).rows;
     expect(rows).toHaveLength(1);
-    expect(rows[0].reason).toBe(`${message.confirmed ? 'Confirmed' : 'Unconfirmed'} message: ${message.text}`);
+    expect(rows[0].reason).toBe(`${message.completed ? 'Received' : message.confirmed ? 'Confirmed' : 'Unconfirmed'} message: ${message.text}`);
     expect(rows[0].transcript).toBe(captured.call.callerTranscript.map((turn: any) => `Caller: ${turn.text}`).join('\n'));
     expect(rows[0].callback_number).toBe(message.callback);
     expect(rows[0].recording_url).toBe('');
@@ -220,8 +216,7 @@ it('staff notices wait for verified SQL save, retain long-message evidence and s
   const text = 'The bedroom shade needs service. '.repeat(50).trim();
   const sends: any[] = [];
   try {
-    await f.say('This is Pat Example. ' + text); await f.play();
-    failWrites = 2; await f.say('yes'); await f.play();
+    failWrites = 2; await f.say('This is Pat Example. ' + text); await f.play();
     const worker = new SupabaseWorker(new SupabaseState(client, config), {
       send: async (note: any, message: any) => {
         expect(message.crmVerified).toBe(true);

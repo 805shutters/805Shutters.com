@@ -2,7 +2,17 @@
 
 Owner direction replaces the phone booking feature with message taking. The exact no-answer request is in `receptionist.mjs`. Staff pickup, no caller ringback and the local-business welcome remain. No new caller audio recording is created. The web/manual calendar and historical appointments remain intact.
 
-## Acceptance evidence
+## Current closing flow — owner correction at 8:23 PM
+
+The latest owner instruction supersedes the spoken readback/yes workflow documented historically below. After the caller finishes the message, the server saves the full wording and available caller ID/volunteered details, independently verifies the CRM row, says exactly **“Thank you very much. We'll relay the message. Have a great day.”**, and ends the call after playback. There is no name question, spoken readback, confirmation request, or second closing. Late captions, echoes and yes replies cannot restart the closing.
+
+If caller ID is blocked and the caller first accepts the message offer, the callback-number question comes before asking for the message. A caller who directly leaves a message is not interviewed afterward. Missing name/number remain explicitly empty; no identity or phone number is invented. Completed messages use `completed: true` and `confirmed: false`, avoiding a false claim of spoken confirmation. Historical confirmed messages and incomplete disconnect drafts retain their original meaning. Staff callback controls require a valid actual callback number.
+
+The message and full transcript remain in the CRM, with the same idempotent staff notification pipeline. A failed CRM save retains retry work and does not promise successful relay. Natural sentence pauses still merge before submission. An abrupt hangup preserves pending speech as a draft and does not try to speak a closing to a disconnected caller. No calendar writes, recording, campaign changes or new test SMS are part of this repair.
+
+The [simple-message provider report](simple-message-provider-verification-20261025.json) records seven passing real-speech scenarios and 21 independently transcribed output clips, including the full welcome-to-message flow, exact closing, long messages and blocked caller ID. The release audit records deployment proof. Final local gates passed: 159 native voice tests, 10,628 application tests (36 skipped), typecheck and production build. The earlier readback tests below are historical evidence of the replaced behavior, not the current conversation specification. Mike has personally confirmed receiving the prior system-test text.
+
+## Historical acceptance evidence
 
 - Release checks: 158 native voice checks; 18 isolated database/CRM checks (including all ten real-provider captures); full website suite 10,621 passed, 36 skipped. TypeScript and the production build also passed.
 - Native service tests cover one-question turns, volunteered information, caller ID/blocked numbers, short/long messages, corrections, complete readback, early/ambiguous/duplicate yes, VAD/history/final-caption ordering, noisy or stray output, staff pickup, caller hangup, disconnects, silence/decline, bounded persistence and no booking tools.

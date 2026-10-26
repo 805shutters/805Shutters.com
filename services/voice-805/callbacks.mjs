@@ -19,7 +19,7 @@ export async function logFailure(client, action, callId, detail) {
 // independent read. Neither a transport success nor a model claim proves a save.
 export async function savePhoneMessage(client, call, message) {
   const transcript = callerTranscriptText(call) || message.text;
-  const reason = `${message.confirmed ? 'Confirmed' : 'Unconfirmed'} message: ${message.text}`;
+  const reason = `${message.completed ? 'Received' : message.confirmed ? 'Confirmed' : 'Unconfirmed'} message: ${message.text}`;
   const row = await saveCallback(client, {
     p_call_sid: call.sid, p_caller_name: message.name || '', p_callback_number: message.callback || '',
     p_reason: reason, p_transcript: transcript, p_recording_url: '',

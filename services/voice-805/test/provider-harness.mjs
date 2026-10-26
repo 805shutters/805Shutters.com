@@ -1,3 +1,4 @@
+import { MESSAGE_SAVED } from '../message-intake.mjs';
 // Opt-in provider integration harness. No Twilio provider, database client, or
 // durable storage is constructed. All phone/CRM state is isolated in memory.
 import { Buffer } from 'node:buffer';
@@ -55,18 +56,17 @@ export async function syntheticSpeech(key, text, voice = 'rex') {
 // Fictional callers only. Captured results are subsequently exercised against
 // the real callback SQL and CRM display in an isolated database suite.
 export const PROVIDER_CASES = Object.freeze({
+  welcome_message: { welcome: true, utterances: ['Please call me about a consultation.'], message: true },
   welcome_no_answer: { welcome: true, declined: true, utterances: ['no thank you'], message: false },
   welcome_pickup: { welcome: true, pickup: true, utterances: [], message: false },
-  short: { utterances: ['yes', 'Please call me about my shutters.', 'Pat Example', 'yes'], message: true },
-  volunteered: { utterances: ["I'm Pat Example. Please call me about my broken bedroom shade.", 'yes'], message: true },
-  long: { utterances: ['yes', 'The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted, and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available.', 'Pat Example', 'yes'], message: true },
-  correction: { utterances: ['This is Pat Example. Please call me about the kitchen shade.', 'Change the message to The bedroom blind is broken.', 'My callback number is 8055550123.', 'yes'], message: true },
-  blocked: { from: 'anonymous', utterances: ['yes', 'Please call about repairs.', 'Pat Example', 'eight zero five five five five zero one two three', 'yes'], message: true },
-  appointment: { utterances: ['Please schedule an appointment Friday at ten.', 'Pat Example', 'yes'], message: true },
-  duration: { utterances: ['How long is a consultation?', 'yes', 'Please call about a free consultation.', 'Pat Example', 'yes'], message: true },
+  short: { utterances: ['yes', 'Please call me about my shutters.'], message: true },
+  volunteered: { utterances: ["I'm Pat Example. Please call me about my broken bedroom shade."], message: true },
+  long: { utterances: ['yes', 'The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted, and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available.'], message: true },
+  blocked: { from: 'anonymous', utterances: ['yes', 'eight zero five five five five zero one two three', 'Please call about repairs.'], message: true },
+  appointment: { utterances: ['Please schedule an appointment Friday at ten.'], message: true },
+  duration: { utterances: ['How long is a consultation?', 'yes', 'Please call about a free consultation.'], message: true },
   decline: { declined: true, utterances: ['no thank you'], message: false },
   unclear: { utterances: ['perhaps', 'maybe'], message: false },
-  hangup: { utterances: ['Please call about my broken shade.'], hangup: true, message: false },
 });
 
 export async function runProviderConversation({ key, WebSocket, caseName = 'short', delayMs = 500, stateDelayMs = 250, voice = 'rex' }) {
@@ -183,11 +183,12 @@ export async function runProviderConversation({ key, WebSocket, caseName = 'shor
     generatedSpeechVerified: outputs.length > 0 && outputs.every(row => !row.audioError && row.wordAgreement >= 0.75 && !/^(?:stay )?silent[.!]?$/i.test(String(row.audioTranscript || '').trim())),
     progressedEveryTurn: outputs.length === utterances.length + (scenario.welcome && !scenario.pickup ? 2 : 1),
     welcomeOrder: !scenario.welcome || (outputs[0]?.stage === 'welcome-playback' && !/message|voicemail|miss you/i.test(outputs[0]?.audioTranscript || '') && /shutters.*blinds.*shades/i.test(outputs[0]?.audioTranscript || '') && (scenario.pickup ? outputs.length === 1 && marks === 0 && final.owner === 'mike' : outputs[1]?.stage === 'opening-playback' && /team members are tied up/i.test(outputs[1]?.audioTranscript || '') && outputs[1].ms >= outputs[0].ms + outputs[0].bytes / 8)), bookingDisabled: !final?.booking && actions.length === 0,
-    message: store.list('message').some(row => row.confirmed) === Boolean(scenario.message),
+    message: store.list('message').some(row => row.completed || row.confirmed) === Boolean(scenario.message),
     declineEnded: !scenario.declined || (final.phase === 'ended' && !final.schedule?.messageText && store.list('message').length === 0 && store.list('notification').length === 0 && /thank you for calling/i.test(outputs.at(-1)?.audioTranscript || '')),
     completeLongMessage: caseName !== 'long' || ['Saturday', 'cord', 'kitchen', 'after lunch', 'replacement part'].every(phrase => String(final?.schedule?.messageText).toLowerCase().includes(phrase.toLowerCase())),
     noRepeatedLongPrefixes: caseName !== 'long' || (String(final?.schedule?.messageText).match(/living room/gi) || []).length === 1,
-    correctionsSaved: caseName !== 'correction' || store.list('message').some(row => row.confirmed && row.callback === '+18055550123' && row.text === 'The bedroom blind is broken.'),
+    simpleClose: !scenario.message || (final.phase === 'ended' && outputs.at(-1)?.expected === MESSAGE_SAVED && outputs.filter(row => row.expected === MESSAGE_SAVED).length === 1 && outputs.every(row => !/Please say yes|your name|Callback number/i.test(row.expected))),
+    noReadbackConfirmation: !scenario.message || store.list('message').every(row => row.completed && !row.confirmed),
     awaiting: !scenario.awaiting || final?.schedule?.awaiting === scenario.awaiting };
   return { caseName, delayMs, stateDelayMs, voice, failure, assertions, pass: !failure && Object.values(assertions).every(Boolean), durationMs: Date.now() - started, pickupAt, outputs, trace, actions,
     responses: [...frameResponses].map(([id, row]) => ({ id, bytes: row.bytes, hash: row.hash.digest('hex').slice(0, 16), transcript: transcripts.get(id) || null })),

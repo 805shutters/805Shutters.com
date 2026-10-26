@@ -38,6 +38,7 @@ export type PhoneMessage = {
   createdAt: number;
   status: string;
   confirmed?: boolean;
+  completed?: boolean;
   customerId?: string;
   customerName?: string;
   followupNote?: string;
@@ -346,7 +347,7 @@ export function PhoneDesk({
                         <div>
                           <strong>
                             {m.kind === "sms" ? "Incoming text: " : ""}
-                            {m.name}
+                            {m.name || "Caller"}
                           </strong>
                           <p className="text-sm text-slate-600">
                             {m.callback} ·{" "}
@@ -355,7 +356,7 @@ export function PhoneDesk({
                         </div>
                         <span className="capitalize">{m.status}</span>
                       </div>
-                      {m.confirmed === false && (
+                      {m.confirmed === false && !m.completed && (
                         <p className="mt-2 text-sm text-amber-800">
                           Incomplete message — caller did not confirm these
                           details.
@@ -446,7 +447,7 @@ export function PhoneDesk({
                       <label className="mt-4 block text-sm">
                         Follow-up note
                         <textarea
-                          aria-label={`Follow-up note for ${m.name}`}
+                          aria-label={`Follow-up note for ${m.name || "Caller"}`}
                           className="mt-1 block w-full rounded border p-2"
                           defaultValue={m.followupNote || ""}
                           onBlur={(e) => {

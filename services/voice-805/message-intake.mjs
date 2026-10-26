@@ -2,7 +2,6 @@ import { e164 } from './config.mjs';
 import { RECEPTIONIST_OPENING, spokenDecision } from './receptionist.mjs';
 
 const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-const unquote = value => clean(value).replace(/^["“](.*)["”][.!]?$/s, '$1').trim();
 // Final captions can be cumulative even when the provider gives each segment a
 // new item ID. Keep the fullest caption, without repeating its earlier prefix.
 export function mergeCallerCaptions(events) {
@@ -35,22 +34,22 @@ export function initialMessage(from, business = '') {
 }
 const QUESTIONS = {
   message: 'What message would you like me to pass along?',
-  name: 'May I please have your name?',
   phone: 'What phone number should our team call back?',
-  correction: 'What would you like me to change?',
 };
 export const MESSAGE_GOODBYE = 'Thank you for calling 805 Shutters. Goodbye.';
-export const MESSAGE_SAVED = 'Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.';
-export function messageQuestion(state, prefix = '') {
-  const field = !state.messageText ? 'message' : !state.name ? 'name' : !state.phone ? 'phone' : 'confirm';
-  if (field === 'confirm') return { state: { ...state, awaiting: 'confirm' }, readback: true };
-  const say = `${prefix}${QUESTIONS[field]}`;
-  return { state: { ...state, awaiting: field, asked: say }, say };
+export const MESSAGE_SAVED = "Thank you very much. We'll relay the message. Have a great day.";
+export function messageQuestion(state) {
+  // A completed message is the caller's submission. No name interview,
+  // readback, or second spoken confirmation follows it.
+  if (state.messageText) return { state: { ...state, awaiting: 'saving' }, complete: true };
+  const field = !state.phone && !state.phoneAsked ? 'phone' : 'message';
+  const say = QUESTIONS[field];
+  return { state: { ...state, awaiting: field, phoneAsked: state.phoneAsked || field === 'phone', asked: say }, say };
 }
 export function messageSilence(state) {
   const count = (state.clarifyCount || 0) + 1;
   if (count >= 2) return { state: { ...state, awaiting: 'done', clarifyCount: count, asked: MESSAGE_GOODBYE }, say: MESSAGE_GOODBYE, end: true };
-  const say = state.awaiting === 'confirm' ? 'I did not hear a clear yes. Is the message and callback information correct?' : `I did not hear you. ${state.asked || RECEPTIONIST_OPENING}`;
+  const say = `I did not hear you. ${state.asked || RECEPTIONIST_OPENING}`;
   return { state: { ...state, clarifyCount: count, asked: say }, say };
 }
 export function spokenPhone(raw) {
@@ -80,10 +79,7 @@ export function applyMessageTurn(prior, raw, from, business = '') {
   if (oldField === 'permission' && spokenDecision(text) === 'affirmative' || GENERIC_MESSAGE.test(text)) {
     state.consent = true; state.clarifyCount = 0; return messageQuestion(state);
   }
-  if (['confirm', 'correction'].includes(oldField) && (DECLINE.test(decisionText) || /^(?:no[, ]*)?(?:that(?:'s| is) )?(?:wrong|incorrect)[.! ]*$/i.test(text))) {
-    const say = QUESTIONS.correction; return { state: { ...state, awaiting: 'correction', asked: say }, say };
-  }
-  if (/\bhow long\b.*\b(?:consultation|appointment|visit)\b/i.test(text)) {
+  if (oldField === 'permission' && /^(?:about )?how long\b.*\b(?:consultation|appointment|visit)\b/i.test(text)) {
     return { state, say: `A consultation generally takes about one hour. ${state.asked || RECEPTIONIST_OPENING}` };
   }
   state.consent = true; state.clarifyCount = 0;
@@ -94,26 +90,10 @@ export function applyMessageTurn(prior, raw, from, business = '') {
   const volunteeredName = nameMatch && !/^(?:calling|interested|looking|trying|hoping|asking|wondering|sorry|not|ready|having|available|free)\b/i.test(nameMatch[1]);
   if (volunteeredName) state.name = nameMatch[1].trim();
   if (oldField === 'name' && !nameMatch && !phoneLabel && !SCHEDULE.test(text) && !/[?\d]/.test(text) && text.split(' ').length <= 6 && !/^(?:yes|no)[.! ]*$/i.test(text)) state.name = text.replace(/^(?:i am|i'm|it's)\s+/i, '').replace(/[.!]+$/, '');
-  const replace = text.match(/^(?:no[, ]*|actually[, ]*)?(?:change (?:the |my )?message (?:to|to say)|the message (?:is|should be)|instead say|i meant)\s*[:,-]?\s*(.+)$/i);
-  const add = text.match(/^(?:please )?(?:also (?:add|tell them)|add(?: to (?:the|my) message)?)\s*[:,-]?\s*(.+)$/i);
-  let body = null;
-  if (replace) body = unquote(replace[1]);
-  else if (add) body = [state.messageText, add[1]].filter(Boolean).join(' ');
-  else if (['permission', 'message'].includes(oldField) && spokenDecision(text) !== 'affirmative') {
-    // A volunteered name/number alone is a field, not the caller's message.
-    body = text;
-    if (volunteeredName) body = body.replace(nameMatch[0], '');
-    if (phone && phoneLabel) body = body.replace(/(?:my )?(?:callback (?:number )?(?:is|at)|(?:phone )?number (?:is|should be)|(?:you can )?(?:reach me|call me(?: back)?) at)\s*(?:\+?\d[\d(). -]*|(?:zero|oh|one|two|three|four|five|six|seven|eight|nine)[\w -]*)/i, '');
-    body = body.replace(/^[\s,.!;:-]*(?:and\b[ ,]*)?/i, '').trim();
-  }
-  else if (SCHEDULE.test(text) && !state.messageText) body = text;
-  else if (oldField === 'correction' && !nameMatch && !phoneLabel) body = text.replace(/^(?:no|actually)[, ]+/i, '');
-  if (body) {
-    if (body.length > 2000) {
-      const say = 'Please give me a shorter message so I can read it back accurately.';
-      return { state: { ...state, awaiting: 'message', asked: say }, say };
-    }
-    state.messageText = body;
+  if (['permission', 'message', 'confirm', 'correction', 'name'].includes(oldField) && spokenDecision(text) !== 'affirmative') {
+    // Keep the caller's complete wording, including volunteered identity and
+    // contact details. Those details are also indexed separately when known.
+    state.messageText = text;
   }
   if (oldField === 'phone' && !phone) {
     const say = 'Please say the callback number with its area code.';
@@ -121,7 +101,7 @@ export function applyMessageTurn(prior, raw, from, business = '') {
   }
   // A scheduling request is just caller-provided message content. No date,
   // address, availability, booking intent or calendar action is constructed.
-  return messageQuestion(state, SCHEDULE.test(text) ? 'I can pass that appointment request to our team for a callback. ' : '');
+  return messageQuestion(state);
 }
 export function appendCallerTranscript(call, turn) {
   const transcript = [...(call.callerTranscript || [])];

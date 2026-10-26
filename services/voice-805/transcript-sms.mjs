@@ -14,7 +14,7 @@ export function transcriptSmsSendingEnabled() {
 }
 
 export function transcriptNoticeBody(message) {
-  const status = message?.confirmed === true ? "" : "UNCONFIRMED. ";
+  const status = (message?.completed === true || message?.confirmed === true) ? "" : "UNCONFIRMED. ";
   const head = `805 Shutters message from ${message?.name || "caller"}, ${message?.callback || "callback number not confirmed"}. ${status}`;
   const full = String(message?.text || "");
   const footerTail = ` ${TRANSCRIPT_SMS_FOOTER}`;

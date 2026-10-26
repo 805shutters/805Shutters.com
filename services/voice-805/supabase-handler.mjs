@@ -236,7 +236,7 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
      const transcript=p.get('TranscriptionText')||'';
      if(parts[1]==='recording'&&p.get('RecordingStatus')&&p.get('RecordingStatus')!=='completed')return twiml('');
      if(parts[1]==='transcription'&&!transcript)return twiml('');
-     const saved=s.list('message').find(item=>item.callId===call.id&&item.confirmed);
+     const saved=s.list('message').find(item=>item.callId===call.id&&(item.completed||item.confirmed));
      const recordingUrl=p.get('RecordingUrl')||call.recordingUrl||'';
      if(recordingUrl&&recordingUrl!==call.recordingUrl)s.put('call',{...call,recordingUrl});
      const message=saved?{name:saved.name,callback:saved.callback,message:saved.text,transcript:transcript||saved.text,customerId:saved.customerId}:undefined;

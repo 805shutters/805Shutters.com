@@ -1,0 +1,3418 @@
+{
+  "verifiedAt": "2026-10-26 03:33:15 UTC",
+  "scope": "Actual Grok ASR and generated speech with independently transcribed output; isolated in-memory CRM, simulated Twilio playback; no real calls or SMS.",
+  "cases": [
+    {
+      "call": {
+        "id": "20bf717f-8304-4f1b-a59f-29ede35d738d",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: message. Transcript: Please call me about my shutters. Captured before the next question: callback +18055550199.",
+          "outcome": "message",
+          "streamDetached": false
+        },
+        "createdAt": 1792985391292,
+        "callerTranscript": [
+          {
+            "id": "3b0f8598-3678-40bd-a57b-1f74d7188f04",
+            "text": "Yes."
+          },
+          {
+            "id": "3ceb0d95-0d28-4605-aed6-23d1310d3083",
+            "text": "Please call me about my shutters."
+          }
+        ]
+      },
+      "pass": true,
+      "trace": [
+        {
+          "ms": 874,
+          "type": "session.created"
+        },
+        {
+          "ms": 874,
+          "type": "conversation.created"
+        },
+        {
+          "ms": 874,
+          "type": "ping"
+        },
+        {
+          "ms": 1654,
+          "type": "session.updated"
+        },
+        {
+          "ms": 2299,
+          "type": "session.updated"
+        },
+        {
+          "id": "7ef262fa-3d40-4408-a444-23bd9e28009c",
+          "ms": 2299,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "7ef262fa-3d40-4408-a444-23bd9e28009c",
+          "ms": 2301,
+          "type": "response.output_item.added",
+          "itemId": "80bf4bd6-51a9-4929-8920-e7888785d257"
+        },
+        {
+          "ms": 2301,
+          "type": "conversation.item.added",
+          "itemId": "80bf4bd6-51a9-4929-8920-e7888785d257"
+        },
+        {
+          "id": "7ef262fa-3d40-4408-a444-23bd9e28009c",
+          "ms": 2301,
+          "type": "response.content_part.added",
+          "itemId": "80bf4bd6-51a9-4929-8920-e7888785d257"
+        },
+        {
+          "id": "7ef262fa-3d40-4408-a444-23bd9e28009c",
+          "ms": 3018,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "80bf4bd6-51a9-4929-8920-e7888785d257",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "7ef262fa-3d40-4408-a444-23bd9e28009c",
+          "ms": 3019,
+          "type": "response.content_part.done",
+          "itemId": "80bf4bd6-51a9-4929-8920-e7888785d257"
+        },
+        {
+          "id": "7ef262fa-3d40-4408-a444-23bd9e28009c",
+          "ms": 3019,
+          "type": "response.output_audio.done",
+          "itemId": "80bf4bd6-51a9-4929-8920-e7888785d257"
+        },
+        {
+          "id": "7ef262fa-3d40-4408-a444-23bd9e28009c",
+          "ms": 3019,
+          "type": "response.output_item.done",
+          "itemId": "80bf4bd6-51a9-4929-8920-e7888785d257"
+        },
+        {
+          "id": "7ef262fa-3d40-4408-a444-23bd9e28009c",
+          "ms": 3019,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 9242,
+          "type": "session.updated"
+        },
+        {
+          "ms": 9821,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "3b0f8598-3678-40bd-a57b-1f74d7188f04"
+        },
+        {
+          "ms": 10910,
+          "type": "ping"
+        },
+        {
+          "ms": 11154,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "3b0f8598-3678-40bd-a57b-1f74d7188f04"
+        },
+        {
+          "ms": 11154,
+          "type": "conversation.item.added",
+          "itemId": "3b0f8598-3678-40bd-a57b-1f74d7188f04"
+        },
+        {
+          "ms": 11154,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "3b0f8598-3678-40bd-a57b-1f74d7188f04",
+          "transcript": "Yes."
+        },
+        {
+          "id": "72144fd5-3621-4b3e-ae96-b11a0100a01b",
+          "ms": 11161,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 12158,
+          "type": "input_audio_buffer.committed",
+          "itemId": "3b0f8598-3678-40bd-a57b-1f74d7188f04"
+        },
+        {
+          "ms": 12158,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "3b0f8598-3678-40bd-a57b-1f74d7188f04",
+          "transcript": "Yes."
+        },
+        {
+          "id": "72144fd5-3621-4b3e-ae96-b11a0100a01b",
+          "ms": 12163,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 15014,
+          "type": "session.updated"
+        },
+        {
+          "id": "141304df-b35e-4c8b-9b05-0483f7c19f73",
+          "ms": 15014,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "141304df-b35e-4c8b-9b05-0483f7c19f73",
+          "ms": 15015,
+          "type": "response.output_item.added",
+          "itemId": "68b058dc-0c77-4878-802e-ecfee391c1f9"
+        },
+        {
+          "ms": 15015,
+          "type": "conversation.item.added",
+          "itemId": "68b058dc-0c77-4878-802e-ecfee391c1f9"
+        },
+        {
+          "id": "141304df-b35e-4c8b-9b05-0483f7c19f73",
+          "ms": 15015,
+          "type": "response.content_part.added",
+          "itemId": "68b058dc-0c77-4878-802e-ecfee391c1f9"
+        },
+        {
+          "id": "141304df-b35e-4c8b-9b05-0483f7c19f73",
+          "ms": 15622,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "68b058dc-0c77-4878-802e-ecfee391c1f9",
+          "transcript": "What message would you like me to pass along?"
+        },
+        {
+          "id": "141304df-b35e-4c8b-9b05-0483f7c19f73",
+          "ms": 15622,
+          "type": "response.content_part.done",
+          "itemId": "68b058dc-0c77-4878-802e-ecfee391c1f9"
+        },
+        {
+          "id": "141304df-b35e-4c8b-9b05-0483f7c19f73",
+          "ms": 15623,
+          "type": "response.output_audio.done",
+          "itemId": "68b058dc-0c77-4878-802e-ecfee391c1f9"
+        },
+        {
+          "id": "141304df-b35e-4c8b-9b05-0483f7c19f73",
+          "ms": 15623,
+          "type": "response.output_item.done",
+          "itemId": "68b058dc-0c77-4878-802e-ecfee391c1f9"
+        },
+        {
+          "id": "141304df-b35e-4c8b-9b05-0483f7c19f73",
+          "ms": 15623,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 17963,
+          "type": "session.updated"
+        },
+        {
+          "ms": 18598,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "3ceb0d95-0d28-4605-aed6-23d1310d3083"
+        },
+        {
+          "ms": 19019,
+          "type": "conversation.item.added",
+          "itemId": "3ceb0d95-0d28-4605-aed6-23d1310d3083"
+        },
+        {
+          "ms": 19019,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "3ceb0d95-0d28-4605-aed6-23d1310d3083",
+          "transcript": "Please call"
+        },
+        {
+          "ms": 20212,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "3ceb0d95-0d28-4605-aed6-23d1310d3083",
+          "transcript": "Please call me about my shutters."
+        },
+        {
+          "ms": 20403,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "3ceb0d95-0d28-4605-aed6-23d1310d3083"
+        },
+        {
+          "ms": 20467,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "3ceb0d95-0d28-4605-aed6-23d1310d3083",
+          "transcript": "Please call me about my shutters."
+        },
+        {
+          "id": "9245b0b7-46dc-404a-b0b8-8eb82ecf64bd",
+          "ms": 20581,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 20628,
+          "type": "input_audio_buffer.committed",
+          "itemId": "3ceb0d95-0d28-4605-aed6-23d1310d3083"
+        },
+        {
+          "ms": 20629,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "3ceb0d95-0d28-4605-aed6-23d1310d3083",
+          "transcript": "Please call me about my shutters."
+        },
+        {
+          "id": "9245b0b7-46dc-404a-b0b8-8eb82ecf64bd",
+          "ms": 20633,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 20865,
+          "type": "ping"
+        },
+        {
+          "ms": 27086,
+          "type": "session.updated"
+        },
+        {
+          "id": "9236f7d5-ebf4-4b87-80c3-46f70ddbcdea",
+          "ms": 27088,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "9236f7d5-ebf4-4b87-80c3-46f70ddbcdea",
+          "ms": 27089,
+          "type": "response.output_item.added",
+          "itemId": "2c84190b-8422-4934-bf0b-0045871c6499"
+        },
+        {
+          "ms": 27089,
+          "type": "conversation.item.added",
+          "itemId": "2c84190b-8422-4934-bf0b-0045871c6499"
+        },
+        {
+          "id": "9236f7d5-ebf4-4b87-80c3-46f70ddbcdea",
+          "ms": 27089,
+          "type": "response.content_part.added",
+          "itemId": "2c84190b-8422-4934-bf0b-0045871c6499"
+        },
+        {
+          "id": "9236f7d5-ebf4-4b87-80c3-46f70ddbcdea",
+          "ms": 27621,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "2c84190b-8422-4934-bf0b-0045871c6499",
+          "transcript": "Thank you very much. We'll relay the message. Have a great day."
+        },
+        {
+          "id": "9236f7d5-ebf4-4b87-80c3-46f70ddbcdea",
+          "ms": 27621,
+          "type": "response.content_part.done",
+          "itemId": "2c84190b-8422-4934-bf0b-0045871c6499"
+        },
+        {
+          "id": "9236f7d5-ebf4-4b87-80c3-46f70ddbcdea",
+          "ms": 27621,
+          "type": "response.output_audio.done",
+          "itemId": "2c84190b-8422-4934-bf0b-0045871c6499"
+        },
+        {
+          "id": "9236f7d5-ebf4-4b87-80c3-46f70ddbcdea",
+          "ms": 27622,
+          "type": "response.output_item.done",
+          "itemId": "2c84190b-8422-4934-bf0b-0045871c6499"
+        },
+        {
+          "id": "9236f7d5-ebf4-4b87-80c3-46f70ddbcdea",
+          "ms": 27622,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 30867,
+          "type": "ping"
+        }
+      ],
+      "voice": "rex",
+      "actions": [],
+      "delayMs": 0,
+      "failure": null,
+      "outputs": [
+        {
+          "ms": 3020,
+          "hash": "69e5697a1bb53f32",
+          "bytes": 48563,
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "7ef262fa-3d40-4408-a444-23bd9e28009c",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "wordAgreement": 1,
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message, and we'll get back to you as soon as possible."
+        },
+        {
+          "ms": 15624,
+          "hash": "babb98a3a20cc42b",
+          "bytes": 17843,
+          "stage": "result-playback",
+          "expected": "What message would you like me to pass along?",
+          "response": "141304df-b35e-4c8b-9b05-0483f7c19f73",
+          "transcript": "What message would you like me to pass along?",
+          "wordAgreement": 1,
+          "audioTranscript": "What message would you like me to pass along"
+        },
+        {
+          "ms": 27622,
+          "hash": "8846c4aa02fa7eed",
+          "bytes": 28082,
+          "stage": "result-playback",
+          "expected": "Thank you very much. We'll relay the message. Have a great day.",
+          "response": "9236f7d5-ebf4-4b87-80c3-46f70ddbcdea",
+          "transcript": "Thank you very much. We'll relay the message. Have a great day.",
+          "wordAgreement": 1,
+          "audioTranscript": "Thank you very much. We'll relay the message. Have a great day."
+        }
+      ],
+      "caseName": "short",
+      "messages": [
+        {
+          "id": "625ec004-b696-4257-b0b0-bc48ec6a240a",
+          "name": "",
+          "text": "Please call me about my shutters.",
+          "crmId": "isolated-callback",
+          "callId": "20bf717f-8304-4f1b-a59f-29ede35d738d",
+          "status": "open",
+          "toolId": "captured:20bf717f-8304-4f1b-a59f-29ede35d738d",
+          "callback": "+18055550199",
+          "completed": true,
+          "confirmed": false,
+          "createdAt": 1792985415932,
+          "customerId": null,
+          "crmVerified": true,
+          "customerName": null
+        }
+      ],
+      "pickupAt": null,
+      "schedule": {
+        "name": null,
+        "asked": "Thank you very much. We'll relay the message. Have a great day.",
+        "phone": "+18055550199",
+        "consent": true,
+        "purpose": "message",
+        "awaiting": "done",
+        "lastAnswer": "Please call me about my shutters.",
+        "phoneAsked": false,
+        "messageText": "Please call me about my shutters.",
+        "phoneSource": "caller-id",
+        "clarifyCount": 0
+      },
+      "responses": [
+        {
+          "id": "7ef262fa-3d40-4408-a444-23bd9e28009c",
+          "hash": "69e5697a1bb53f32",
+          "bytes": 48563,
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "141304df-b35e-4c8b-9b05-0483f7c19f73",
+          "hash": "babb98a3a20cc42b",
+          "bytes": 17843,
+          "transcript": "What message would you like me to pass along?"
+        },
+        {
+          "id": "9236f7d5-ebf4-4b87-80c3-46f70ddbcdea",
+          "hash": "8846c4aa02fa7eed",
+          "bytes": 28082,
+          "transcript": "Thank you very much. We'll relay the message. Have a great day."
+        }
+      ],
+      "assertions": {
+        "message": true,
+        "awaiting": true,
+        "simpleClose": true,
+        "declineEnded": true,
+        "welcomeOrder": true,
+        "bookingDisabled": true,
+        "completeLongMessage": true,
+        "progressedEveryTurn": true,
+        "noReadbackConfirmation": true,
+        "noRepeatedLongPrefixes": true,
+        "generatedSpeechVerified": true,
+        "allAudioMatchesPreparedLine": true
+      },
+      "durationMs": 31744,
+      "lastResponse": "9236f7d5-ebf4-4b87-80c3-46f70ddbcdea",
+      "stateDelayMs": 600
+    },
+    {
+      "call": {
+        "id": "26076d19-f621-4274-aeb6-339677d6c424",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: message. Transcript: The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available. Captured before the next question: callback +18055550199.",
+          "outcome": "message",
+          "streamDetached": false
+        },
+        "createdAt": 1792985391188,
+        "callerTranscript": [
+          {
+            "id": "f9257ade-9ecb-417d-85ad-80bf357a4208",
+            "text": "Yes."
+          },
+          {
+            "id": "2594bd85-4174-4ded-9742-ec7754c36f08",
+            "text": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available."
+          }
+        ]
+      },
+      "pass": true,
+      "trace": [
+        {
+          "ms": 868,
+          "type": "session.created"
+        },
+        {
+          "ms": 869,
+          "type": "conversation.created"
+        },
+        {
+          "ms": 869,
+          "type": "ping"
+        },
+        {
+          "ms": 1360,
+          "type": "session.updated"
+        },
+        {
+          "ms": 2006,
+          "type": "session.updated"
+        },
+        {
+          "id": "f46cf146-0f8c-4774-b017-e0f123c5405d",
+          "ms": 2006,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "f46cf146-0f8c-4774-b017-e0f123c5405d",
+          "ms": 2007,
+          "type": "response.output_item.added",
+          "itemId": "2c1f1b9b-7df1-4076-87b5-73c1c6d836f4"
+        },
+        {
+          "ms": 2008,
+          "type": "conversation.item.added",
+          "itemId": "2c1f1b9b-7df1-4076-87b5-73c1c6d836f4"
+        },
+        {
+          "id": "f46cf146-0f8c-4774-b017-e0f123c5405d",
+          "ms": 2008,
+          "type": "response.content_part.added",
+          "itemId": "2c1f1b9b-7df1-4076-87b5-73c1c6d836f4"
+        },
+        {
+          "id": "f46cf146-0f8c-4774-b017-e0f123c5405d",
+          "ms": 3277,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "2c1f1b9b-7df1-4076-87b5-73c1c6d836f4",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "f46cf146-0f8c-4774-b017-e0f123c5405d",
+          "ms": 3278,
+          "type": "response.content_part.done",
+          "itemId": "2c1f1b9b-7df1-4076-87b5-73c1c6d836f4"
+        },
+        {
+          "id": "f46cf146-0f8c-4774-b017-e0f123c5405d",
+          "ms": 3278,
+          "type": "response.output_audio.done",
+          "itemId": "2c1f1b9b-7df1-4076-87b5-73c1c6d836f4"
+        },
+        {
+          "id": "f46cf146-0f8c-4774-b017-e0f123c5405d",
+          "ms": 3278,
+          "type": "response.output_item.done",
+          "itemId": "2c1f1b9b-7df1-4076-87b5-73c1c6d836f4"
+        },
+        {
+          "id": "f46cf146-0f8c-4774-b017-e0f123c5405d",
+          "ms": 3278,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 9481,
+          "type": "session.updated"
+        },
+        {
+          "ms": 10080,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "f9257ade-9ecb-417d-85ad-80bf357a4208"
+        },
+        {
+          "ms": 10864,
+          "type": "ping"
+        },
+        {
+          "ms": 11585,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "f9257ade-9ecb-417d-85ad-80bf357a4208"
+        },
+        {
+          "ms": 11595,
+          "type": "conversation.item.added",
+          "itemId": "f9257ade-9ecb-417d-85ad-80bf357a4208"
+        },
+        {
+          "ms": 11595,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "f9257ade-9ecb-417d-85ad-80bf357a4208",
+          "transcript": "Yes."
+        },
+        {
+          "id": "a029ba6d-84ca-4591-a9b8-2a2fd5c36b99",
+          "ms": 11656,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 11886,
+          "type": "input_audio_buffer.committed",
+          "itemId": "f9257ade-9ecb-417d-85ad-80bf357a4208"
+        },
+        {
+          "ms": 11886,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "f9257ade-9ecb-417d-85ad-80bf357a4208",
+          "transcript": "Yes."
+        },
+        {
+          "id": "a029ba6d-84ca-4591-a9b8-2a2fd5c36b99",
+          "ms": 11886,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 14792,
+          "type": "session.updated"
+        },
+        {
+          "id": "099ac9d7-e431-44c2-a047-9a8328dfac1c",
+          "ms": 14792,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "099ac9d7-e431-44c2-a047-9a8328dfac1c",
+          "ms": 14794,
+          "type": "response.output_item.added",
+          "itemId": "6e4a08f9-435f-4c79-9a1b-98ff2ec3e7de"
+        },
+        {
+          "ms": 14794,
+          "type": "conversation.item.added",
+          "itemId": "6e4a08f9-435f-4c79-9a1b-98ff2ec3e7de"
+        },
+        {
+          "id": "099ac9d7-e431-44c2-a047-9a8328dfac1c",
+          "ms": 14795,
+          "type": "response.content_part.added",
+          "itemId": "6e4a08f9-435f-4c79-9a1b-98ff2ec3e7de"
+        },
+        {
+          "id": "099ac9d7-e431-44c2-a047-9a8328dfac1c",
+          "ms": 15348,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "6e4a08f9-435f-4c79-9a1b-98ff2ec3e7de",
+          "transcript": "What message would you like me to pass along?"
+        },
+        {
+          "id": "099ac9d7-e431-44c2-a047-9a8328dfac1c",
+          "ms": 15348,
+          "type": "response.content_part.done",
+          "itemId": "6e4a08f9-435f-4c79-9a1b-98ff2ec3e7de"
+        },
+        {
+          "id": "099ac9d7-e431-44c2-a047-9a8328dfac1c",
+          "ms": 15348,
+          "type": "response.output_audio.done",
+          "itemId": "6e4a08f9-435f-4c79-9a1b-98ff2ec3e7de"
+        },
+        {
+          "id": "099ac9d7-e431-44c2-a047-9a8328dfac1c",
+          "ms": 15348,
+          "type": "response.output_item.done",
+          "itemId": "6e4a08f9-435f-4c79-9a1b-98ff2ec3e7de"
+        },
+        {
+          "id": "099ac9d7-e431-44c2-a047-9a8328dfac1c",
+          "ms": 15348,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 17699,
+          "type": "session.updated"
+        },
+        {
+          "ms": 19824,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "2594bd85-4174-4ded-9742-ec7754c36f08"
+        },
+        {
+          "ms": 20352,
+          "type": "conversation.item.added",
+          "itemId": "2594bd85-4174-4ded-9742-ec7754c36f08"
+        },
+        {
+          "ms": 20352,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "2594bd85-4174-4ded-9742-ec7754c36f08",
+          "transcript": "The shaded"
+        },
+        {
+          "ms": 20863,
+          "type": "ping"
+        },
+        {
+          "ms": 21464,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "2594bd85-4174-4ded-9742-ec7754c36f08",
+          "transcript": "The shade in our living room"
+        },
+        {
+          "ms": 22620,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "2594bd85-4174-4ded-9742-ec7754c36f08",
+          "transcript": "The shade in our living room sticks halfway down."
+        },
+        {
+          "ms": 22734,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "2594bd85-4174-4ded-9742-ec7754c36f08"
+        },
+        {
+          "ms": 22744,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "2594bd85-4174-4ded-9742-ec7754c36f08",
+          "transcript": "The shade in our living room sticks halfway down."
+        },
+        {
+          "id": "6bc6c314-4c41-4b87-b347-ac5c761e0752",
+          "ms": 22789,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 22872,
+          "type": "input_audio_buffer.committed",
+          "itemId": "2594bd85-4174-4ded-9742-ec7754c36f08"
+        },
+        {
+          "ms": 22872,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "2594bd85-4174-4ded-9742-ec7754c36f08",
+          "transcript": "The shade in our living room sticks halfway down."
+        },
+        {
+          "id": "6bc6c314-4c41-4b87-b347-ac5c761e0752",
+          "ms": 22875,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 22905,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "b5adf94f-7c32-4241-a261-c7fc6fbe7b97"
+        },
+        {
+          "ms": 23801,
+          "type": "conversation.item.added",
+          "itemId": "b5adf94f-7c32-4241-a261-c7fc6fbe7b97"
+        },
+        {
+          "ms": 23801,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "b5adf94f-7c32-4241-a261-c7fc6fbe7b97",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed"
+        },
+        {
+          "ms": 24873,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "b5adf94f-7c32-4241-a261-c7fc6fbe7b97",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning."
+        },
+        {
+          "ms": 25211,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "b5adf94f-7c32-4241-a261-c7fc6fbe7b97"
+        },
+        {
+          "ms": 25224,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "b5adf94f-7c32-4241-a261-c7fc6fbe7b97",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning."
+        },
+        {
+          "id": "13c19a13-1b7f-4b54-88d9-1a9ede80fecb",
+          "ms": 25301,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 25352,
+          "type": "input_audio_buffer.committed",
+          "itemId": "b5adf94f-7c32-4241-a261-c7fc6fbe7b97"
+        },
+        {
+          "ms": 25352,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "b5adf94f-7c32-4241-a261-c7fc6fbe7b97",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning."
+        },
+        {
+          "id": "13c19a13-1b7f-4b54-88d9-1a9ede80fecb",
+          "ms": 25357,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 25461,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "88273d64-7e9b-4a1d-8a4b-69ca0ecceb36"
+        },
+        {
+          "ms": 26015,
+          "type": "conversation.item.added",
+          "itemId": "88273d64-7e9b-4a1d-8a4b-69ca0ecceb36"
+        },
+        {
+          "ms": 26015,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "88273d64-7e9b-4a1d-8a4b-69ca0ecceb36",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord"
+        },
+        {
+          "ms": 27104,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "88273d64-7e9b-4a1d-8a4b-69ca0ecceb36",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the box"
+        },
+        {
+          "ms": 28223,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "88273d64-7e9b-4a1d-8a4b-69ca0ecceb36",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level."
+        },
+        {
+          "ms": 28624,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "88273d64-7e9b-4a1d-8a4b-69ca0ecceb36"
+        },
+        {
+          "ms": 28644,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "88273d64-7e9b-4a1d-8a4b-69ca0ecceb36",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level."
+        },
+        {
+          "id": "4f4a24a7-c7b5-498f-a73d-e6fecf08b99e",
+          "ms": 28723,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 28807,
+          "type": "input_audio_buffer.committed",
+          "itemId": "88273d64-7e9b-4a1d-8a4b-69ca0ecceb36"
+        },
+        {
+          "ms": 28807,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "88273d64-7e9b-4a1d-8a4b-69ca0ecceb36",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level."
+        },
+        {
+          "id": "4f4a24a7-c7b5-498f-a73d-e6fecf08b99e",
+          "ms": 28810,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 28906,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "2a63d37d-e60a-4710-beb8-557dc856dc51"
+        },
+        {
+          "ms": 29430,
+          "type": "conversation.item.added",
+          "itemId": "2a63d37d-e60a-4710-beb8-557dc856dc51"
+        },
+        {
+          "ms": 29430,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "2a63d37d-e60a-4710-beb8-557dc856dc51",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen"
+        },
+        {
+          "ms": 30440,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "2a63d37d-e60a-4710-beb8-557dc856dc51",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works"
+        },
+        {
+          "ms": 30863,
+          "type": "ping"
+        },
+        {
+          "ms": 30991,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "2a63d37d-e60a-4710-beb8-557dc856dc51"
+        },
+        {
+          "ms": 31087,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "2a63d37d-e60a-4710-beb8-557dc856dc51",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally."
+        },
+        {
+          "id": "ed8ed7ef-8a57-4ec4-a46b-2a9855cb9b63",
+          "ms": 31090,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 31173,
+          "type": "input_audio_buffer.committed",
+          "itemId": "2a63d37d-e60a-4710-beb8-557dc856dc51"
+        },
+        {
+          "ms": 31174,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "2a63d37d-e60a-4710-beb8-557dc856dc51",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally."
+        },
+        {
+          "id": "ed8ed7ef-8a57-4ec4-a46b-2a9855cb9b63",
+          "ms": 31177,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 31191,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "993e4332-8920-42f4-833c-7bcc9d863650"
+        },
+        {
+          "ms": 31749,
+          "type": "conversation.item.added",
+          "itemId": "993e4332-8920-42f4-833c-7bcc9d863650"
+        },
+        {
+          "ms": 31749,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "993e4332-8920-42f4-833c-7bcc9d863650",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally. Please"
+        },
+        {
+          "ms": 32731,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "993e4332-8920-42f4-833c-7bcc9d863650",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we"
+        },
+        {
+          "ms": 33909,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "993e4332-8920-42f4-833c-7bcc9d863650",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair."
+        },
+        {
+          "ms": 34066,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "993e4332-8920-42f4-833c-7bcc9d863650"
+        },
+        {
+          "ms": 34088,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "993e4332-8920-42f4-833c-7bcc9d863650",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair."
+        },
+        {
+          "id": "b2604546-d430-4d4a-a02f-d86d19409f94",
+          "ms": 34144,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 34207,
+          "type": "input_audio_buffer.committed",
+          "itemId": "993e4332-8920-42f4-833c-7bcc9d863650"
+        },
+        {
+          "ms": 34208,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "993e4332-8920-42f4-833c-7bcc9d863650",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair."
+        },
+        {
+          "id": "b2604546-d430-4d4a-a02f-d86d19409f94",
+          "ms": 34211,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 34312,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "a427c21f-352f-4b64-a470-c19100925b6d"
+        },
+        {
+          "ms": 34936,
+          "type": "conversation.item.added",
+          "itemId": "a427c21f-352f-4b64-a470-c19100925b6d"
+        },
+        {
+          "ms": 34936,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "a427c21f-352f-4b64-a470-c19100925b6d",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like"
+        },
+        {
+          "ms": 36026,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "a427c21f-352f-4b64-a470-c19100925b6d",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement"
+        },
+        {
+          "ms": 37186,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "a427c21f-352f-4b64-a470-c19100925b6d",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available."
+        },
+        {
+          "ms": 37301,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "a427c21f-352f-4b64-a470-c19100925b6d"
+        },
+        {
+          "ms": 37342,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "a427c21f-352f-4b64-a470-c19100925b6d",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available."
+        },
+        {
+          "id": "6b1f391f-dce6-4a7c-a825-d0a253a6b6de",
+          "ms": 37379,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 37463,
+          "type": "input_audio_buffer.committed",
+          "itemId": "a427c21f-352f-4b64-a470-c19100925b6d"
+        },
+        {
+          "ms": 37463,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "a427c21f-352f-4b64-a470-c19100925b6d",
+          "transcript": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available."
+        },
+        {
+          "id": "6b1f391f-dce6-4a7c-a825-d0a253a6b6de",
+          "ms": 37468,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 40863,
+          "type": "ping"
+        },
+        {
+          "ms": 43922,
+          "type": "session.updated"
+        },
+        {
+          "id": "7c27f492-07bc-4002-bcd7-7c74ce0a1f0d",
+          "ms": 43922,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "7c27f492-07bc-4002-bcd7-7c74ce0a1f0d",
+          "ms": 43924,
+          "type": "response.output_item.added",
+          "itemId": "b9ec8b12-db49-4cd4-b217-59b0ba45de53"
+        },
+        {
+          "ms": 43924,
+          "type": "conversation.item.added",
+          "itemId": "b9ec8b12-db49-4cd4-b217-59b0ba45de53"
+        },
+        {
+          "id": "7c27f492-07bc-4002-bcd7-7c74ce0a1f0d",
+          "ms": 43924,
+          "type": "response.content_part.added",
+          "itemId": "b9ec8b12-db49-4cd4-b217-59b0ba45de53"
+        },
+        {
+          "id": "7c27f492-07bc-4002-bcd7-7c74ce0a1f0d",
+          "ms": 44447,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "b9ec8b12-db49-4cd4-b217-59b0ba45de53",
+          "transcript": "Thank you very much. We'll relay the message. Have a great day."
+        },
+        {
+          "id": "7c27f492-07bc-4002-bcd7-7c74ce0a1f0d",
+          "ms": 44447,
+          "type": "response.content_part.done",
+          "itemId": "b9ec8b12-db49-4cd4-b217-59b0ba45de53"
+        },
+        {
+          "id": "7c27f492-07bc-4002-bcd7-7c74ce0a1f0d",
+          "ms": 44447,
+          "type": "response.output_audio.done",
+          "itemId": "b9ec8b12-db49-4cd4-b217-59b0ba45de53"
+        },
+        {
+          "id": "7c27f492-07bc-4002-bcd7-7c74ce0a1f0d",
+          "ms": 44447,
+          "type": "response.output_item.done",
+          "itemId": "b9ec8b12-db49-4cd4-b217-59b0ba45de53"
+        },
+        {
+          "id": "7c27f492-07bc-4002-bcd7-7c74ce0a1f0d",
+          "ms": 44447,
+          "type": "response.done",
+          "status": "completed"
+        }
+      ],
+      "voice": "rex",
+      "actions": [],
+      "delayMs": 0,
+      "failure": null,
+      "outputs": [
+        {
+          "ms": 3279,
+          "hash": "942d80e3111d8930",
+          "bytes": 48563,
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "f46cf146-0f8c-4774-b017-e0f123c5405d",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "wordAgreement": 1,
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message, and we'll get back to you as soon as possible."
+        },
+        {
+          "ms": 15349,
+          "hash": "ee657adb491e9d3e",
+          "bytes": 17843,
+          "stage": "result-playback",
+          "expected": "What message would you like me to pass along?",
+          "response": "099ac9d7-e431-44c2-a047-9a8328dfac1c",
+          "transcript": "What message would you like me to pass along?",
+          "wordAgreement": 1,
+          "audioTranscript": "What message would you like me to pass along"
+        },
+        {
+          "ms": 44448,
+          "hash": "fa571ed11b0d0e84",
+          "bytes": 28082,
+          "stage": "result-playback",
+          "expected": "Thank you very much. We'll relay the message. Have a great day.",
+          "response": "7c27f492-07bc-4002-bcd7-7c74ce0a1f0d",
+          "transcript": "Thank you very much. We'll relay the message. Have a great day.",
+          "wordAgreement": 1,
+          "audioTranscript": "Thank you very much. We'll relay the message. Have a great day."
+        }
+      ],
+      "caseName": "long",
+      "messages": [
+        {
+          "id": "98fa5810-a7bb-497f-b3c3-b1c61c368fed",
+          "name": "",
+          "text": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available.",
+          "crmId": "isolated-callback",
+          "callId": "26076d19-f621-4274-aeb6-339677d6c424",
+          "status": "open",
+          "toolId": "captured:26076d19-f621-4274-aeb6-339677d6c424",
+          "callback": "+18055550199",
+          "completed": true,
+          "confirmed": false,
+          "createdAt": 1792985432662,
+          "customerId": null,
+          "crmVerified": true,
+          "customerName": null
+        }
+      ],
+      "pickupAt": null,
+      "schedule": {
+        "name": null,
+        "asked": "Thank you very much. We'll relay the message. Have a great day.",
+        "phone": "+18055550199",
+        "consent": true,
+        "purpose": "message",
+        "awaiting": "done",
+        "lastAnswer": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available.",
+        "phoneAsked": false,
+        "messageText": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available.",
+        "phoneSource": "caller-id",
+        "clarifyCount": 0
+      },
+      "responses": [
+        {
+          "id": "f46cf146-0f8c-4774-b017-e0f123c5405d",
+          "hash": "942d80e3111d8930",
+          "bytes": 48563,
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "099ac9d7-e431-44c2-a047-9a8328dfac1c",
+          "hash": "ee657adb491e9d3e",
+          "bytes": 17843,
+          "transcript": "What message would you like me to pass along?"
+        },
+        {
+          "id": "7c27f492-07bc-4002-bcd7-7c74ce0a1f0d",
+          "hash": "fa571ed11b0d0e84",
+          "bytes": 28082,
+          "transcript": "Thank you very much. We'll relay the message. Have a great day."
+        }
+      ],
+      "assertions": {
+        "message": true,
+        "awaiting": true,
+        "simpleClose": true,
+        "declineEnded": true,
+        "welcomeOrder": true,
+        "bookingDisabled": true,
+        "completeLongMessage": true,
+        "progressedEveryTurn": true,
+        "noReadbackConfirmation": true,
+        "noRepeatedLongPrefixes": true,
+        "generatedSpeechVerified": true,
+        "allAudioMatchesPreparedLine": true
+      },
+      "durationMs": 48585,
+      "lastResponse": "7c27f492-07bc-4002-bcd7-7c74ce0a1f0d",
+      "stateDelayMs": 600
+    },
+    {
+      "call": {
+        "id": "080299be-159b-4810-9530-1454f11e6bbf",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: message. Transcript: I'm Pat Example. Please call me about my broken bedroom shade. Captured before the next question: name Pat Example; callback +18055550199.",
+          "outcome": "message",
+          "streamDetached": false
+        },
+        "createdAt": 1792985391247,
+        "callerTranscript": [
+          {
+            "id": "2f04f7f8-f798-4a70-a1ae-35716a61bbac",
+            "text": "I'm Pat Example. Please call me about my broken bedroom shade."
+          }
+        ]
+      },
+      "pass": true,
+      "trace": [
+        {
+          "ms": 861,
+          "type": "session.created"
+        },
+        {
+          "ms": 861,
+          "type": "conversation.created"
+        },
+        {
+          "ms": 861,
+          "type": "ping"
+        },
+        {
+          "ms": 1342,
+          "type": "session.updated"
+        },
+        {
+          "ms": 1986,
+          "type": "session.updated"
+        },
+        {
+          "id": "dd1c3c73-9dde-43f9-bc05-93adbf3d2460",
+          "ms": 1989,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "dd1c3c73-9dde-43f9-bc05-93adbf3d2460",
+          "ms": 1993,
+          "type": "response.output_item.added",
+          "itemId": "d4f7b971-a553-4fe6-8869-a0f590e46f10"
+        },
+        {
+          "ms": 1993,
+          "type": "conversation.item.added",
+          "itemId": "d4f7b971-a553-4fe6-8869-a0f590e46f10"
+        },
+        {
+          "id": "dd1c3c73-9dde-43f9-bc05-93adbf3d2460",
+          "ms": 1993,
+          "type": "response.content_part.added",
+          "itemId": "d4f7b971-a553-4fe6-8869-a0f590e46f10"
+        },
+        {
+          "id": "dd1c3c73-9dde-43f9-bc05-93adbf3d2460",
+          "ms": 4063,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "d4f7b971-a553-4fe6-8869-a0f590e46f10",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "dd1c3c73-9dde-43f9-bc05-93adbf3d2460",
+          "ms": 4063,
+          "type": "response.content_part.done",
+          "itemId": "d4f7b971-a553-4fe6-8869-a0f590e46f10"
+        },
+        {
+          "id": "dd1c3c73-9dde-43f9-bc05-93adbf3d2460",
+          "ms": 4063,
+          "type": "response.output_audio.done",
+          "itemId": "d4f7b971-a553-4fe6-8869-a0f590e46f10"
+        },
+        {
+          "id": "dd1c3c73-9dde-43f9-bc05-93adbf3d2460",
+          "ms": 4063,
+          "type": "response.output_item.done",
+          "itemId": "d4f7b971-a553-4fe6-8869-a0f590e46f10"
+        },
+        {
+          "id": "dd1c3c73-9dde-43f9-bc05-93adbf3d2460",
+          "ms": 4064,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 10264,
+          "type": "session.updated"
+        },
+        {
+          "ms": 10955,
+          "type": "ping"
+        },
+        {
+          "ms": 11269,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "2f04f7f8-f798-4a70-a1ae-35716a61bbac"
+        },
+        {
+          "ms": 12539,
+          "type": "conversation.item.added",
+          "itemId": "2f04f7f8-f798-4a70-a1ae-35716a61bbac"
+        },
+        {
+          "ms": 12540,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "2f04f7f8-f798-4a70-a1ae-35716a61bbac",
+          "transcript": "I'm Pat Example."
+        },
+        {
+          "ms": 14163,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "2f04f7f8-f798-4a70-a1ae-35716a61bbac",
+          "transcript": "I'm Pat Example. Please call me about"
+        },
+        {
+          "ms": 14997,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "2f04f7f8-f798-4a70-a1ae-35716a61bbac",
+          "transcript": "I'm Pat Example. Please call me about my broken bedroom"
+        },
+        {
+          "ms": 15647,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "2f04f7f8-f798-4a70-a1ae-35716a61bbac"
+        },
+        {
+          "ms": 15663,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "2f04f7f8-f798-4a70-a1ae-35716a61bbac",
+          "transcript": "I'm Pat Example. Please call me about my broken bedroom shade."
+        },
+        {
+          "id": "c7e5395e-2461-45cd-8a33-4e98ecc601c5",
+          "ms": 15744,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 15805,
+          "type": "input_audio_buffer.committed",
+          "itemId": "2f04f7f8-f798-4a70-a1ae-35716a61bbac"
+        },
+        {
+          "ms": 15805,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "2f04f7f8-f798-4a70-a1ae-35716a61bbac",
+          "transcript": "I'm Pat Example. Please call me about my broken bedroom shade."
+        },
+        {
+          "id": "c7e5395e-2461-45cd-8a33-4e98ecc601c5",
+          "ms": 15808,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 20852,
+          "type": "ping"
+        },
+        {
+          "ms": 22268,
+          "type": "session.updated"
+        },
+        {
+          "id": "0b1fd3c0-e7ed-41ff-b3a5-a74c3b7c5c5f",
+          "ms": 22269,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "0b1fd3c0-e7ed-41ff-b3a5-a74c3b7c5c5f",
+          "ms": 22270,
+          "type": "response.output_item.added",
+          "itemId": "4471cf55-58e2-4d59-88d1-f547e71a7522"
+        },
+        {
+          "ms": 22270,
+          "type": "conversation.item.added",
+          "itemId": "4471cf55-58e2-4d59-88d1-f547e71a7522"
+        },
+        {
+          "id": "0b1fd3c0-e7ed-41ff-b3a5-a74c3b7c5c5f",
+          "ms": 22270,
+          "type": "response.content_part.added",
+          "itemId": "4471cf55-58e2-4d59-88d1-f547e71a7522"
+        },
+        {
+          "id": "0b1fd3c0-e7ed-41ff-b3a5-a74c3b7c5c5f",
+          "ms": 29769,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "4471cf55-58e2-4d59-88d1-f547e71a7522",
+          "transcript": "Thank you very much. We'll relay the message. Have a great day."
+        },
+        {
+          "id": "0b1fd3c0-e7ed-41ff-b3a5-a74c3b7c5c5f",
+          "ms": 29769,
+          "type": "response.content_part.done",
+          "itemId": "4471cf55-58e2-4d59-88d1-f547e71a7522"
+        },
+        {
+          "id": "0b1fd3c0-e7ed-41ff-b3a5-a74c3b7c5c5f",
+          "ms": 29769,
+          "type": "response.output_audio.done",
+          "itemId": "4471cf55-58e2-4d59-88d1-f547e71a7522"
+        },
+        {
+          "id": "0b1fd3c0-e7ed-41ff-b3a5-a74c3b7c5c5f",
+          "ms": 29769,
+          "type": "response.output_item.done",
+          "itemId": "4471cf55-58e2-4d59-88d1-f547e71a7522"
+        },
+        {
+          "id": "0b1fd3c0-e7ed-41ff-b3a5-a74c3b7c5c5f",
+          "ms": 29769,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 30862,
+          "type": "ping"
+        }
+      ],
+      "voice": "rex",
+      "actions": [],
+      "delayMs": 0,
+      "failure": null,
+      "outputs": [
+        {
+          "ms": 4065,
+          "hash": "a79f94914a21e5cf",
+          "bytes": 48563,
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "dd1c3c73-9dde-43f9-bc05-93adbf3d2460",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "wordAgreement": 1,
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message, and we'll get back to you as soon as possible."
+        },
+        {
+          "ms": 29770,
+          "hash": "70fbd74313411075",
+          "bytes": 28082,
+          "stage": "result-playback",
+          "expected": "Thank you very much. We'll relay the message. Have a great day.",
+          "response": "0b1fd3c0-e7ed-41ff-b3a5-a74c3b7c5c5f",
+          "transcript": "Thank you very much. We'll relay the message. Have a great day.",
+          "wordAgreement": 1,
+          "audioTranscript": "Thank you very much. We'll relay the message. Have a great day."
+        }
+      ],
+      "caseName": "volunteered",
+      "messages": [
+        {
+          "id": "0696e3f3-981f-44f4-b0e1-fa89fb1ca2bc",
+          "name": "Pat Example",
+          "text": "I'm Pat Example. Please call me about my broken bedroom shade.",
+          "crmId": "isolated-callback",
+          "callId": "080299be-159b-4810-9530-1454f11e6bbf",
+          "status": "open",
+          "toolId": "captured:080299be-159b-4810-9530-1454f11e6bbf",
+          "callback": "+18055550199",
+          "completed": true,
+          "confirmed": false,
+          "createdAt": 1792985411066,
+          "customerId": null,
+          "crmVerified": true,
+          "customerName": null
+        }
+      ],
+      "pickupAt": null,
+      "schedule": {
+        "name": "Pat Example",
+        "asked": "Thank you very much. We'll relay the message. Have a great day.",
+        "phone": "+18055550199",
+        "consent": true,
+        "purpose": "message",
+        "awaiting": "done",
+        "lastAnswer": "I'm Pat Example. Please call me about my broken bedroom shade.",
+        "messageText": "I'm Pat Example. Please call me about my broken bedroom shade.",
+        "phoneSource": "caller-id",
+        "clarifyCount": 0
+      },
+      "responses": [
+        {
+          "id": "dd1c3c73-9dde-43f9-bc05-93adbf3d2460",
+          "hash": "a79f94914a21e5cf",
+          "bytes": 48563,
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "0b1fd3c0-e7ed-41ff-b3a5-a74c3b7c5c5f",
+          "hash": "70fbd74313411075",
+          "bytes": 28082,
+          "transcript": "Thank you very much. We'll relay the message. Have a great day."
+        }
+      ],
+      "assertions": {
+        "message": true,
+        "awaiting": true,
+        "simpleClose": true,
+        "declineEnded": true,
+        "welcomeOrder": true,
+        "bookingDisabled": true,
+        "completeLongMessage": true,
+        "progressedEveryTurn": true,
+        "noReadbackConfirmation": true,
+        "noRepeatedLongPrefixes": true,
+        "generatedSpeechVerified": true,
+        "allAudioMatchesPreparedLine": true
+      },
+      "durationMs": 33936,
+      "lastResponse": "0b1fd3c0-e7ed-41ff-b3a5-a74c3b7c5c5f",
+      "stateDelayMs": 600
+    },
+    {
+      "call": {
+        "id": "cd94e632-2973-4cf5-9ae7-d59a415944a9",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "anonymous",
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: message. Transcript: Please call about repairs. Captured before the next question: callback +18055550123.",
+          "outcome": "message",
+          "streamDetached": false
+        },
+        "createdAt": 1792985391284,
+        "callerTranscript": [
+          {
+            "id": "960328a9-c1a0-4179-8ac0-a69fcda0330e",
+            "text": "Yes."
+          },
+          {
+            "id": "d0bb4f7e-fd61-4c4a-a64b-236e5c930f5f",
+            "text": "8 0 5 5 5 5 0 1 2 3."
+          },
+          {
+            "id": "58818803-285e-4db0-bb4c-94fd87d1da55",
+            "text": "Please call about repairs."
+          }
+        ]
+      },
+      "pass": true,
+      "trace": [
+        {
+          "ms": 871,
+          "type": "session.created"
+        },
+        {
+          "ms": 871,
+          "type": "conversation.created"
+        },
+        {
+          "ms": 871,
+          "type": "ping"
+        },
+        {
+          "ms": 1452,
+          "type": "session.updated"
+        },
+        {
+          "ms": 2097,
+          "type": "session.updated"
+        },
+        {
+          "id": "e04264ff-b6fc-40c3-9743-44dd4c65b007",
+          "ms": 2098,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "e04264ff-b6fc-40c3-9743-44dd4c65b007",
+          "ms": 2099,
+          "type": "response.output_item.added",
+          "itemId": "404858e0-4b23-4860-a6c8-8827cd7de627"
+        },
+        {
+          "ms": 2100,
+          "type": "conversation.item.added",
+          "itemId": "404858e0-4b23-4860-a6c8-8827cd7de627"
+        },
+        {
+          "id": "e04264ff-b6fc-40c3-9743-44dd4c65b007",
+          "ms": 2100,
+          "type": "response.content_part.added",
+          "itemId": "404858e0-4b23-4860-a6c8-8827cd7de627"
+        },
+        {
+          "id": "e04264ff-b6fc-40c3-9743-44dd4c65b007",
+          "ms": 3181,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "404858e0-4b23-4860-a6c8-8827cd7de627",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "e04264ff-b6fc-40c3-9743-44dd4c65b007",
+          "ms": 3182,
+          "type": "response.content_part.done",
+          "itemId": "404858e0-4b23-4860-a6c8-8827cd7de627"
+        },
+        {
+          "id": "e04264ff-b6fc-40c3-9743-44dd4c65b007",
+          "ms": 3182,
+          "type": "response.output_audio.done",
+          "itemId": "404858e0-4b23-4860-a6c8-8827cd7de627"
+        },
+        {
+          "id": "e04264ff-b6fc-40c3-9743-44dd4c65b007",
+          "ms": 3182,
+          "type": "response.output_item.done",
+          "itemId": "404858e0-4b23-4860-a6c8-8827cd7de627"
+        },
+        {
+          "id": "e04264ff-b6fc-40c3-9743-44dd4c65b007",
+          "ms": 3182,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 9460,
+          "type": "session.updated"
+        },
+        {
+          "ms": 9974,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "960328a9-c1a0-4179-8ac0-a69fcda0330e"
+        },
+        {
+          "ms": 10802,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "960328a9-c1a0-4179-8ac0-a69fcda0330e"
+        },
+        {
+          "ms": 10819,
+          "type": "conversation.item.added",
+          "itemId": "960328a9-c1a0-4179-8ac0-a69fcda0330e"
+        },
+        {
+          "ms": 10819,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "960328a9-c1a0-4179-8ac0-a69fcda0330e",
+          "transcript": "Yes."
+        },
+        {
+          "id": "ebab5088-22f3-4f37-a403-bd29d848936f",
+          "ms": 10861,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 10862,
+          "type": "ping"
+        },
+        {
+          "ms": 10968,
+          "type": "input_audio_buffer.committed",
+          "itemId": "960328a9-c1a0-4179-8ac0-a69fcda0330e"
+        },
+        {
+          "ms": 10968,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "960328a9-c1a0-4179-8ac0-a69fcda0330e",
+          "transcript": "Yes."
+        },
+        {
+          "id": "ebab5088-22f3-4f37-a403-bd29d848936f",
+          "ms": 10969,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 13840,
+          "type": "session.updated"
+        },
+        {
+          "id": "b59209a3-6321-4c2d-950d-0f1bc2f5ccf9",
+          "ms": 13840,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "b59209a3-6321-4c2d-950d-0f1bc2f5ccf9",
+          "ms": 13840,
+          "type": "response.output_item.added",
+          "itemId": "ebc1c127-9730-4c8a-9ff7-a8272d05697a"
+        },
+        {
+          "ms": 13840,
+          "type": "conversation.item.added",
+          "itemId": "ebc1c127-9730-4c8a-9ff7-a8272d05697a"
+        },
+        {
+          "id": "b59209a3-6321-4c2d-950d-0f1bc2f5ccf9",
+          "ms": 13841,
+          "type": "response.content_part.added",
+          "itemId": "ebc1c127-9730-4c8a-9ff7-a8272d05697a"
+        },
+        {
+          "id": "b59209a3-6321-4c2d-950d-0f1bc2f5ccf9",
+          "ms": 14451,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "ebc1c127-9730-4c8a-9ff7-a8272d05697a",
+          "transcript": "What phone number should our team call back?"
+        },
+        {
+          "id": "b59209a3-6321-4c2d-950d-0f1bc2f5ccf9",
+          "ms": 14451,
+          "type": "response.content_part.done",
+          "itemId": "ebc1c127-9730-4c8a-9ff7-a8272d05697a"
+        },
+        {
+          "id": "b59209a3-6321-4c2d-950d-0f1bc2f5ccf9",
+          "ms": 14451,
+          "type": "response.output_audio.done",
+          "itemId": "ebc1c127-9730-4c8a-9ff7-a8272d05697a"
+        },
+        {
+          "id": "b59209a3-6321-4c2d-950d-0f1bc2f5ccf9",
+          "ms": 14451,
+          "type": "response.output_item.done",
+          "itemId": "ebc1c127-9730-4c8a-9ff7-a8272d05697a"
+        },
+        {
+          "id": "b59209a3-6321-4c2d-950d-0f1bc2f5ccf9",
+          "ms": 14451,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 16804,
+          "type": "session.updated"
+        },
+        {
+          "ms": 17388,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "d0bb4f7e-fd61-4c4a-a64b-236e5c930f5f"
+        },
+        {
+          "ms": 17884,
+          "type": "conversation.item.added",
+          "itemId": "d0bb4f7e-fd61-4c4a-a64b-236e5c930f5f"
+        },
+        {
+          "ms": 17884,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "d0bb4f7e-fd61-4c4a-a64b-236e5c930f5f",
+          "transcript": "8 0"
+        },
+        {
+          "ms": 19378,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "d0bb4f7e-fd61-4c4a-a64b-236e5c930f5f",
+          "transcript": "8 0 5 5 5"
+        },
+        {
+          "ms": 20588,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "d0bb4f7e-fd61-4c4a-a64b-236e5c930f5f",
+          "transcript": "8 0 5 5 5 5 0 1 2"
+        },
+        {
+          "ms": 20861,
+          "type": "ping"
+        },
+        {
+          "ms": 21225,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "d0bb4f7e-fd61-4c4a-a64b-236e5c930f5f"
+        },
+        {
+          "ms": 21236,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "d0bb4f7e-fd61-4c4a-a64b-236e5c930f5f",
+          "transcript": "8 0 5 5 5 5 0 1 2 3."
+        },
+        {
+          "id": "4e4c44db-b6e1-48a8-a2eb-a58e150db0ef",
+          "ms": 21338,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 21383,
+          "type": "input_audio_buffer.committed",
+          "itemId": "d0bb4f7e-fd61-4c4a-a64b-236e5c930f5f"
+        },
+        {
+          "ms": 21383,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "d0bb4f7e-fd61-4c4a-a64b-236e5c930f5f",
+          "transcript": "8 0 5 5 5 5 0 1 2 3."
+        },
+        {
+          "id": "4e4c44db-b6e1-48a8-a2eb-a58e150db0ef",
+          "ms": 21387,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 24232,
+          "type": "session.updated"
+        },
+        {
+          "id": "95d2a642-f794-4af9-8678-d29e339df89b",
+          "ms": 24233,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "95d2a642-f794-4af9-8678-d29e339df89b",
+          "ms": 24234,
+          "type": "response.output_item.added",
+          "itemId": "6e33c11b-a7cd-4219-89f3-d4847b0b5771"
+        },
+        {
+          "ms": 24234,
+          "type": "conversation.item.added",
+          "itemId": "6e33c11b-a7cd-4219-89f3-d4847b0b5771"
+        },
+        {
+          "id": "95d2a642-f794-4af9-8678-d29e339df89b",
+          "ms": 24234,
+          "type": "response.content_part.added",
+          "itemId": "6e33c11b-a7cd-4219-89f3-d4847b0b5771"
+        },
+        {
+          "id": "95d2a642-f794-4af9-8678-d29e339df89b",
+          "ms": 27626,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "6e33c11b-a7cd-4219-89f3-d4847b0b5771",
+          "transcript": "What message would you like me to pass along?"
+        },
+        {
+          "id": "95d2a642-f794-4af9-8678-d29e339df89b",
+          "ms": 27626,
+          "type": "response.content_part.done",
+          "itemId": "6e33c11b-a7cd-4219-89f3-d4847b0b5771"
+        },
+        {
+          "id": "95d2a642-f794-4af9-8678-d29e339df89b",
+          "ms": 27626,
+          "type": "response.output_audio.done",
+          "itemId": "6e33c11b-a7cd-4219-89f3-d4847b0b5771"
+        },
+        {
+          "id": "95d2a642-f794-4af9-8678-d29e339df89b",
+          "ms": 27626,
+          "type": "response.output_item.done",
+          "itemId": "6e33c11b-a7cd-4219-89f3-d4847b0b5771"
+        },
+        {
+          "id": "95d2a642-f794-4af9-8678-d29e339df89b",
+          "ms": 27626,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 29974,
+          "type": "session.updated"
+        },
+        {
+          "ms": 30690,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "58818803-285e-4db0-bb4c-94fd87d1da55"
+        },
+        {
+          "ms": 30862,
+          "type": "ping"
+        },
+        {
+          "ms": 31315,
+          "type": "conversation.item.added",
+          "itemId": "58818803-285e-4db0-bb4c-94fd87d1da55"
+        },
+        {
+          "ms": 31315,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "58818803-285e-4db0-bb4c-94fd87d1da55",
+          "transcript": "Please call"
+        },
+        {
+          "ms": 32364,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "58818803-285e-4db0-bb4c-94fd87d1da55",
+          "transcript": "Please call about repairs."
+        },
+        {
+          "ms": 32434,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "58818803-285e-4db0-bb4c-94fd87d1da55"
+        },
+        {
+          "ms": 32573,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "58818803-285e-4db0-bb4c-94fd87d1da55",
+          "transcript": "Please call about repairs."
+        },
+        {
+          "id": "2833dab2-44eb-4b73-8c20-a357e9a66b7d",
+          "ms": 32578,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 32639,
+          "type": "input_audio_buffer.committed",
+          "itemId": "58818803-285e-4db0-bb4c-94fd87d1da55"
+        },
+        {
+          "ms": 32639,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "58818803-285e-4db0-bb4c-94fd87d1da55",
+          "transcript": "Please call about repairs."
+        },
+        {
+          "id": "2833dab2-44eb-4b73-8c20-a357e9a66b7d",
+          "ms": 32642,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 39093,
+          "type": "session.updated"
+        },
+        {
+          "id": "35ad681a-7895-4f5b-bec7-4f65ff173b56",
+          "ms": 39095,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "35ad681a-7895-4f5b-bec7-4f65ff173b56",
+          "ms": 39096,
+          "type": "response.output_item.added",
+          "itemId": "be643a93-5435-475a-8521-3e555e546e22"
+        },
+        {
+          "ms": 39097,
+          "type": "conversation.item.added",
+          "itemId": "be643a93-5435-475a-8521-3e555e546e22"
+        },
+        {
+          "id": "35ad681a-7895-4f5b-bec7-4f65ff173b56",
+          "ms": 39097,
+          "type": "response.content_part.added",
+          "itemId": "be643a93-5435-475a-8521-3e555e546e22"
+        },
+        {
+          "id": "35ad681a-7895-4f5b-bec7-4f65ff173b56",
+          "ms": 39703,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "be643a93-5435-475a-8521-3e555e546e22",
+          "transcript": "Thank you very much. We'll relay the message. Have a great day."
+        },
+        {
+          "id": "35ad681a-7895-4f5b-bec7-4f65ff173b56",
+          "ms": 39703,
+          "type": "response.content_part.done",
+          "itemId": "be643a93-5435-475a-8521-3e555e546e22"
+        },
+        {
+          "id": "35ad681a-7895-4f5b-bec7-4f65ff173b56",
+          "ms": 39703,
+          "type": "response.output_audio.done",
+          "itemId": "be643a93-5435-475a-8521-3e555e546e22"
+        },
+        {
+          "id": "35ad681a-7895-4f5b-bec7-4f65ff173b56",
+          "ms": 39703,
+          "type": "response.output_item.done",
+          "itemId": "be643a93-5435-475a-8521-3e555e546e22"
+        },
+        {
+          "id": "35ad681a-7895-4f5b-bec7-4f65ff173b56",
+          "ms": 39704,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 40862,
+          "type": "ping"
+        }
+      ],
+      "voice": "rex",
+      "actions": [],
+      "delayMs": 0,
+      "failure": null,
+      "outputs": [
+        {
+          "ms": 3184,
+          "hash": "ae4631ff0d76e24d",
+          "bytes": 48563,
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "e04264ff-b6fc-40c3-9743-44dd4c65b007",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "wordAgreement": 1,
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message, and we'll get back to you as soon as possible."
+        },
+        {
+          "ms": 14452,
+          "hash": "1d62992fba50881c",
+          "bytes": 17843,
+          "stage": "result-playback",
+          "expected": "What phone number should our team call back?",
+          "response": "b59209a3-6321-4c2d-950d-0f1bc2f5ccf9",
+          "transcript": "What phone number should our team call back?",
+          "wordAgreement": 1,
+          "audioTranscript": "What phone number should our team call back?"
+        },
+        {
+          "ms": 27627,
+          "hash": "6695519583653c21",
+          "bytes": 17843,
+          "stage": "result-playback",
+          "expected": "What message would you like me to pass along?",
+          "response": "95d2a642-f794-4af9-8678-d29e339df89b",
+          "transcript": "What message would you like me to pass along?",
+          "wordAgreement": 1,
+          "audioTranscript": "What message would you like me to pass along?"
+        },
+        {
+          "ms": 39704,
+          "hash": "b133f2d43c2f20ef",
+          "bytes": 28082,
+          "stage": "result-playback",
+          "expected": "Thank you very much. We'll relay the message. Have a great day.",
+          "response": "35ad681a-7895-4f5b-bec7-4f65ff173b56",
+          "transcript": "Thank you very much. We'll relay the message. Have a great day.",
+          "wordAgreement": 1,
+          "audioTranscript": "Thank you very much. We'll relay the message. Have a great day."
+        }
+      ],
+      "caseName": "blocked",
+      "messages": [
+        {
+          "id": "9ba09d30-0611-41a6-a315-116cffea5516",
+          "name": "",
+          "text": "Please call about repairs.",
+          "crmId": "isolated-callback",
+          "callId": "cd94e632-2973-4cf5-9ae7-d59a415944a9",
+          "status": "open",
+          "toolId": "captured:cd94e632-2973-4cf5-9ae7-d59a415944a9",
+          "callback": "+18055550123",
+          "completed": true,
+          "confirmed": false,
+          "createdAt": 1792985427933,
+          "customerId": null,
+          "crmVerified": true,
+          "customerName": null
+        }
+      ],
+      "pickupAt": null,
+      "schedule": {
+        "name": null,
+        "asked": "Thank you very much. We'll relay the message. Have a great day.",
+        "phone": "+18055550123",
+        "consent": true,
+        "purpose": "message",
+        "awaiting": "done",
+        "lastAnswer": "Please call about repairs.",
+        "phoneAsked": true,
+        "messageText": "Please call about repairs.",
+        "phoneSource": "spoken",
+        "clarifyCount": 0
+      },
+      "responses": [
+        {
+          "id": "e04264ff-b6fc-40c3-9743-44dd4c65b007",
+          "hash": "ae4631ff0d76e24d",
+          "bytes": 48563,
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "b59209a3-6321-4c2d-950d-0f1bc2f5ccf9",
+          "hash": "1d62992fba50881c",
+          "bytes": 17843,
+          "transcript": "What phone number should our team call back?"
+        },
+        {
+          "id": "95d2a642-f794-4af9-8678-d29e339df89b",
+          "hash": "6695519583653c21",
+          "bytes": 17843,
+          "transcript": "What message would you like me to pass along?"
+        },
+        {
+          "id": "35ad681a-7895-4f5b-bec7-4f65ff173b56",
+          "hash": "b133f2d43c2f20ef",
+          "bytes": 28082,
+          "transcript": "Thank you very much. We'll relay the message. Have a great day."
+        }
+      ],
+      "assertions": {
+        "message": true,
+        "awaiting": true,
+        "simpleClose": true,
+        "declineEnded": true,
+        "welcomeOrder": true,
+        "bookingDisabled": true,
+        "completeLongMessage": true,
+        "progressedEveryTurn": true,
+        "noReadbackConfirmation": true,
+        "noRepeatedLongPrefixes": true,
+        "generatedSpeechVerified": true,
+        "allAudioMatchesPreparedLine": true
+      },
+      "durationMs": 43823,
+      "lastResponse": "35ad681a-7895-4f5b-bec7-4f65ff173b56",
+      "stateDelayMs": 600
+    },
+    {
+      "call": {
+        "id": "4dd4667e-2921-43f5-8c5e-713c30c60147",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: message. Transcript: Please schedule an appointment Friday at ten. Captured before the next question: callback +18055550199.",
+          "outcome": "message",
+          "streamDetached": false
+        },
+        "createdAt": 1792985391181,
+        "callerTranscript": [
+          {
+            "id": "4175ed31-124d-4a9a-977d-f2738404f8a7",
+            "text": "Please schedule an appointment Friday at ten."
+          }
+        ]
+      },
+      "pass": true,
+      "trace": [
+        {
+          "ms": 904,
+          "type": "session.created"
+        },
+        {
+          "ms": 904,
+          "type": "conversation.created"
+        },
+        {
+          "ms": 904,
+          "type": "ping"
+        },
+        {
+          "ms": 1480,
+          "type": "session.updated"
+        },
+        {
+          "ms": 2136,
+          "type": "session.updated"
+        },
+        {
+          "id": "04243dbb-5fa8-4240-9399-b184d32f7e8b",
+          "ms": 2136,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "04243dbb-5fa8-4240-9399-b184d32f7e8b",
+          "ms": 2138,
+          "type": "response.output_item.added",
+          "itemId": "2bc3ac5a-ac3b-4912-b333-87df17943107"
+        },
+        {
+          "ms": 2138,
+          "type": "conversation.item.added",
+          "itemId": "2bc3ac5a-ac3b-4912-b333-87df17943107"
+        },
+        {
+          "id": "04243dbb-5fa8-4240-9399-b184d32f7e8b",
+          "ms": 2138,
+          "type": "response.content_part.added",
+          "itemId": "2bc3ac5a-ac3b-4912-b333-87df17943107"
+        },
+        {
+          "id": "04243dbb-5fa8-4240-9399-b184d32f7e8b",
+          "ms": 3066,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "2bc3ac5a-ac3b-4912-b333-87df17943107",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "04243dbb-5fa8-4240-9399-b184d32f7e8b",
+          "ms": 3066,
+          "type": "response.content_part.done",
+          "itemId": "2bc3ac5a-ac3b-4912-b333-87df17943107"
+        },
+        {
+          "id": "04243dbb-5fa8-4240-9399-b184d32f7e8b",
+          "ms": 3066,
+          "type": "response.output_audio.done",
+          "itemId": "2bc3ac5a-ac3b-4912-b333-87df17943107"
+        },
+        {
+          "id": "04243dbb-5fa8-4240-9399-b184d32f7e8b",
+          "ms": 3066,
+          "type": "response.output_item.done",
+          "itemId": "2bc3ac5a-ac3b-4912-b333-87df17943107"
+        },
+        {
+          "id": "04243dbb-5fa8-4240-9399-b184d32f7e8b",
+          "ms": 3067,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 9593,
+          "type": "session.updated"
+        },
+        {
+          "ms": 10261,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "4175ed31-124d-4a9a-977d-f2738404f8a7"
+        },
+        {
+          "ms": 10895,
+          "type": "ping"
+        },
+        {
+          "ms": 11539,
+          "type": "conversation.item.added",
+          "itemId": "4175ed31-124d-4a9a-977d-f2738404f8a7"
+        },
+        {
+          "ms": 11539,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "4175ed31-124d-4a9a-977d-f2738404f8a7",
+          "transcript": "Please schedule an"
+        },
+        {
+          "ms": 13212,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "4175ed31-124d-4a9a-977d-f2738404f8a7",
+          "transcript": "Please schedule an appointment Friday at ten."
+        },
+        {
+          "ms": 13593,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "4175ed31-124d-4a9a-977d-f2738404f8a7"
+        },
+        {
+          "ms": 13604,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "4175ed31-124d-4a9a-977d-f2738404f8a7",
+          "transcript": "Please schedule an appointment Friday at ten."
+        },
+        {
+          "id": "4fa8f3e8-b8c6-468d-8536-a463f921f5d5",
+          "ms": 13654,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 13701,
+          "type": "input_audio_buffer.committed",
+          "itemId": "4175ed31-124d-4a9a-977d-f2738404f8a7"
+        },
+        {
+          "ms": 13701,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "4175ed31-124d-4a9a-977d-f2738404f8a7",
+          "transcript": "Please schedule an appointment Friday at ten."
+        },
+        {
+          "id": "4fa8f3e8-b8c6-468d-8536-a463f921f5d5",
+          "ms": 13705,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 20160,
+          "type": "session.updated"
+        },
+        {
+          "id": "b3a25516-f0f5-48af-b980-60daea4c0102",
+          "ms": 20160,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "b3a25516-f0f5-48af-b980-60daea4c0102",
+          "ms": 20162,
+          "type": "response.output_item.added",
+          "itemId": "1ea54333-5d03-4a42-b30b-7bf0f19bf5ce"
+        },
+        {
+          "ms": 20162,
+          "type": "conversation.item.added",
+          "itemId": "1ea54333-5d03-4a42-b30b-7bf0f19bf5ce"
+        },
+        {
+          "id": "b3a25516-f0f5-48af-b980-60daea4c0102",
+          "ms": 20162,
+          "type": "response.content_part.added",
+          "itemId": "1ea54333-5d03-4a42-b30b-7bf0f19bf5ce"
+        },
+        {
+          "ms": 20895,
+          "type": "ping"
+        },
+        {
+          "id": "b3a25516-f0f5-48af-b980-60daea4c0102",
+          "ms": 20940,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "1ea54333-5d03-4a42-b30b-7bf0f19bf5ce",
+          "transcript": "Thank you very much. We'll relay the message. Have a great day."
+        },
+        {
+          "id": "b3a25516-f0f5-48af-b980-60daea4c0102",
+          "ms": 20940,
+          "type": "response.content_part.done",
+          "itemId": "1ea54333-5d03-4a42-b30b-7bf0f19bf5ce"
+        },
+        {
+          "id": "b3a25516-f0f5-48af-b980-60daea4c0102",
+          "ms": 20940,
+          "type": "response.output_audio.done",
+          "itemId": "1ea54333-5d03-4a42-b30b-7bf0f19bf5ce"
+        },
+        {
+          "id": "b3a25516-f0f5-48af-b980-60daea4c0102",
+          "ms": 20940,
+          "type": "response.output_item.done",
+          "itemId": "1ea54333-5d03-4a42-b30b-7bf0f19bf5ce"
+        },
+        {
+          "id": "b3a25516-f0f5-48af-b980-60daea4c0102",
+          "ms": 20940,
+          "type": "response.done",
+          "status": "completed"
+        }
+      ],
+      "voice": "rex",
+      "actions": [],
+      "delayMs": 0,
+      "failure": null,
+      "outputs": [
+        {
+          "ms": 3068,
+          "hash": "2b4c6f1e27deedfb",
+          "bytes": 51123,
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "04243dbb-5fa8-4240-9399-b184d32f7e8b",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "wordAgreement": 1,
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message, and we'll get back to you as soon as possible?"
+        },
+        {
+          "ms": 20941,
+          "hash": "f8900171f6e283bb",
+          "bytes": 30641,
+          "stage": "result-playback",
+          "expected": "Thank you very much. We'll relay the message. Have a great day.",
+          "response": "b3a25516-f0f5-48af-b980-60daea4c0102",
+          "transcript": "Thank you very much. We'll relay the message. Have a great day.",
+          "wordAgreement": 1,
+          "audioTranscript": "Thank you very much. We'll relay the message. Have a great day."
+        }
+      ],
+      "caseName": "appointment",
+      "messages": [
+        {
+          "id": "ef549fd4-0fb4-493d-88b4-fc78dfccd46b",
+          "name": "",
+          "text": "Please schedule an appointment Friday at ten.",
+          "crmId": "isolated-callback",
+          "callId": "4dd4667e-2921-43f5-8c5e-713c30c60147",
+          "status": "open",
+          "toolId": "captured:4dd4667e-2921-43f5-8c5e-713c30c60147",
+          "callback": "+18055550199",
+          "completed": true,
+          "confirmed": false,
+          "createdAt": 1792985408894,
+          "customerId": null,
+          "crmVerified": true,
+          "customerName": null
+        }
+      ],
+      "pickupAt": null,
+      "schedule": {
+        "name": null,
+        "asked": "Thank you very much. We'll relay the message. Have a great day.",
+        "phone": "+18055550199",
+        "consent": true,
+        "purpose": "message",
+        "awaiting": "done",
+        "lastAnswer": "Please schedule an appointment Friday at ten.",
+        "messageText": "Please schedule an appointment Friday at ten.",
+        "phoneSource": "caller-id",
+        "clarifyCount": 0
+      },
+      "responses": [
+        {
+          "id": "04243dbb-5fa8-4240-9399-b184d32f7e8b",
+          "hash": "2b4c6f1e27deedfb",
+          "bytes": 51123,
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "b3a25516-f0f5-48af-b980-60daea4c0102",
+          "hash": "f8900171f6e283bb",
+          "bytes": 30641,
+          "transcript": "Thank you very much. We'll relay the message. Have a great day."
+        }
+      ],
+      "assertions": {
+        "message": true,
+        "awaiting": true,
+        "simpleClose": true,
+        "declineEnded": true,
+        "welcomeOrder": true,
+        "bookingDisabled": true,
+        "completeLongMessage": true,
+        "progressedEveryTurn": true,
+        "noReadbackConfirmation": true,
+        "noRepeatedLongPrefixes": true,
+        "generatedSpeechVerified": true,
+        "allAudioMatchesPreparedLine": true
+      },
+      "durationMs": 25409,
+      "lastResponse": "b3a25516-f0f5-48af-b980-60daea4c0102",
+      "stateDelayMs": 600
+    },
+    {
+      "call": {
+        "id": "e888ac4a-4103-4608-8ba4-ce91357ace33",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: message. Transcript: Please call about a free consultation. Captured before the next question: callback +18055550199.",
+          "outcome": "message",
+          "streamDetached": false
+        },
+        "createdAt": 1792985391258,
+        "callerTranscript": [
+          {
+            "id": "ac43ea40-9a89-4e0f-9499-91d13fd49fe7",
+            "text": "How long is a consultation?"
+          },
+          {
+            "id": "56f0c76a-028b-4044-9544-a766247ff4fd",
+            "text": "Yes."
+          },
+          {
+            "id": "467fa1bf-0528-48ce-a8ac-c5b4a07c3fd9",
+            "text": "Please call about a free consultation."
+          }
+        ]
+      },
+      "pass": true,
+      "trace": [
+        {
+          "ms": 866,
+          "type": "session.created"
+        },
+        {
+          "ms": 866,
+          "type": "conversation.created"
+        },
+        {
+          "ms": 866,
+          "type": "ping"
+        },
+        {
+          "ms": 1341,
+          "type": "session.updated"
+        },
+        {
+          "ms": 1987,
+          "type": "session.updated"
+        },
+        {
+          "id": "09aab7fc-e0ae-4197-be71-bd9f7925de01",
+          "ms": 1987,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "09aab7fc-e0ae-4197-be71-bd9f7925de01",
+          "ms": 1989,
+          "type": "response.output_item.added",
+          "itemId": "77722701-3cc0-4319-95c6-af77b059d196"
+        },
+        {
+          "ms": 1990,
+          "type": "conversation.item.added",
+          "itemId": "77722701-3cc0-4319-95c6-af77b059d196"
+        },
+        {
+          "id": "09aab7fc-e0ae-4197-be71-bd9f7925de01",
+          "ms": 1990,
+          "type": "response.content_part.added",
+          "itemId": "77722701-3cc0-4319-95c6-af77b059d196"
+        },
+        {
+          "id": "09aab7fc-e0ae-4197-be71-bd9f7925de01",
+          "ms": 2988,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "77722701-3cc0-4319-95c6-af77b059d196",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "09aab7fc-e0ae-4197-be71-bd9f7925de01",
+          "ms": 2988,
+          "type": "response.content_part.done",
+          "itemId": "77722701-3cc0-4319-95c6-af77b059d196"
+        },
+        {
+          "id": "09aab7fc-e0ae-4197-be71-bd9f7925de01",
+          "ms": 2989,
+          "type": "response.output_audio.done",
+          "itemId": "77722701-3cc0-4319-95c6-af77b059d196"
+        },
+        {
+          "id": "09aab7fc-e0ae-4197-be71-bd9f7925de01",
+          "ms": 2989,
+          "type": "response.output_item.done",
+          "itemId": "77722701-3cc0-4319-95c6-af77b059d196"
+        },
+        {
+          "id": "09aab7fc-e0ae-4197-be71-bd9f7925de01",
+          "ms": 2989,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 9504,
+          "type": "session.updated"
+        },
+        {
+          "ms": 10466,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "ac43ea40-9a89-4e0f-9499-91d13fd49fe7"
+        },
+        {
+          "ms": 10857,
+          "type": "ping"
+        },
+        {
+          "ms": 11577,
+          "type": "conversation.item.added",
+          "itemId": "ac43ea40-9a89-4e0f-9499-91d13fd49fe7"
+        },
+        {
+          "ms": 11577,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "ac43ea40-9a89-4e0f-9499-91d13fd49fe7",
+          "transcript": "How long is the"
+        },
+        {
+          "ms": 12722,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "ac43ea40-9a89-4e0f-9499-91d13fd49fe7"
+        },
+        {
+          "ms": 12732,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "ac43ea40-9a89-4e0f-9499-91d13fd49fe7",
+          "transcript": "How long is a consultation?"
+        },
+        {
+          "id": "8dad74ed-a2e1-49e1-a2a8-d0a3f14698ca",
+          "ms": 12797,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 12878,
+          "type": "input_audio_buffer.committed",
+          "itemId": "ac43ea40-9a89-4e0f-9499-91d13fd49fe7"
+        },
+        {
+          "ms": 12878,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "ac43ea40-9a89-4e0f-9499-91d13fd49fe7",
+          "transcript": "How long is a consultation?"
+        },
+        {
+          "id": "8dad74ed-a2e1-49e1-a2a8-d0a3f14698ca",
+          "ms": 12882,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 15726,
+          "type": "session.updated"
+        },
+        {
+          "id": "664ff44b-47aa-4a20-8b30-5d4abfcaa3fa",
+          "ms": 15726,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "664ff44b-47aa-4a20-8b30-5d4abfcaa3fa",
+          "ms": 15727,
+          "type": "response.output_item.added",
+          "itemId": "71c50f6e-e3b6-4cae-ab3d-779dcb188b7f"
+        },
+        {
+          "ms": 15727,
+          "type": "conversation.item.added",
+          "itemId": "71c50f6e-e3b6-4cae-ab3d-779dcb188b7f"
+        },
+        {
+          "id": "664ff44b-47aa-4a20-8b30-5d4abfcaa3fa",
+          "ms": 15727,
+          "type": "response.content_part.added",
+          "itemId": "71c50f6e-e3b6-4cae-ab3d-779dcb188b7f"
+        },
+        {
+          "id": "664ff44b-47aa-4a20-8b30-5d4abfcaa3fa",
+          "ms": 17061,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "71c50f6e-e3b6-4cae-ab3d-779dcb188b7f",
+          "transcript": "A consultation generally takes about one hour. I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "664ff44b-47aa-4a20-8b30-5d4abfcaa3fa",
+          "ms": 17061,
+          "type": "response.content_part.done",
+          "itemId": "71c50f6e-e3b6-4cae-ab3d-779dcb188b7f"
+        },
+        {
+          "id": "664ff44b-47aa-4a20-8b30-5d4abfcaa3fa",
+          "ms": 17061,
+          "type": "response.output_audio.done",
+          "itemId": "71c50f6e-e3b6-4cae-ab3d-779dcb188b7f"
+        },
+        {
+          "id": "664ff44b-47aa-4a20-8b30-5d4abfcaa3fa",
+          "ms": 17061,
+          "type": "response.output_item.done",
+          "itemId": "71c50f6e-e3b6-4cae-ab3d-779dcb188b7f"
+        },
+        {
+          "id": "664ff44b-47aa-4a20-8b30-5d4abfcaa3fa",
+          "ms": 17062,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 20856,
+          "type": "ping"
+        },
+        {
+          "ms": 26129,
+          "type": "session.updated"
+        },
+        {
+          "ms": 26635,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "56f0c76a-028b-4044-9544-a766247ff4fd"
+        },
+        {
+          "ms": 27133,
+          "type": "conversation.item.added",
+          "itemId": "56f0c76a-028b-4044-9544-a766247ff4fd"
+        },
+        {
+          "ms": 27133,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "56f0c76a-028b-4044-9544-a766247ff4fd",
+          "transcript": "Yes."
+        },
+        {
+          "ms": 27324,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "56f0c76a-028b-4044-9544-a766247ff4fd"
+        },
+        {
+          "ms": 27333,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "56f0c76a-028b-4044-9544-a766247ff4fd",
+          "transcript": "Yes."
+        },
+        {
+          "id": "71b570e5-fadb-49dc-845e-784187ba9472",
+          "ms": 27451,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 27528,
+          "type": "input_audio_buffer.committed",
+          "itemId": "56f0c76a-028b-4044-9544-a766247ff4fd"
+        },
+        {
+          "ms": 27528,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "56f0c76a-028b-4044-9544-a766247ff4fd",
+          "transcript": "Yes."
+        },
+        {
+          "id": "71b570e5-fadb-49dc-845e-784187ba9472",
+          "ms": 27531,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 30374,
+          "type": "session.updated"
+        },
+        {
+          "id": "043fa017-c86b-4f5b-967a-3c1ea84bed07",
+          "ms": 30374,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "043fa017-c86b-4f5b-967a-3c1ea84bed07",
+          "ms": 30375,
+          "type": "response.output_item.added",
+          "itemId": "83906a61-5bc0-474c-9d0b-62e26d57a851"
+        },
+        {
+          "ms": 30375,
+          "type": "conversation.item.added",
+          "itemId": "83906a61-5bc0-474c-9d0b-62e26d57a851"
+        },
+        {
+          "id": "043fa017-c86b-4f5b-967a-3c1ea84bed07",
+          "ms": 30375,
+          "type": "response.content_part.added",
+          "itemId": "83906a61-5bc0-474c-9d0b-62e26d57a851"
+        },
+        {
+          "ms": 30856,
+          "type": "ping"
+        },
+        {
+          "id": "043fa017-c86b-4f5b-967a-3c1ea84bed07",
+          "ms": 31021,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "83906a61-5bc0-474c-9d0b-62e26d57a851",
+          "transcript": "What message would you like me to pass along?"
+        },
+        {
+          "id": "043fa017-c86b-4f5b-967a-3c1ea84bed07",
+          "ms": 31021,
+          "type": "response.content_part.done",
+          "itemId": "83906a61-5bc0-474c-9d0b-62e26d57a851"
+        },
+        {
+          "id": "043fa017-c86b-4f5b-967a-3c1ea84bed07",
+          "ms": 31021,
+          "type": "response.output_audio.done",
+          "itemId": "83906a61-5bc0-474c-9d0b-62e26d57a851"
+        },
+        {
+          "id": "043fa017-c86b-4f5b-967a-3c1ea84bed07",
+          "ms": 31021,
+          "type": "response.output_item.done",
+          "itemId": "83906a61-5bc0-474c-9d0b-62e26d57a851"
+        },
+        {
+          "id": "043fa017-c86b-4f5b-967a-3c1ea84bed07",
+          "ms": 31021,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 33047,
+          "type": "session.updated"
+        },
+        {
+          "ms": 33565,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "467fa1bf-0528-48ce-a8ac-c5b4a07c3fd9"
+        },
+        {
+          "ms": 34074,
+          "type": "conversation.item.added",
+          "itemId": "467fa1bf-0528-48ce-a8ac-c5b4a07c3fd9"
+        },
+        {
+          "ms": 34074,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "467fa1bf-0528-48ce-a8ac-c5b4a07c3fd9",
+          "transcript": "Please call"
+        },
+        {
+          "ms": 35218,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "467fa1bf-0528-48ce-a8ac-c5b4a07c3fd9",
+          "transcript": "Please call about a free consult"
+        },
+        {
+          "ms": 35896,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "467fa1bf-0528-48ce-a8ac-c5b4a07c3fd9"
+        },
+        {
+          "ms": 36068,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "467fa1bf-0528-48ce-a8ac-c5b4a07c3fd9",
+          "transcript": "Please call about a free consultation."
+        },
+        {
+          "id": "5050448d-5868-41e1-9048-229389d68680",
+          "ms": 36071,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 36133,
+          "type": "input_audio_buffer.committed",
+          "itemId": "467fa1bf-0528-48ce-a8ac-c5b4a07c3fd9"
+        },
+        {
+          "ms": 36133,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "467fa1bf-0528-48ce-a8ac-c5b4a07c3fd9",
+          "transcript": "Please call about a free consultation."
+        },
+        {
+          "id": "5050448d-5868-41e1-9048-229389d68680",
+          "ms": 36138,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 40856,
+          "type": "ping"
+        },
+        {
+          "ms": 42592,
+          "type": "session.updated"
+        },
+        {
+          "id": "2acd5dcb-f08b-4aa2-806d-150c4e755f62",
+          "ms": 42592,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "2acd5dcb-f08b-4aa2-806d-150c4e755f62",
+          "ms": 42593,
+          "type": "response.output_item.added",
+          "itemId": "4bd3c97f-b959-433d-8cbc-b14f9edf8c99"
+        },
+        {
+          "ms": 42593,
+          "type": "conversation.item.added",
+          "itemId": "4bd3c97f-b959-433d-8cbc-b14f9edf8c99"
+        },
+        {
+          "id": "2acd5dcb-f08b-4aa2-806d-150c4e755f62",
+          "ms": 42593,
+          "type": "response.content_part.added",
+          "itemId": "4bd3c97f-b959-433d-8cbc-b14f9edf8c99"
+        },
+        {
+          "id": "2acd5dcb-f08b-4aa2-806d-150c4e755f62",
+          "ms": 43293,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "4bd3c97f-b959-433d-8cbc-b14f9edf8c99",
+          "transcript": "Thank you very much. We'll relay the message. Have a great day."
+        },
+        {
+          "id": "2acd5dcb-f08b-4aa2-806d-150c4e755f62",
+          "ms": 43293,
+          "type": "response.content_part.done",
+          "itemId": "4bd3c97f-b959-433d-8cbc-b14f9edf8c99"
+        },
+        {
+          "id": "2acd5dcb-f08b-4aa2-806d-150c4e755f62",
+          "ms": 43293,
+          "type": "response.output_audio.done",
+          "itemId": "4bd3c97f-b959-433d-8cbc-b14f9edf8c99"
+        },
+        {
+          "id": "2acd5dcb-f08b-4aa2-806d-150c4e755f62",
+          "ms": 43293,
+          "type": "response.output_item.done",
+          "itemId": "4bd3c97f-b959-433d-8cbc-b14f9edf8c99"
+        },
+        {
+          "id": "2acd5dcb-f08b-4aa2-806d-150c4e755f62",
+          "ms": 43293,
+          "type": "response.done",
+          "status": "completed"
+        }
+      ],
+      "voice": "rex",
+      "actions": [],
+      "delayMs": 0,
+      "failure": null,
+      "outputs": [
+        {
+          "ms": 2990,
+          "hash": "d3542a296c31acb1",
+          "bytes": 51123,
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "09aab7fc-e0ae-4197-be71-bd9f7925de01",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "wordAgreement": 1,
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message, and we'll get back to you as soon as possible."
+        },
+        {
+          "ms": 17062,
+          "hash": "6a1e39567728fdf3",
+          "bytes": 71604,
+          "stage": "result-playback",
+          "expected": "A consultation generally takes about one hour. I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "664ff44b-47aa-4a20-8b30-5d4abfcaa3fa",
+          "transcript": "A consultation generally takes about one hour. I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "wordAgreement": 0.9354838709677419,
+          "audioTranscript": "A consultation generally takes about 1 h. I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "ms": 31021,
+          "hash": "0767f3474b9426a0",
+          "bytes": 15283,
+          "stage": "result-playback",
+          "expected": "What message would you like me to pass along?",
+          "response": "043fa017-c86b-4f5b-967a-3c1ea84bed07",
+          "transcript": "What message would you like me to pass along?",
+          "wordAgreement": 1,
+          "audioTranscript": "What message would you like me to pass along?"
+        },
+        {
+          "ms": 43293,
+          "hash": "79aa201361f7839c",
+          "bytes": 28082,
+          "stage": "result-playback",
+          "expected": "Thank you very much. We'll relay the message. Have a great day.",
+          "response": "2acd5dcb-f08b-4aa2-806d-150c4e755f62",
+          "transcript": "Thank you very much. We'll relay the message. Have a great day.",
+          "wordAgreement": 0.8333333333333334,
+          "audioTranscript": "Thank you very much. Will relay the message. Have a great day."
+        }
+      ],
+      "caseName": "duration",
+      "messages": [
+        {
+          "id": "9656d229-5002-4596-bde6-3477d5ef311a",
+          "name": "",
+          "text": "Please call about a free consultation.",
+          "crmId": "isolated-callback",
+          "callId": "e888ac4a-4103-4608-8ba4-ce91357ace33",
+          "status": "open",
+          "toolId": "captured:e888ac4a-4103-4608-8ba4-ce91357ace33",
+          "callback": "+18055550199",
+          "completed": true,
+          "confirmed": false,
+          "createdAt": 1792985431402,
+          "customerId": null,
+          "crmVerified": true,
+          "customerName": null
+        }
+      ],
+      "pickupAt": null,
+      "schedule": {
+        "name": null,
+        "asked": "Thank you very much. We'll relay the message. Have a great day.",
+        "phone": "+18055550199",
+        "consent": true,
+        "purpose": "message",
+        "awaiting": "done",
+        "lastAnswer": "Please call about a free consultation.",
+        "phoneAsked": false,
+        "messageText": "Please call about a free consultation.",
+        "phoneSource": "caller-id",
+        "clarifyCount": 0
+      },
+      "responses": [
+        {
+          "id": "09aab7fc-e0ae-4197-be71-bd9f7925de01",
+          "hash": "d3542a296c31acb1",
+          "bytes": 51123,
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "664ff44b-47aa-4a20-8b30-5d4abfcaa3fa",
+          "hash": "6a1e39567728fdf3",
+          "bytes": 71604,
+          "transcript": "A consultation generally takes about one hour. I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "043fa017-c86b-4f5b-967a-3c1ea84bed07",
+          "hash": "0767f3474b9426a0",
+          "bytes": 15283,
+          "transcript": "What message would you like me to pass along?"
+        },
+        {
+          "id": "2acd5dcb-f08b-4aa2-806d-150c4e755f62",
+          "hash": "79aa201361f7839c",
+          "bytes": 28082,
+          "transcript": "Thank you very much. We'll relay the message. Have a great day."
+        }
+      ],
+      "assertions": {
+        "message": true,
+        "awaiting": true,
+        "simpleClose": true,
+        "declineEnded": true,
+        "welcomeOrder": true,
+        "bookingDisabled": true,
+        "completeLongMessage": true,
+        "progressedEveryTurn": true,
+        "noReadbackConfirmation": true,
+        "noRepeatedLongPrefixes": true,
+        "generatedSpeechVerified": true,
+        "allAudioMatchesPreparedLine": true
+      },
+      "durationMs": 47429,
+      "lastResponse": "2acd5dcb-f08b-4aa2-806d-150c4e755f62",
+      "stateDelayMs": 600
+    },
+    {
+      "call": {
+        "id": "975979aa-2c20-4fe4-a11b-d034530f3921",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: message. Transcript: Please call me about a consultation. Captured before the next question: callback +18055550199.",
+          "outcome": "message",
+          "streamDetached": false
+        },
+        "createdAt": 1792985508619,
+        "callerTranscript": [
+          {
+            "id": "38f299b4-42d4-4e2c-9fee-ac1407bef25a",
+            "text": "Please call me about a consultation."
+          }
+        ]
+      },
+      "pass": true,
+      "trace": [
+        {
+          "ms": 864,
+          "type": "session.created"
+        },
+        {
+          "ms": 864,
+          "type": "conversation.created"
+        },
+        {
+          "ms": 865,
+          "type": "ping"
+        },
+        {
+          "ms": 948,
+          "type": "session.updated"
+        },
+        {
+          "ms": 1592,
+          "type": "session.updated"
+        },
+        {
+          "id": "db65c5e1-4d4b-4116-8020-c01de03d4cbe",
+          "ms": 1593,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "db65c5e1-4d4b-4116-8020-c01de03d4cbe",
+          "ms": 1597,
+          "type": "response.output_item.added",
+          "itemId": "af521208-b69c-4ecc-964d-066c570fd497"
+        },
+        {
+          "ms": 1597,
+          "type": "conversation.item.added",
+          "itemId": "af521208-b69c-4ecc-964d-066c570fd497"
+        },
+        {
+          "id": "db65c5e1-4d4b-4116-8020-c01de03d4cbe",
+          "ms": 1597,
+          "type": "response.content_part.added",
+          "itemId": "af521208-b69c-4ecc-964d-066c570fd497"
+        },
+        {
+          "id": "db65c5e1-4d4b-4116-8020-c01de03d4cbe",
+          "ms": 4481,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "af521208-b69c-4ecc-964d-066c570fd497",
+          "transcript": "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style."
+        },
+        {
+          "id": "db65c5e1-4d4b-4116-8020-c01de03d4cbe",
+          "ms": 4481,
+          "type": "response.content_part.done",
+          "itemId": "af521208-b69c-4ecc-964d-066c570fd497"
+        },
+        {
+          "id": "db65c5e1-4d4b-4116-8020-c01de03d4cbe",
+          "ms": 4481,
+          "type": "response.output_audio.done",
+          "itemId": "af521208-b69c-4ecc-964d-066c570fd497"
+        },
+        {
+          "id": "db65c5e1-4d4b-4116-8020-c01de03d4cbe",
+          "ms": 4481,
+          "type": "response.output_item.done",
+          "itemId": "af521208-b69c-4ecc-964d-066c570fd497"
+        },
+        {
+          "id": "db65c5e1-4d4b-4116-8020-c01de03d4cbe",
+          "ms": 4482,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 10857,
+          "type": "ping"
+        },
+        {
+          "ms": 20857,
+          "type": "ping"
+        },
+        {
+          "ms": 21126,
+          "type": "session.updated"
+        },
+        {
+          "id": "84aac552-81ba-498a-9f40-57303d81864b",
+          "ms": 21130,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "84aac552-81ba-498a-9f40-57303d81864b",
+          "ms": 21132,
+          "type": "response.output_item.added",
+          "itemId": "e2f79aa7-454d-49e7-9ae3-57b6578b056e"
+        },
+        {
+          "ms": 21132,
+          "type": "conversation.item.added",
+          "itemId": "e2f79aa7-454d-49e7-9ae3-57b6578b056e"
+        },
+        {
+          "id": "84aac552-81ba-498a-9f40-57303d81864b",
+          "ms": 21132,
+          "type": "response.content_part.added",
+          "itemId": "e2f79aa7-454d-49e7-9ae3-57b6578b056e"
+        },
+        {
+          "id": "84aac552-81ba-498a-9f40-57303d81864b",
+          "ms": 22056,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "e2f79aa7-454d-49e7-9ae3-57b6578b056e",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "84aac552-81ba-498a-9f40-57303d81864b",
+          "ms": 22056,
+          "type": "response.content_part.done",
+          "itemId": "e2f79aa7-454d-49e7-9ae3-57b6578b056e"
+        },
+        {
+          "id": "84aac552-81ba-498a-9f40-57303d81864b",
+          "ms": 22057,
+          "type": "response.output_audio.done",
+          "itemId": "e2f79aa7-454d-49e7-9ae3-57b6578b056e"
+        },
+        {
+          "id": "84aac552-81ba-498a-9f40-57303d81864b",
+          "ms": 22057,
+          "type": "response.output_item.done",
+          "itemId": "e2f79aa7-454d-49e7-9ae3-57b6578b056e"
+        },
+        {
+          "id": "84aac552-81ba-498a-9f40-57303d81864b",
+          "ms": 22057,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 28555,
+          "type": "session.updated"
+        },
+        {
+          "ms": 29102,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "38f299b4-42d4-4e2c-9fee-ac1407bef25a"
+        },
+        {
+          "ms": 30041,
+          "type": "conversation.item.added",
+          "itemId": "38f299b4-42d4-4e2c-9fee-ac1407bef25a"
+        },
+        {
+          "ms": 30041,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "38f299b4-42d4-4e2c-9fee-ac1407bef25a",
+          "transcript": "Please call me about a"
+        },
+        {
+          "ms": 30858,
+          "type": "ping"
+        },
+        {
+          "ms": 31331,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "38f299b4-42d4-4e2c-9fee-ac1407bef25a",
+          "transcript": "Please call me about a consultation."
+        },
+        {
+          "ms": 31427,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "38f299b4-42d4-4e2c-9fee-ac1407bef25a"
+        },
+        {
+          "ms": 31437,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "38f299b4-42d4-4e2c-9fee-ac1407bef25a",
+          "transcript": "Please call me about a consultation."
+        },
+        {
+          "id": "d9117c87-c607-44a5-9a5c-a145fdb50dab",
+          "ms": 31489,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 31533,
+          "type": "input_audio_buffer.committed",
+          "itemId": "38f299b4-42d4-4e2c-9fee-ac1407bef25a"
+        },
+        {
+          "ms": 31533,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "38f299b4-42d4-4e2c-9fee-ac1407bef25a",
+          "transcript": "Please call me about a consultation."
+        },
+        {
+          "id": "d9117c87-c607-44a5-9a5c-a145fdb50dab",
+          "ms": 31537,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 37993,
+          "type": "session.updated"
+        },
+        {
+          "id": "bafc4ade-7220-4c7e-8bd5-ee4751b1d019",
+          "ms": 37993,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "bafc4ade-7220-4c7e-8bd5-ee4751b1d019",
+          "ms": 37996,
+          "type": "response.output_item.added",
+          "itemId": "74dffb28-9cb7-4103-8e9d-731e99e6e0a9"
+        },
+        {
+          "ms": 37996,
+          "type": "conversation.item.added",
+          "itemId": "74dffb28-9cb7-4103-8e9d-731e99e6e0a9"
+        },
+        {
+          "id": "bafc4ade-7220-4c7e-8bd5-ee4751b1d019",
+          "ms": 37996,
+          "type": "response.content_part.added",
+          "itemId": "74dffb28-9cb7-4103-8e9d-731e99e6e0a9"
+        },
+        {
+          "id": "bafc4ade-7220-4c7e-8bd5-ee4751b1d019",
+          "ms": 38542,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "74dffb28-9cb7-4103-8e9d-731e99e6e0a9",
+          "transcript": "Thank you very much. We'll relay the message. Have a great day."
+        },
+        {
+          "id": "bafc4ade-7220-4c7e-8bd5-ee4751b1d019",
+          "ms": 38542,
+          "type": "response.content_part.done",
+          "itemId": "74dffb28-9cb7-4103-8e9d-731e99e6e0a9"
+        },
+        {
+          "id": "bafc4ade-7220-4c7e-8bd5-ee4751b1d019",
+          "ms": 38542,
+          "type": "response.output_audio.done",
+          "itemId": "74dffb28-9cb7-4103-8e9d-731e99e6e0a9"
+        },
+        {
+          "id": "bafc4ade-7220-4c7e-8bd5-ee4751b1d019",
+          "ms": 38542,
+          "type": "response.output_item.done",
+          "itemId": "74dffb28-9cb7-4103-8e9d-731e99e6e0a9"
+        },
+        {
+          "id": "bafc4ade-7220-4c7e-8bd5-ee4751b1d019",
+          "ms": 38542,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 40859,
+          "type": "ping"
+        }
+      ],
+      "voice": "rex",
+      "actions": [],
+      "delayMs": 0,
+      "failure": null,
+      "outputs": [
+        {
+          "ms": 4484,
+          "hash": "fa541c669c402750",
+          "bytes": 127926,
+          "stage": "welcome-playback",
+          "expected": "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style.",
+          "response": "db65c5e1-4d4b-4116-8020-c01de03d4cbe",
+          "transcript": "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style.",
+          "wordAgreement": 1,
+          "audioTranscript": "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style."
+        },
+        {
+          "ms": 22058,
+          "hash": "056262b1225666bc",
+          "bytes": 51123,
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "84aac552-81ba-498a-9f40-57303d81864b",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "wordAgreement": 1,
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message, and we'll get back to you as soon as possible."
+        },
+        {
+          "ms": 38543,
+          "hash": "04547a213942977f",
+          "bytes": 30641,
+          "stage": "result-playback",
+          "expected": "Thank you very much. We'll relay the message. Have a great day.",
+          "response": "bafc4ade-7220-4c7e-8bd5-ee4751b1d019",
+          "transcript": "Thank you very much. We'll relay the message. Have a great day.",
+          "wordAgreement": 1,
+          "audioTranscript": "Thank you very much. We'll relay the message. Have a great day."
+        }
+      ],
+      "caseName": "welcome_message",
+      "messages": [
+        {
+          "id": "8ae73ded-41ed-4798-87cc-15f1a8097a81",
+          "name": "",
+          "text": "Please call me about a consultation.",
+          "crmId": "isolated-callback",
+          "callId": "975979aa-2c20-4fe4-a11b-d034530f3921",
+          "status": "open",
+          "toolId": "captured:975979aa-2c20-4fe4-a11b-d034530f3921",
+          "callback": "+18055550199",
+          "completed": true,
+          "confirmed": false,
+          "createdAt": 1792985544165,
+          "customerId": null,
+          "crmVerified": true,
+          "customerName": null
+        }
+      ],
+      "pickupAt": null,
+      "schedule": {
+        "name": null,
+        "asked": "Thank you very much. We'll relay the message. Have a great day.",
+        "phone": "+18055550199",
+        "consent": true,
+        "purpose": "message",
+        "awaiting": "done",
+        "lastAnswer": "Please call me about a consultation.",
+        "messageText": "Please call me about a consultation.",
+        "phoneSource": "caller-id",
+        "clarifyCount": 0
+      },
+      "responses": [
+        {
+          "id": "db65c5e1-4d4b-4116-8020-c01de03d4cbe",
+          "hash": "fa541c669c402750",
+          "bytes": 127926,
+          "transcript": "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style."
+        },
+        {
+          "id": "84aac552-81ba-498a-9f40-57303d81864b",
+          "hash": "056262b1225666bc",
+          "bytes": 51123,
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "bafc4ade-7220-4c7e-8bd5-ee4751b1d019",
+          "hash": "04547a213942977f",
+          "bytes": 30641,
+          "transcript": "Thank you very much. We'll relay the message. Have a great day."
+        }
+      ],
+      "assertions": {
+        "message": true,
+        "awaiting": true,
+        "simpleClose": true,
+        "declineEnded": true,
+        "welcomeOrder": true,
+        "bookingDisabled": true,
+        "completeLongMessage": true,
+        "progressedEveryTurn": true,
+        "noReadbackConfirmation": true,
+        "noRepeatedLongPrefixes": true,
+        "generatedSpeechVerified": true,
+        "allAudioMatchesPreparedLine": true
+      },
+      "durationMs": 42996,
+      "lastResponse": "bafc4ade-7220-4c7e-8bd5-ee4751b1d019",
+      "stateDelayMs": 600
+    }
+  ]
+}

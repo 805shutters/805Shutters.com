@@ -183,7 +183,7 @@ export class TwilioProvider {
         item.body ||
         (item.purpose === "transcript"
           ? transcriptNoticeBody(message)
-          : `805 Shutters ${message.confirmed ? "callback" : "UNCONFIRMED message"}: ${message.name}, ${message.callback || "callback number not confirmed"}. ${message.text}`),
+          : `805 Shutters ${(message.completed || message.confirmed) ? "callback" : "UNCONFIRMED message"}: ${message.name}, ${message.callback || "callback number not confirmed"}. ${message.text}`),
       StatusCallback: `${this.config.origin}/twilio/sms/${encodeURIComponent(item.id)}`,
     });
   }

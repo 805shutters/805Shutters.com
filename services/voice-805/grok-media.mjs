@@ -1,13 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { reportFailure } from './security.mjs';
 import { COMMON_GREETING } from './caller-context.mjs';
-import { RECEPTIONIST_OPENING, RECEPTIONIST_PROMPT, messageIntent, spokenDecision } from './receptionist.mjs';
+import { RECEPTIONIST_OPENING, RECEPTIONIST_PROMPT } from './receptionist.mjs';
 import { VOICE_ID } from './prompts.mjs';
 import { applyMessageTurn, appendCallerTranscript, initialMessage, messageSilence, mergeCallerCaptions, MESSAGE_SAVED } from './message-intake.mjs';
 import { intakeActive, retainRingingIntake } from './engine.mjs';
 
 const validAudio = value => typeof value === 'string' && value.length > 0 && value.length <= 256000 && /^[A-Za-z0-9+/]+={0,2}$/.test(value);
-const CONFIRM_MS = 60000;
 const SILENCE_MS = 12000;
 export const TURN_SETTLE_MS = 1600;
 // Paid Supabase Edge workers, including this Pro project, are stopped at 400s of wall clock.
@@ -33,16 +32,15 @@ export function playbackWaitMs(pcmBytes) {
 // Final captions are emitted only when this nested model is set. `grok` at the top level is not the documented field.
 export const INPUT_TRANSCRIPTION = Object.freeze({ model: 'grok-transcribe', language_hint: 'en' });
 const QUESTION_STAGES = new Set(['opening', 'opening-playback', 'result', 'result-playback']);
-const READBACK_STAGES = new Set(['readback', 'readback-playback']);
-const FORWARDED_STAGES = new Set(['assist', 'collect', 'confirm', 'welcome', 'welcome-playback', 'opening', 'opening-playback', 'result', 'result-playback', 'readback', 'readback-playback']);
+const FORWARDED_STAGES = new Set(['assist', 'collect', 'welcome', 'welcome-playback', 'opening', 'opening-playback', 'result', 'result-playback']);
 const SAVE_FAIL = 'I could not verify the message save. Please call back so our team can help. Goodbye.';
 // The force_message response has no client correlation metadata. Its completed
 // output transcript is the ownership proof; arrival order is not proof.
 export const spokenLineKey = text => String(text || '').normalize('NFKC').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ').trim();
 const MAX_SCRIPT_AUDIO_BYTES = 1200000;
 
-// The carrier socket is authenticated before construction. The model can propose.
-// A spoken yes counts only after the exact readback has played on this call.
+// The carrier socket is authenticated before construction. The server owns
+// message completion, verified persistence, the single closing, and hangup.
 export class GrokMediaSession {
   constructor({ socket, call, state, worker, connect, clock = globalThis, saveCrm = null, saveSummary = null }) {
     Object.assign(this, { socket, call, state, worker, connect, clock, saveCrm, saveSummary });
@@ -62,7 +60,6 @@ export class GrokMediaSession {
     this.cancelSent = false;
     this.vadTurn = false;
     this.callerChose = false;
-    this.beforeReadback = new Set();
     this.forceRetries = 0;
     this.promptTimer = null;
     this.playbackToken = 0;
@@ -179,7 +176,7 @@ export class GrokMediaSession {
     }
     if (!this.streamSid || event.streamSid !== this.streamSid) return;
     if (event.event === 'stop') {
-      await this.flushCallerTurn();
+      await this.flushCallerTurn(true);
       await this.commitBounded((e, s) => {
         const c = s.get('call', this.call.id);
         if (c?.phase === 'message' || (c?.phase === 'offering' && !c.owner)) e.ended(c.id, c.sid, `media-stop:${this.streamSid}`);
@@ -198,7 +195,7 @@ export class GrokMediaSession {
   }
   force(text, stage, options = {}) {
     if (this.closed) return;
-    this.listening = Boolean(options.listen) || ['opening', 'result', 'readback', 'welcome'].includes(stage);
+    this.listening = Boolean(options.listen) || ['opening', 'result', 'welcome'].includes(stage);
     this.interruptible = Boolean(options.interruptible);
     this.stage = stage;
     this.audioBytes = 0;
@@ -373,14 +370,6 @@ export class GrokMediaSession {
     if (!this.saveSummary) return;
     try { await this.saveSummary(); } catch (error) { reportFailure('call-summary', error); }
   }
-  armConfirm() {
-    this.stage = 'confirm';
-    this.prompt = null;
-    this.pending = [];
-    this.vadTurn = false;
-    this.sendAI({ type: 'session.update', session: this.voiceSession({ turn_detection: { type: 'server_vad' }, tools: [] }) });
-    this.silenceTimer = this.clock.setTimeout(() => this.enqueue(() => this.silence()), SILENCE_MS);
-  }
   playDelta(delta) {
     this.audioBytes += delta.length;
     this.pcmBytes += pcmByteLength(delta);
@@ -413,7 +402,7 @@ export class GrokMediaSession {
     this.advancePrompt();
   }
   advancePrompt() {
-    if (!['opening', 'readback', 'result', 'welcome'].includes(this.stage)) return;
+    if (!['opening', 'result', 'welcome'].includes(this.stage)) return;
     if (!this.audioBytes) return this.fail('Required audio missing');
     const stage = this.stage;
     this.stage = stage + '-playback';
@@ -421,16 +410,7 @@ export class GrokMediaSession {
     this.mark(async () => {
       if (this.closed) return;
       if (stage === 'welcome') return this.afterWelcome();
-      if (stage === 'readback') {
-        const armed = await this.commitBounded((_e, s) => {
-          const c = s.get('call', this.call.id);
-          if (!intakeActive(c) || c.intent?.id !== this.intent?.id || c.intent.confirmedAt) return false;
-          s.put('call', { ...c, intent: { ...c.intent, playedAt: Date.now() } });
-          return true;
-        });
-        if (this.closed) return;
-        if (armed) this.armConfirm(); else this.finish();
-      } else if (this.endAfterPlayback) await this.endConversation(); else this.collect();
+      if (this.endAfterPlayback) await this.endConversation(); else this.collect();
     });
   }
   noteCancelled(id) {
@@ -457,13 +437,24 @@ export class GrokMediaSession {
     if (this.inputFinalTimer) this.clock.clearTimeout(this.inputFinalTimer);
     this.inputFinalTimer = this.clock.setTimeout(() => this.enqueue(() => this.flushCallerTurn()), TURN_SETTLE_MS);
   }
-  async flushCallerTurn() {
+  async flushCallerTurn(draftOnly = false) {
     if (this.inputFinalTimer) this.clock.clearTimeout(this.inputFinalTimer);
     this.inputFinalTimer = null;
     const events = [...this.pendingCallerEvents.values()];
     this.pendingCallerEvents.clear();
     if (!events.length || this.closed) return;
     const first = events[0];
+    if (draftOnly) {
+      const turn = { id: String(first.item_id), text: mergeCallerCaptions(events) };
+      await this.commitBounded((e, s) => {
+        const c = s.get('call', this.call.id);
+        if (!intakeActive(c) || c.messageId) return;
+        const result = applyMessageTurn(c.schedule || initialMessage(c.from, this.config.number), turn.text, c.from, this.config.number);
+        s.put('call', { ...c, schedule: result.state, callerTranscript: appendCallerTranscript(c, turn) });
+        if (result.state.messageText) e.updateDraft(c.id, { name: result.state.name, callback: result.state.phone, message: result.state.messageText });
+      });
+      return;
+    }
     for (const event of events.slice(1)) this.heard.add(String(event.item_id));
     await this.grok({ ...first, transcript: mergeCallerCaptions(events) }, true);
   }
@@ -489,13 +480,7 @@ export class GrokMediaSession {
       }
       return this.fail('Grok rejected the voice session');
     }
-    // An early audio item must still be ineligible to confirm a readback even
-    // when its final transcription arrives after the playback mark.
-    if (READBACK_STAGES.has(this.stage)) {
-      const earlyId = event.type === 'conversation.item.added' && event.item?.role === 'user'
-        ? event.item.id : event.type === 'conversation.item.input_audio_transcription.updated' ? event.item_id : null;
-      if (earlyId) this.beforeReadback.add(String(earlyId));
-    }
+    if (this.endAfterPlayback && (event.type.startsWith('conversation.item.') || event.type.startsWith('input_audio_buffer.'))) return;
     const turn = this.callerTurn(event);
     // A replay must not replace a new in-progress caller caption either.
     if (turn && this.heard.has(turn.id)) return;
@@ -503,17 +488,11 @@ export class GrokMediaSession {
     // segments. Natural sentence pauses are not permission to interrupt a
     // longer message or reconfigure input while the caller continues.
     if (turn && !settledCaller && (this.inputSpeaking || this.vadItems.has(turn.id) || this.pendingCallerEvents.size)) {
-      if (READBACK_STAGES.has(this.stage)) this.beforeReadback.add(turn.id);
       this.pendingCallerEvents.set(turn.id, { type: 'conversation.item.input_audio_transcription.completed', item_id: turn.id, transcript: turn.text });
       if (!this.inputSpeaking) this.settleCallerTurn();
       return;
     }
-    if (turn && (this.stage === 'confirm' || this.stage === 'collect' || this.stage === 'welcome' || this.stage === 'welcome-playback' || QUESTION_STAGES.has(this.stage))) this.noteChoice();
-    if (turn && READBACK_STAGES.has(this.stage)) {
-      this.beforeReadback.add(turn.id);
-      return;
-    }
-    if (turn && this.stage === 'confirm') return this.hear(turn);
+    if (turn && (this.stage === 'collect' || this.stage === 'welcome' || this.stage === 'welcome-playback' || QUESTION_STAGES.has(this.stage))) this.noteChoice();
     if (turn && (this.stage === 'welcome' || this.stage === 'welcome-playback')) {
       this.vadTurn = true;
       this.sendCarrier({ event: 'clear' });
@@ -527,11 +506,11 @@ export class GrokMediaSession {
     if (event.type === 'input_audio_buffer.speech_stopped' || event.type === 'input_audio_buffer.timeout_triggered') {
       this.inputSpeaking = false;
       if (this.pendingCallerEvents.size) this.settleCallerTurn();
-      else if (['collect', 'confirm'].includes(this.stage)) {
+      else if (this.stage === 'collect') {
         this.clearSilence();
         this.silenceTimer = this.clock.setTimeout(() => this.enqueue(() => this.silence()), SILENCE_MS);
       }
-      if (['collect', 'confirm', 'assist', 'opening', 'opening-playback', 'result', 'result-playback', 'readback', 'readback-playback'].includes(this.stage)) this.vadTurn = true;
+      if (['collect', 'assist', 'opening', 'opening-playback', 'result', 'result-playback'].includes(this.stage)) this.vadTurn = true;
       return;
     }
     if (event.type === 'response.created' && event.response?.id) {
@@ -564,7 +543,7 @@ export class GrokMediaSession {
       return;
     }
     if (['response.output_audio.delta', 'response.audio.delta'].includes(event.type)) {
-      if (this.stage === 'collect' || this.stage === 'confirm') return;
+      if (this.stage === 'collect') return;
       const id = event.response_id ? String(event.response_id) : '';
       if (id && this.stray.has(id)) return;
       if (this.prompt?.responseId) return;
@@ -590,18 +569,6 @@ export class GrokMediaSession {
         // VAD also fires for noise and incomplete speech. Keep the scripted
         // question and its deadline until a final caller turn replaces it.
         this.note('speech-started', { questionPending: Boolean(this.prompt) });
-        return;
-      }
-      if (READBACK_STAGES.has(this.stage)) {
-        this.noteChoice();
-        this.stopOverlap();
-        this.intent = null;
-        await this.commitBounded((_e, s) => {
-          const c = s.get('call', this.call.id);
-          if (intakeActive(c)) s.put('call', { ...c, intent: null, schedule: { ...(c.schedule || {}), awaiting: 'correction', asked: 'What would you like me to change?' } });
-        });
-        // Wait for the complete interrupted utterance before speaking again.
-        this.stage = 'collect';
         return;
       }
       if (this.stage === 'assist') { this.marks.clear(); this.sendCarrier({ event: 'clear' }); }
@@ -641,14 +608,13 @@ export class GrokMediaSession {
     }
   }
   async silence() {
-    if (!['collect', 'confirm'].includes(this.stage) || this.closed || this.inputSpeaking) return;
+    if (this.stage !== 'collect' || this.closed || this.inputSpeaking) return;
     const current = await this.liveIntake();
     if (!current) return;
     const result = messageSilence(current.schedule || initialMessage(current.from, this.config.number));
     this.endAfterPlayback = result.end === true;
     if (!(await this.saveSchedule(result.state))) return;
-    if (this.stage === 'confirm' && !result.end && this.intent?.readback) this.force(this.intent.readback, 'readback');
-    else this.force(result.say, 'result');
+    this.force(result.say, 'result');
   }
   async saveSchedule(schedule) {
     if (this.closed) return false;
@@ -673,15 +639,28 @@ export class GrokMediaSession {
       const next = applyMessageTurn(prior, turn.text, c.from, this.config.number);
       const saved = { ...c, schedule: next.state, callerTranscript: appendCallerTranscript(c, turn) };
       if (next.state.messageText) e.updateDraft(c.id, { name: next.state.name, callback: next.state.phone, message: next.state.messageText });
-      if (!c.intent?.confirmedAt) saved.intent = null;
+      saved.intent = null;
       s.put('call', saved);
       return next;
     });
     if (this.closed || !applied || !(await this.liveIntake())) return;
     if (applied.state?.purpose === 'message') void this.worker?.drain?.().catch(() => {});
-    if (!this.intent?.confirmedAt) this.intent = null;
     this.logCheckpoint('saved', applied.state?.awaiting);
-    if (applied.readback && applied.state.purpose === 'message') return this.readbackMessage(applied.state);
+    if (applied.complete) {
+      this.stage = 'committing';
+      this.clearSilence();
+      try {
+        await this.persistMessage({ id: `captured:${this.call.id}`, payload: {
+          name: applied.state.name || '', callback: applied.state.phone || '',
+          message: applied.state.messageText, completed: true,
+        } });
+      } catch {
+        if (this.closed || !(await this.liveIntake())) return;
+        this.endAfterPlayback = true;
+        this.force(SAVE_FAIL, 'result');
+      }
+      return;
+    }
     this.endAfterPlayback = applied.end === true;
     this.force(applied.say, 'result');
   }
@@ -705,67 +684,6 @@ export class GrokMediaSession {
     if (this.closed || this.callerChose || this.stage !== 'collect') return;
     this.force(RECEPTIONIST_OPENING, 'opening');
   }
-  async readbackMessage(state) {
-    if (this.closed || !(await this.commitIntake())) return;
-    this.intent = messageIntent({ name: state.name, callback: state.phone, message: state.messageText });
-    const next = { ...state, awaiting: 'confirm', asked: this.intent.readback };
-    const saved = await this.commitBounded((_e, s) => {
-      const c = s.get('call', this.call.id);
-      if (!intakeActive(c)) return false;
-      s.put('call', { ...c, intent: this.intent, schedule: next });
-      return true;
-    });
-    if (this.closed || saved !== true || !(await this.liveIntake())) return;
-    this.force(this.intent.readback, 'readback');
-  }
-  async hear(turn) {
-    if (this.stage !== 'confirm' || this.heard.has(turn.id) || this.closed) return;
-    this.heard.add(turn.id);
-    this.noteChoice();
-    this.clearSilence();
-    const decision = this.beforeReadback.has(turn.id) ? 'early' : spokenDecision(turn.text);
-    this.beforeReadback.delete(turn.id);
-    const intentId = this.intent?.id;
-    if (!(await this.liveIntake())) return;
-    if (decision === 'early' && this.intent?.readback) return this.force(this.intent.readback, 'readback');
-    await this.commitBounded((_e, s) => {
-      const c = s.get('call', this.call.id);
-      if (intakeActive(c)) s.put('call', { ...c, callerTranscript: appendCallerTranscript(c, turn) });
-    });
-    if (decision !== 'affirmative') {
-      const current = await this.liveIntake();
-      if (!current) return;
-      const applied = applyMessageTurn({ ...(current.schedule || initialMessage(current.from, this.config.number)), awaiting: 'correction' }, turn.text, current.from, this.config.number);
-      this.intent = null;
-      await this.commitBounded((_e, s) => {
-        const c = s.get('call', this.call.id);
-        if (intakeActive(c)) s.put('call', { ...c, intent: null, lastCallerTurn: { id: turn.id, decision, at: Date.now() } });
-      });
-      if (!(await this.saveSchedule(applied.state)) || !(await this.liveIntake())) return;
-      if (applied.readback) return this.readbackMessage(applied.state);
-      this.force(applied.say, 'result');
-      return;
-    }
-    const intent = await this.commitBounded((_e, s) => {
-      const c = s.get('call', this.call.id);
-      if (!intakeActive(c)) return { blocked: true };
-      if (c.intent?.kind !== 'message' || c.intent?.id !== intentId || !c.intent.playedAt || c.intent.confirmedAt || Date.now() - c.intent.playedAt > CONFIRM_MS) return { blocked: false };
-      const next = { ...c.intent, confirmedAt: Date.now(), transcript: turn.text, turnId: turn.id };
-      s.put('call', { ...c, intent: next, lastCallerTurn: { id: turn.id, decision, at: next.confirmedAt } });
-      return { blocked: false, intent: next };
-    });
-    if (this.closed || !intent || intent.blocked) return;
-    if (!intent.intent) return this.recoverNow('Message confirmation expired');
-    if (!(await this.liveIntake())) return;
-    this.stage = 'committing';
-    try { await this.persistMessage(intent.intent); }
-    catch {
-      if (this.closed || !(await this.liveIntake())) return;
-      this.endAfterPlayback = true;
-      this.force(SAVE_FAIL, 'result');
-    }
-    this.intent = null;
-  }
   async verifyCrm(message) {
     let row = null;
     for (let attempt = 0; attempt < 2 && !this.closed; attempt++) {
@@ -785,8 +703,8 @@ export class GrokMediaSession {
   }
   async persistMessage(intent) {
     if (this.closed || !(await this.commitIntake())) return;
-    const message = await this.commitBounded(e => e.saveMessage(this.call.id, { ...intent.payload, confirmed: true }, intent.id));
-    if (this.closed || !message?.confirmed) throw Error('Save not verified');
+    const message = await this.commitBounded(e => e.saveMessage(this.call.id, { ...intent.payload, completed: true, confirmed: false }, intent.id));
+    if (this.closed || !message?.completed) throw Error('Save not verified');
     if (!(await this.verifyCrm(message))) return;
     const current = await this.liveIntake();
     if (!current || current.messageId !== message.id) return;

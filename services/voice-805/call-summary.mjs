@@ -2,7 +2,7 @@ export const STAFF_TAKEOVER_SENTENCE = "The staff takeover portion cannot be sum
 
 export function callSummary(call, messages = []) {
   const related = (messages || []).filter((item) => item?.callId === call?.id);
-  const confirmed = related.find((item) => item.confirmed && item.text);
+  const confirmed = related.find((item) => (item.completed || item.confirmed) && item.text);
   const written = confirmed || related.find((item) => item.text);
   const schedule = call?.schedule || {};
   const streamDetached = call?.ai === false;
