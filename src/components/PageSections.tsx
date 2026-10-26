@@ -1024,7 +1024,7 @@ export function PageSections({ page }: { page: SitePage }) {
         {activePage.sections.map((section) => (
           <article className="copy-block" key={section.heading}>
             <h2>{section.heading}</h2>
-            <p>{section.body}</p>
+            <p style={section.heading === "Mailing Address" ? { whiteSpace: "pre-line" } : undefined}>{section.body}</p>
             {activePage.path === "/blinds/" && section.heading === "Practical Light Control" ? (
               <p>
                 For tall or hard-to-reach windows, compare{" "}

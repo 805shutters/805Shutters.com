@@ -1247,7 +1247,7 @@ const supportPages: SitePage[] = [
       },
       {
         heading: "Mailing Address",
-        body: `${brandIdentity.mailingAddressDisplay}. This is our mailing address. Consultations take place at your home or business.`
+        body: `${brandIdentity.mailingAddressDisplay}\n\nThis is our mailing address. Consultations take place at your home or business.`
       }
     ]
   },

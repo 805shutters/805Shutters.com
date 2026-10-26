@@ -11,13 +11,14 @@ export const brandIdentity = {
   email: "805@805shutters.com",
   emailHref: "mailto:805@805shutters.com",
   mailingAddress: {
-    streetAddress: "2390 Las Posas Rd, Ste C, PMB 401",
+    privateMailbox: "#401",
+    streetAddress: "2390 Las Posas Road, Suite C",
     addressLocality: "Camarillo",
     addressRegion: "CA",
     postalCode: "93010",
     addressCountry: "US"
   },
-  mailingAddressDisplay: "2390 Las Posas Rd, Ste C, PMB 401, Camarillo, CA 93010",
+  mailingAddressDisplay: "805 Shutters\n#401\n2390 Las Posas Road, Suite C\nCamarillo, CA 93010",
   serviceArea: "Ventura County, North Los Angeles County, and Santa Clarita",
   nonAffiliationStatement:
     "805 Shutters is not affiliated with other similarly named window-treatment companies."
