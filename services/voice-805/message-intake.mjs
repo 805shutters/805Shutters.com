@@ -71,14 +71,16 @@ export function applyMessageTurn(prior, raw, from, business = '') {
   const state = prior?.purpose === 'message' ? { ...initialMessage(from, business), ...prior } : initialMessage(from, business);
   const text = clean(raw);
   state.lastAnswer = text;
+  // ASR may add punctuation between a refusal and its polite closing.
+  const decisionText = text.replace(/[.,!?]/g, ' ').replace(/\s+/g, ' ').trim();
   if (state.awaiting === 'done') return { state, say: MESSAGE_GOODBYE, end: true };
   if (!text || UNCLEAR.test(text)) return messageSilence(state);
-  if (DECLINE.test(text) && ['permission', 'message'].includes(state.awaiting)) return { state: { ...state, awaiting: 'done', asked: MESSAGE_GOODBYE }, say: MESSAGE_GOODBYE, end: true };
+  if (DECLINE.test(decisionText) && ['permission', 'message'].includes(state.awaiting)) return { state: { ...state, awaiting: 'done', asked: MESSAGE_GOODBYE }, say: MESSAGE_GOODBYE, end: true };
   const oldField = state.awaiting;
   if (oldField === 'permission' && spokenDecision(text) === 'affirmative' || GENERIC_MESSAGE.test(text)) {
     state.consent = true; state.clarifyCount = 0; return messageQuestion(state);
   }
-  if (['confirm', 'correction'].includes(oldField) && (DECLINE.test(text) || /^(?:no[, ]*)?(?:that(?:'s| is) )?(?:wrong|incorrect)[.! ]*$/i.test(text))) {
+  if (['confirm', 'correction'].includes(oldField) && (DECLINE.test(decisionText) || /^(?:no[, ]*)?(?:that(?:'s| is) )?(?:wrong|incorrect)[.! ]*$/i.test(text))) {
     const say = QUESTIONS.correction; return { state: { ...state, awaiting: 'correction', asked: say }, say };
   }
   if (/\bhow long\b.*\b(?:consultation|appointment|visit)\b/i.test(text)) {

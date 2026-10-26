@@ -1,0 +1,503 @@
+{
+  "verifiedAt": "2026-10-26T02:57:12.639Z",
+  "scope": "Real generated and independently transcribed audio; isolated state and simulated Twilio playback/handoff. No phone calls or staff texts.",
+  "findings": "First no-answer run exposed a punctuated refusal being treated as message content. Fixed punctuation normalization and added an explicit decline-ended assertion; the no-answer result below is the successful rerun. Pickup is unchanged by refusal parsing.",
+  "results": [
+    {
+      "call": {
+        "id": "30e709fd-8f8d-454c-a835-d475af454dcc",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: incomplete. Captured before the next question: callback +18055550199. No verified booking or confirmed message was saved.",
+          "outcome": "incomplete",
+          "streamDetached": false
+        },
+        "createdAt": 1792983376396,
+        "callerTranscript": [
+          {
+            "id": "c0576569-8ee6-46b2-a1e3-afcec187590a",
+            "text": "No thank you."
+          }
+        ]
+      },
+      "pass": true,
+      "trace": [
+        {
+          "ms": 882,
+          "type": "session.created"
+        },
+        {
+          "ms": 882,
+          "type": "conversation.created"
+        },
+        {
+          "ms": 882,
+          "type": "ping"
+        },
+        {
+          "ms": 972,
+          "type": "session.updated"
+        },
+        {
+          "ms": 1619,
+          "type": "session.updated"
+        },
+        {
+          "id": "6a757638-5029-46cc-92f3-6bab8af145aa",
+          "ms": 1619,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "6a757638-5029-46cc-92f3-6bab8af145aa",
+          "ms": 1622,
+          "type": "response.output_item.added",
+          "itemId": "6e524833-63a1-42d4-9178-37fc4b09e6c5"
+        },
+        {
+          "ms": 1622,
+          "type": "conversation.item.added",
+          "itemId": "6e524833-63a1-42d4-9178-37fc4b09e6c5"
+        },
+        {
+          "id": "6a757638-5029-46cc-92f3-6bab8af145aa",
+          "ms": 1622,
+          "type": "response.content_part.added",
+          "itemId": "6e524833-63a1-42d4-9178-37fc4b09e6c5"
+        },
+        {
+          "id": "6a757638-5029-46cc-92f3-6bab8af145aa",
+          "ms": 3610,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "6e524833-63a1-42d4-9178-37fc4b09e6c5",
+          "transcript": "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style."
+        },
+        {
+          "id": "6a757638-5029-46cc-92f3-6bab8af145aa",
+          "ms": 3611,
+          "type": "response.content_part.done",
+          "itemId": "6e524833-63a1-42d4-9178-37fc4b09e6c5"
+        },
+        {
+          "id": "6a757638-5029-46cc-92f3-6bab8af145aa",
+          "ms": 3611,
+          "type": "response.output_audio.done",
+          "itemId": "6e524833-63a1-42d4-9178-37fc4b09e6c5"
+        },
+        {
+          "id": "6a757638-5029-46cc-92f3-6bab8af145aa",
+          "ms": 3611,
+          "type": "response.output_item.done",
+          "itemId": "6e524833-63a1-42d4-9178-37fc4b09e6c5"
+        },
+        {
+          "id": "6a757638-5029-46cc-92f3-6bab8af145aa",
+          "ms": 3611,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 10890,
+          "type": "ping"
+        },
+        {
+          "ms": 20255,
+          "type": "session.updated"
+        },
+        {
+          "id": "8be9014f-8a4a-4e8a-a217-06f7a7d9e945",
+          "ms": 20258,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "8be9014f-8a4a-4e8a-a217-06f7a7d9e945",
+          "ms": 20259,
+          "type": "response.output_item.added",
+          "itemId": "def24de3-ad49-4f6d-aa67-df5a4e4e4382"
+        },
+        {
+          "ms": 20260,
+          "type": "conversation.item.added",
+          "itemId": "def24de3-ad49-4f6d-aa67-df5a4e4e4382"
+        },
+        {
+          "id": "8be9014f-8a4a-4e8a-a217-06f7a7d9e945",
+          "ms": 20260,
+          "type": "response.content_part.added",
+          "itemId": "def24de3-ad49-4f6d-aa67-df5a4e4e4382"
+        },
+        {
+          "ms": 20871,
+          "type": "ping"
+        },
+        {
+          "id": "8be9014f-8a4a-4e8a-a217-06f7a7d9e945",
+          "ms": 21330,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "def24de3-ad49-4f6d-aa67-df5a4e4e4382",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "8be9014f-8a4a-4e8a-a217-06f7a7d9e945",
+          "ms": 21330,
+          "type": "response.content_part.done",
+          "itemId": "def24de3-ad49-4f6d-aa67-df5a4e4e4382"
+        },
+        {
+          "id": "8be9014f-8a4a-4e8a-a217-06f7a7d9e945",
+          "ms": 21330,
+          "type": "response.output_audio.done",
+          "itemId": "def24de3-ad49-4f6d-aa67-df5a4e4e4382"
+        },
+        {
+          "id": "8be9014f-8a4a-4e8a-a217-06f7a7d9e945",
+          "ms": 21330,
+          "type": "response.output_item.done",
+          "itemId": "def24de3-ad49-4f6d-aa67-df5a4e4e4382"
+        },
+        {
+          "id": "8be9014f-8a4a-4e8a-a217-06f7a7d9e945",
+          "ms": 21330,
+          "type": "response.done",
+          "status": "completed"
+        },
+        {
+          "ms": 27825,
+          "type": "session.updated"
+        },
+        {
+          "ms": 28362,
+          "type": "input_audio_buffer.speech_started",
+          "itemId": "c0576569-8ee6-46b2-a1e3-afcec187590a"
+        },
+        {
+          "ms": 29211,
+          "type": "conversation.item.added",
+          "itemId": "c0576569-8ee6-46b2-a1e3-afcec187590a"
+        },
+        {
+          "ms": 29211,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "c0576569-8ee6-46b2-a1e3-afcec187590a",
+          "transcript": "No thank you."
+        },
+        {
+          "ms": 29226,
+          "type": "input_audio_buffer.speech_stopped",
+          "itemId": "c0576569-8ee6-46b2-a1e3-afcec187590a"
+        },
+        {
+          "ms": 29237,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "c0576569-8ee6-46b2-a1e3-afcec187590a",
+          "transcript": "No thank you."
+        },
+        {
+          "id": "e11aa60b-b1ce-4119-9586-d1a5917615f1",
+          "ms": 29287,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "ms": 29329,
+          "type": "input_audio_buffer.committed",
+          "itemId": "c0576569-8ee6-46b2-a1e3-afcec187590a"
+        },
+        {
+          "ms": 29330,
+          "type": "conversation.item.input_audio_transcription.completed",
+          "itemId": "c0576569-8ee6-46b2-a1e3-afcec187590a",
+          "transcript": "No thank you."
+        },
+        {
+          "id": "e11aa60b-b1ce-4119-9586-d1a5917615f1",
+          "ms": 29334,
+          "type": "response.done",
+          "status": "cancelled"
+        },
+        {
+          "ms": 30871,
+          "type": "ping"
+        },
+        {
+          "ms": 32174,
+          "type": "session.updated"
+        },
+        {
+          "id": "20bb882d-b81c-4687-8820-8ff897a9e074",
+          "ms": 32177,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "20bb882d-b81c-4687-8820-8ff897a9e074",
+          "ms": 32178,
+          "type": "response.output_item.added",
+          "itemId": "e39ce8a6-82ba-4a56-b6fc-833d10f3add9"
+        },
+        {
+          "ms": 32178,
+          "type": "conversation.item.added",
+          "itemId": "e39ce8a6-82ba-4a56-b6fc-833d10f3add9"
+        },
+        {
+          "id": "20bb882d-b81c-4687-8820-8ff897a9e074",
+          "ms": 32178,
+          "type": "response.content_part.added",
+          "itemId": "e39ce8a6-82ba-4a56-b6fc-833d10f3add9"
+        },
+        {
+          "id": "20bb882d-b81c-4687-8820-8ff897a9e074",
+          "ms": 32798,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "e39ce8a6-82ba-4a56-b6fc-833d10f3add9",
+          "transcript": "Thank you for calling 805 Shutters. Goodbye."
+        },
+        {
+          "id": "20bb882d-b81c-4687-8820-8ff897a9e074",
+          "ms": 32799,
+          "type": "response.content_part.done",
+          "itemId": "e39ce8a6-82ba-4a56-b6fc-833d10f3add9"
+        },
+        {
+          "id": "20bb882d-b81c-4687-8820-8ff897a9e074",
+          "ms": 32799,
+          "type": "response.output_audio.done",
+          "itemId": "e39ce8a6-82ba-4a56-b6fc-833d10f3add9"
+        },
+        {
+          "id": "20bb882d-b81c-4687-8820-8ff897a9e074",
+          "ms": 32799,
+          "type": "response.output_item.done",
+          "itemId": "e39ce8a6-82ba-4a56-b6fc-833d10f3add9"
+        },
+        {
+          "id": "20bb882d-b81c-4687-8820-8ff897a9e074",
+          "ms": 32799,
+          "type": "response.done",
+          "status": "completed"
+        }
+      ],
+      "voice": "rex",
+      "actions": [],
+      "delayMs": 0,
+      "failure": null,
+      "outputs": [
+        {
+          "ms": 3613,
+          "hash": "ab5b1db841d74795",
+          "bytes": 127926,
+          "stage": "welcome-playback",
+          "expected": "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style.",
+          "response": "6a757638-5029-46cc-92f3-6bab8af145aa",
+          "transcript": "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style.",
+          "wordAgreement": 1,
+          "audioTranscript": "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style."
+        },
+        {
+          "ms": 21331,
+          "hash": "bc20e69d5b0f80ef",
+          "bytes": 51123,
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "8be9014f-8a4a-4e8a-a217-06f7a7d9e945",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "wordAgreement": 1,
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "ms": 32799,
+          "hash": "ab6b59e08872aad3",
+          "bytes": 25521,
+          "stage": "result-playback",
+          "expected": "Thank you for calling 805 Shutters. Goodbye.",
+          "response": "20bb882d-b81c-4687-8820-8ff897a9e074",
+          "transcript": "Thank you for calling 805 Shutters. Goodbye.",
+          "wordAgreement": 1,
+          "audioTranscript": "Thank you for calling 805 Shutters. Goodbye."
+        }
+      ],
+      "caseName": "welcome_no_answer",
+      "messages": [],
+      "pickupAt": null,
+      "schedule": {
+        "name": null,
+        "asked": "Thank you for calling 805 Shutters. Goodbye.",
+        "phone": "+18055550199",
+        "consent": false,
+        "purpose": "message",
+        "awaiting": "done",
+        "lastAnswer": "No thank you.",
+        "messageText": null,
+        "phoneSource": "caller-id",
+        "clarifyCount": 0
+      },
+      "responses": [
+        {
+          "id": "6a757638-5029-46cc-92f3-6bab8af145aa",
+          "hash": "ab5b1db841d74795",
+          "bytes": 127926,
+          "transcript": "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style."
+        },
+        {
+          "id": "8be9014f-8a4a-4e8a-a217-06f7a7d9e945",
+          "hash": "bc20e69d5b0f80ef",
+          "bytes": 51123,
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible."
+        },
+        {
+          "id": "20bb882d-b81c-4687-8820-8ff897a9e074",
+          "hash": "ab6b59e08872aad3",
+          "bytes": 25521,
+          "transcript": "Thank you for calling 805 Shutters. Goodbye."
+        }
+      ],
+      "assertions": {
+        "message": true,
+        "awaiting": true,
+        "declineEnded": true,
+        "welcomeOrder": true,
+        "bookingDisabled": true,
+        "correctionsSaved": true,
+        "completeLongMessage": true,
+        "progressedEveryTurn": true,
+        "noRepeatedLongPrefixes": true,
+        "generatedSpeechVerified": true,
+        "allAudioMatchesPreparedLine": true
+      },
+      "durationMs": 36639,
+      "lastResponse": "20bb882d-b81c-4687-8820-8ff897a9e074",
+      "stateDelayMs": 600
+    },
+    {
+      "call": {
+        "id": "be37c909-7351-4dfe-9c72-5f6514c5a7c2",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "createdAt": 1792983301560
+      },
+      "pass": true,
+      "trace": [
+        {
+          "ms": 896,
+          "type": "session.created"
+        },
+        {
+          "ms": 896,
+          "type": "conversation.created"
+        },
+        {
+          "ms": 897,
+          "type": "ping"
+        },
+        {
+          "ms": 991,
+          "type": "session.updated"
+        },
+        {
+          "ms": 1633,
+          "type": "session.updated"
+        },
+        {
+          "id": "389ad922-9069-4f51-93f4-ea366115a71d",
+          "ms": 1636,
+          "type": "response.created",
+          "status": "in_progress"
+        },
+        {
+          "id": "389ad922-9069-4f51-93f4-ea366115a71d",
+          "ms": 1638,
+          "type": "response.output_item.added",
+          "itemId": "060d3c82-7189-4401-a6ba-5c8322c69385"
+        },
+        {
+          "ms": 1638,
+          "type": "conversation.item.added",
+          "itemId": "060d3c82-7189-4401-a6ba-5c8322c69385"
+        },
+        {
+          "id": "389ad922-9069-4f51-93f4-ea366115a71d",
+          "ms": 1638,
+          "type": "response.content_part.added",
+          "itemId": "060d3c82-7189-4401-a6ba-5c8322c69385"
+        },
+        {
+          "id": "389ad922-9069-4f51-93f4-ea366115a71d",
+          "ms": 3941,
+          "type": "response.output_audio_transcript.done",
+          "itemId": "060d3c82-7189-4401-a6ba-5c8322c69385",
+          "transcript": "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style."
+        },
+        {
+          "id": "389ad922-9069-4f51-93f4-ea366115a71d",
+          "ms": 3941,
+          "type": "response.content_part.done",
+          "itemId": "060d3c82-7189-4401-a6ba-5c8322c69385"
+        },
+        {
+          "id": "389ad922-9069-4f51-93f4-ea366115a71d",
+          "ms": 3942,
+          "type": "response.output_audio.done",
+          "itemId": "060d3c82-7189-4401-a6ba-5c8322c69385"
+        },
+        {
+          "id": "389ad922-9069-4f51-93f4-ea366115a71d",
+          "ms": 3942,
+          "type": "response.output_item.done",
+          "itemId": "060d3c82-7189-4401-a6ba-5c8322c69385"
+        },
+        {
+          "id": "389ad922-9069-4f51-93f4-ea366115a71d",
+          "ms": 3942,
+          "type": "response.done",
+          "status": "completed"
+        }
+      ],
+      "voice": "rex",
+      "actions": [],
+      "delayMs": 0,
+      "failure": null,
+      "outputs": [
+        {
+          "ms": 3944,
+          "hash": "b2eb4f8b448c57a9",
+          "bytes": 127926,
+          "stage": "welcome-playback",
+          "expected": "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style.",
+          "response": "389ad922-9069-4f51-93f4-ea366115a71d",
+          "transcript": "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style.",
+          "wordAgreement": 1,
+          "audioTranscript": "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style."
+        }
+      ],
+      "caseName": "welcome_pickup",
+      "messages": [],
+      "pickupAt": 6452,
+      "responses": [
+        {
+          "id": "389ad922-9069-4f51-93f4-ea366115a71d",
+          "hash": "b2eb4f8b448c57a9",
+          "bytes": 127926,
+          "transcript": "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style."
+        }
+      ],
+      "assertions": {
+        "message": true,
+        "awaiting": true,
+        "welcomeOrder": true,
+        "bookingDisabled": true,
+        "correctionsSaved": true,
+        "completeLongMessage": true,
+        "progressedEveryTurn": true,
+        "noRepeatedLongPrefixes": true,
+        "generatedSpeechVerified": true,
+        "allAudioMatchesPreparedLine": true
+      },
+      "durationMs": 7054,
+      "lastResponse": "389ad922-9069-4f51-93f4-ea366115a71d",
+      "stateDelayMs": 600
+    }
+  ]
+}

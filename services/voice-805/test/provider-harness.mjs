@@ -55,6 +55,8 @@ export async function syntheticSpeech(key, text, voice = 'rex') {
 // Fictional callers only. Captured results are subsequently exercised against
 // the real callback SQL and CRM display in an isolated database suite.
 export const PROVIDER_CASES = Object.freeze({
+  welcome_no_answer: { welcome: true, declined: true, utterances: ['no thank you'], message: false },
+  welcome_pickup: { welcome: true, pickup: true, utterances: [], message: false },
   short: { utterances: ['yes', 'Please call me about my shutters.', 'Pat Example', 'yes'], message: true },
   volunteered: { utterances: ["I'm Pat Example. Please call me about my broken bedroom shade.", 'yes'], message: true },
   long: { utterances: ['yes', 'The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted, and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available.', 'Pat Example', 'yes'], message: true },
@@ -62,7 +64,7 @@ export const PROVIDER_CASES = Object.freeze({
   blocked: { from: 'anonymous', utterances: ['yes', 'Please call about repairs.', 'Pat Example', 'eight zero five five five five zero one two three', 'yes'], message: true },
   appointment: { utterances: ['Please schedule an appointment Friday at ten.', 'Pat Example', 'yes'], message: true },
   duration: { utterances: ['How long is a consultation?', 'yes', 'Please call about a free consultation.', 'Pat Example', 'yes'], message: true },
-  decline: { utterances: ['no thank you'], message: false },
+  decline: { declined: true, utterances: ['no thank you'], message: false },
   unclear: { utterances: ['perhaps', 'maybe'], message: false },
   hangup: { utterances: ['Please call about my broken shade.'], hangup: true, message: false },
 });
@@ -80,10 +82,11 @@ export async function runProviderConversation({ key, WebSocket, caseName = 'shor
   };
   const store = new SnapshotStore(), engine = new Engine(store, config);
   const call = engine.inbound('CA' + '1'.repeat(32), scenario.from || '+18055550199');
-  store.put('call', { ...call, phase: 'message', deadline: Date.now() + 300000, context: callerContext({ match: 'unmatched' }) });
+  store.put('call', { ...call, phase: scenario.welcome ? 'offering' : 'message', listeningWelcome: Boolean(scenario.welcome), deadline: Date.now() + (scenario.welcome ? 20000 : 300000), context: callerContext({ match: 'unmatched' }) });
   const state = { config, transact: async fn => { await pause(stateDelayMs); return fn(engine, store); }, readCall: async id => { await pause(stateDelayMs); return store.get('call', id); } };
   const started = Date.now(), trace = [], outputs = [], transcripts = new Map(), frameResponses = new Map(), audioChecks = [];
-  let session, media = [], marks = 0, lastResponse = null;
+  let session, media = [], marks = 0, lastResponse = null, pickupAt = null;
+  const carrierTimers = [];
   const actions = [];
   const socket = {
     readyState: 1,
@@ -103,10 +106,19 @@ export async function runProviderConversation({ key, WebSocket, caseName = 'shor
         }).catch(error => { row.audioError = error.message; }));
         // Simulated Twilio consumes the actual G.711 bytes in real time. Only the
         // acknowledgement is simulated; all TTS and ASR audio is real provider data.
-        setTimeout(() => session.enqueue(async () => {
+        carrierTimers.push(setTimeout(() => session.enqueue(async () => {
           if (session.closed) return;
           await session.carrier({ event: 'mark', streamSid: 'MZ' + '2'.repeat(32), mark: event.mark }); marks++;
-        }), Math.ceil(bytes.length / 8));
+        }), Math.ceil(bytes.length / 8)));
+        if (scenario.pickup && row.stage === 'welcome-playback') {
+          carrierTimers.push(setTimeout(() => {
+            pickupAt = Date.now() - started;
+            store.put('call', { ...store.get('call', call.id), phase: 'handoff', owner: 'mike' });
+            // The authenticated human-answer path routes the parent to staff,
+            // which stops this media stream. No real phone call is created.
+            void session.carrier({ event: 'stop', streamSid: 'MZ' + '2'.repeat(32) });
+          }, 2500));
+        }
       }
     },
     close() { this.readyState = 3; },
@@ -143,7 +155,12 @@ export async function runProviderConversation({ key, WebSocket, caseName = 'shor
   let failure = null;
   try {
     await session.carrier({ event: 'start', start: { accountSid: config.accountSid, callSid: call.sid, streamSid: 'MZ' + '2'.repeat(32), mediaFormat: { encoding: 'audio/x-mulaw', sampleRate: 8000, channels: 1 } } });
-    await waitFor(() => marks === 1);
+    if (scenario.pickup) {
+      await Promise.race([session.done, pause(40000).then(() => { throw new Error('Pickup did not stop agent'); })]);
+    } else {
+      if (scenario.welcome) carrierTimers.push(setTimeout(() => engine.tick(Date.now()), 20100));
+      await waitFor(() => marks === (scenario.welcome ? 2 : 1));
+    }
     for (const text of utterances) {
       const before = marks;
       const bytes = await syntheticSpeech(key, text, voice);
@@ -158,19 +175,21 @@ export async function runProviderConversation({ key, WebSocket, caseName = 'shor
     }
     if (scenario.hangup) await session.carrier({ event: 'stop', streamSid: 'MZ' + '2'.repeat(32) });
   } catch (error) { failure = error.message; }
-  finally { session.finish(); }
+  finally { session.finish(); for (const timer of carrierTimers) clearTimeout(timer); }
   await Promise.all(audioChecks);
   const final = store.get('call', call.id);
   const mismatches = outputs.filter(row => row.expected !== row.transcript);
   const assertions = { allAudioMatchesPreparedLine: mismatches.length === 0 && outputs.length > 0,
     generatedSpeechVerified: outputs.length > 0 && outputs.every(row => !row.audioError && row.wordAgreement >= 0.75 && !/^(?:stay )?silent[.!]?$/i.test(String(row.audioTranscript || '').trim())),
-    progressedEveryTurn: outputs.length === utterances.length + 1, bookingDisabled: !final?.booking && actions.length === 0,
+    progressedEveryTurn: outputs.length === utterances.length + (scenario.welcome && !scenario.pickup ? 2 : 1),
+    welcomeOrder: !scenario.welcome || (outputs[0]?.stage === 'welcome-playback' && !/message|voicemail|miss you/i.test(outputs[0]?.audioTranscript || '') && /shutters.*blinds.*shades/i.test(outputs[0]?.audioTranscript || '') && (scenario.pickup ? outputs.length === 1 && marks === 0 && final.owner === 'mike' : outputs[1]?.stage === 'opening-playback' && /team members are tied up/i.test(outputs[1]?.audioTranscript || '') && outputs[1].ms >= outputs[0].ms + outputs[0].bytes / 8)), bookingDisabled: !final?.booking && actions.length === 0,
     message: store.list('message').some(row => row.confirmed) === Boolean(scenario.message),
+    declineEnded: !scenario.declined || (final.phase === 'ended' && !final.schedule?.messageText && store.list('message').length === 0 && store.list('notification').length === 0 && /thank you for calling/i.test(outputs.at(-1)?.audioTranscript || '')),
     completeLongMessage: caseName !== 'long' || ['Saturday', 'cord', 'kitchen', 'after lunch', 'replacement part'].every(phrase => String(final?.schedule?.messageText).toLowerCase().includes(phrase.toLowerCase())),
     noRepeatedLongPrefixes: caseName !== 'long' || (String(final?.schedule?.messageText).match(/living room/gi) || []).length === 1,
     correctionsSaved: caseName !== 'correction' || store.list('message').some(row => row.confirmed && row.callback === '+18055550123' && row.text === 'The bedroom blind is broken.'),
     awaiting: !scenario.awaiting || final?.schedule?.awaiting === scenario.awaiting };
-  return { caseName, delayMs, stateDelayMs, voice, failure, assertions, pass: !failure && Object.values(assertions).every(Boolean), durationMs: Date.now() - started, outputs, trace, actions,
+  return { caseName, delayMs, stateDelayMs, voice, failure, assertions, pass: !failure && Object.values(assertions).every(Boolean), durationMs: Date.now() - started, pickupAt, outputs, trace, actions,
     responses: [...frameResponses].map(([id, row]) => ({ id, bytes: row.bytes, hash: row.hash.digest('hex').slice(0, 16), transcript: transcripts.get(id) || null })),
     schedule: final?.schedule, call: { id: final.id, sid: final.sid, from: final.from, createdAt: final.createdAt, callerTranscript: final.callerTranscript, summary: final.summary }, messages: store.list('message'), lastResponse };
 }

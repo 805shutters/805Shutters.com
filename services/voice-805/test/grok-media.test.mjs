@@ -487,3 +487,70 @@ test('cumulative final captions with different IDs produce one complete message'
  await f.timers.findLast(t=>t.ms===TURN_SETTLE_MS&&!t.cleared).fn();await f.session.chain;
  assert.equal(f.store.get('call',f.call.id).schedule.messageText,'The shade is broken. Please call after lunch. I need a part.');f.session.finish();
 });
+
+
+test('welcome keeps the existing product introduction directly after the team connection line', () => {
+ assert.equal(COMMON_GREETING, "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style.");
+ assert.doesNotMatch(COMMON_GREETING, /message|voicemail|miss you|schedule|booking/i);
+});
+
+test('no-answer offer follows completed welcome playback, whether staff timeout is early or late', async () => {
+ for (const timeoutDuringWelcome of [true, false]) {
+  const f=fixture();
+  f.store.put('call',{...f.store.get('call',f.call.id),phase:'offering',listeningWelcome:true,greetingPlayed:false,deadline:Date.now()+20000});
+  await f.begin(); await f.audio('welcome');
+  assert.equal(f.session.stage,'welcome-playback');
+  const lines=()=>f.ai.sent.filter(x=>x.item?.type==='force_message').map(x=>x.item.content[0].text);
+  assert.deepEqual(lines(),[COMMON_GREETING]);
+  if(timeoutDuringWelcome) f.store.put('call',{...f.store.get('call',f.call.id),phase:'message',deadline:Date.now()+300000});
+  await f.session.offerWatch();
+  assert.deepEqual(lines(),[COMMON_GREETING]);
+  await f.mark();
+  if(!timeoutDuringWelcome) {
+   assert.deepEqual(lines(),[COMMON_GREETING]);
+   await f.session.offerWatch();
+   assert.deepEqual(lines(),[COMMON_GREETING]);
+   f.store.put('call',{...f.store.get('call',f.call.id),phase:'message',deadline:Date.now()+300000});
+   await f.session.offerWatch();
+  }
+  assert.deepEqual(lines(),[COMMON_GREETING,RECEPTIONIST_OPENING]);
+  await f.session.offerWatch();
+  assert.deepEqual(lines(),[COMMON_GREETING,RECEPTIONIST_OPENING]);
+  await f.audio('no-answer'); await f.mark();
+  assert.equal(f.session.stage,'collect');
+  assert.equal(f.store.get('call',f.call.id).schedule,undefined);
+  f.session.finish();
+ }
+});
+
+test('staff pickup during or after the welcome never plays the no-answer offer', async () => {
+ for(const pickupDuringWelcome of [true,false]) {
+  const f=fixture();
+  f.store.put('call',{...f.store.get('call',f.call.id),phase:'offering',listeningWelcome:true,greetingPlayed:false,deadline:Date.now()+20000});
+  await f.begin(); await f.audio('welcome');
+  if(!pickupDuringWelcome) await f.mark();
+  f.store.put('call',{...f.store.get('call',f.call.id),phase:'handoff',owner:'mike'});
+  if(pickupDuringWelcome) await f.mark(); else await f.session.offerWatch();
+  await f.carrier({event:'stop',streamSid:f.streamSid});
+  assert.equal(f.session.closed,true);
+  assert.deepEqual(f.ai.sent.filter(x=>x.item?.type==='force_message').map(x=>x.item.content[0].text),[COMMON_GREETING]);
+  assert.equal(f.store.get('call',f.call.id).owner,'mike');
+  assert.equal(f.store.list('message').length,0);
+ }
+});
+
+
+test('punctuated spoken refusals close without creating a caller message',async()=>{
+ for(const text of ['No, thank you.','No. Thank you.','No, thanks!']) {
+  const f=fixture();await ready(f);await speak(f,text);
+  assert.equal(f.session.closed,true);
+  assert.equal(f.store.get('call',f.call.id).phase,'ended');
+  assert.equal(f.store.get('call',f.call.id).schedule.messageText,null);
+  assert.equal(f.store.list('message').length,0);
+  assert.equal(f.store.list('notification').length,0);
+ }
+ const f=fixture();await ready(f);await f.say('No, please call me about my broken shade.');
+ assert.equal(f.session.closed,false);
+ assert.match(f.store.get('call',f.call.id).schedule.messageText,/broken shade/);
+ f.session.finish();
+});

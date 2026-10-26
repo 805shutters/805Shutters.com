@@ -1,9 +1,9 @@
 import { reportFailure } from './security.mjs';
 import { RECEPTIONIST_OPENING } from './receptionist.mjs';
-export const COMMON_GREETING = 'Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. If we miss you, I can take a message for our team. We offer free in-home consultations, whether you\'re exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style.';
+export const COMMON_GREETING = 'Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. We offer free in-home consultations, whether you\'re exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style.';
 export function phaseInstruction(phase, callerId = '') {
   const idText = callerId && callerId !== 'anonymous' ? ` The caller ID is ${callerId}.` : ' There is no caller ID.';
-  if (phase === 'greeting' || phase === 'offering') return `The listening welcome is exactly: ${COMMON_GREETING} Staff are already ringing. A human answer connects immediately and interrupts the welcome. The caller can leave a message before the welcome finishes. Do not repeat the welcome.`;
+  if (phase === 'greeting' || phase === 'offering') return `The listening welcome is exactly: ${COMMON_GREETING} Staff are already ringing. A human answer connects immediately and interrupts the welcome. Do not advertise message taking in the welcome. Offer it only after the staff connection attempt fails. Do not repeat the welcome.`;
   if (phase === 'followup') return `Nobody answered. Speak this close once, exactly: ${RECEPTIONIST_OPENING} Do not apologize in other words. Do not say you cannot get a hold of anybody. Do not say the team is with other customers. Do not invent any other staff activity. Ask only for permission to take a message, then wait.`;
   if (phase === 'message') return `The close was already spoken once. Do not repeat it and do not apologize.${idText} Confirm a valid caller ID instead of asking for it again, then ask the reason for the call. Read the message back and wait for a spoken yes. Silence, ambiguity, or a correction does not save.`;
   if (phase === 'schedule') return 'Appointment booking is retired. Take a message for the team to call back.';
