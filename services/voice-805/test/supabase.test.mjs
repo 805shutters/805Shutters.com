@@ -155,7 +155,7 @@ test('transcript sending stays off until approval and then uses STOP and deliver
  assert.equal((await f.state.transact((_e,s)=>s.list('notification'))).every(item=>item.status==='pending'&&item.sid===null),true);
  const notes=await f.state.transact((_e,s)=>s.list('notification'));
  const blockedTo=notes.find(item=>item.purpose==='transcript').destination;
- await f.state.transact((_e,s)=>s.put('text-preference',{id:blockedTo,blocked:true,at:Date.now()}));
+ await f.state.transact((_e,s)=>{s.put('text-preference',{id:blockedTo,blocked:true,at:Date.now()});for(const m of s.list('message'))s.put('message',{...m,crmVerified:true});});
  f.c.notificationsApproved=false;
  await new SupabaseWorker(f.state,f.provider,{transcriptSmsSendingEnabled:()=>true}).drain();
  const after=await f.state.transact((_e,s)=>s.list('notification'));
@@ -455,4 +455,28 @@ test('a recording callback keeps the spoken reason, transcript, and customer mat
  assert.equal(saved.p_transcript,'Please call about shutters');
  assert.equal(saved.p_recording_url,'https://example.test/recording');
  assert.equal(saved.p_customer_id,'11111111-1111-4111-8111-111111111111');
+});
+
+test('failed or uncertain transcript submissions never duplicate on worker restart or repeated hangup',async()=>{
+ for(const uncertain of [false,true]){
+  const f=fixture();const call=await incoming(f);let sends=0;
+  await f.state.transact((e,s)=>{s.put('call',{...s.get('call',call.id),phase:'message'});const m=e.saveMessage(call.id,{name:'Pat Example',callback:'+18055550199',message:'Please call about repairs.',confirmed:true},'yes');s.put('message',{...m,crmVerified:true});for(const x of s.list('effect'))s.put('effect',{...x,status:'done'});});
+  const provider={send:async()=>{sends++;throw new ProviderError('Synthetic carrier failure',uncertain);}};
+  const worker=()=>new SupabaseWorker(f.state,provider,{transcriptSmsSendingEnabled:()=>true});
+  await worker().drain();await worker().drain();
+  await f.state.transact((e,s)=>{const m=s.list('message')[0];e.queueTranscript(m);e.queueTranscript(m);e.ended(call.id,call.sid,'same-stop');e.ended(call.id,call.sid,'same-stop');for(const x of s.list('effect'))s.put('effect',{...x,status:'done'});});
+  await worker().drain();
+  const notes=await f.state.transact((_e,s)=>s.list('notification'));
+  assert.equal(sends,2);assert.equal(notes.length,2);assert.equal(notes.every(n=>n.status===(uncertain?'uncertain':'failed')&&!n.sid),true);
+ }
+});
+test('signed staff STOP blocks the exact staff destination without notifying another or replaying sends',async()=>{
+ const f=fixture();const call=await incoming(f);const sent=[];
+ await f.state.transact((e,s)=>{s.put('call',{...s.get('call',call.id),phase:'message'});const m=e.saveMessage(call.id,{name:'Pat Example',callback:'+18055550199',message:'Please call about repairs.',confirmed:true},'yes');s.put('message',{...m,crmVerified:true});for(const x of s.list('effect'))s.put('effect',{...x,status:'done'});});
+ const stop=carrierRequest(f,'/twilio/text',{MessageSid:'SM'+'b'.repeat(32),To:f.c.number,From:f.c.staff.jessica.sms,Body:'STOP',OptOutType:'STOP'});
+ assert.equal((await f.handler(stop)).status,200);await Promise.all(f.tasks);
+ const worker=new SupabaseWorker(f.state,{send:async n=>{sent.push(n);return {sid:'SM'+'c'.repeat(32),status:'accepted'};}},{transcriptSmsSendingEnabled:()=>true});
+ await worker.drain();await worker.drain();
+ assert.equal(sent.length,1);assert.equal(sent[0].recipient,'mike');assert.equal(sent[0].destination,f.c.staff.mike.sms);
+ const notes=await f.state.transact((_e,s)=>s.list('notification'));assert.equal(notes.find(n=>n.recipient==='jessica').status,'failed');assert.match(notes.find(n=>n.recipient==='jessica').error,/opted out/);
 });

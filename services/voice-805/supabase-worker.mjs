@@ -167,7 +167,10 @@ export class SupabaseWorker {
         const transcripts = this.transcriptsEnabled() === true;
         const other = this.state.config.notificationsApproved === true;
         if (transcripts || other) for (let i = 0; i < 4; i++) {
-          const item = s.claim('notification', Date.now(), notification => notificationSendable(notification, { transcripts, other }));
+          const item = s.claim('notification', Date.now(), notification =>
+            notificationSendable(notification, { transcripts, other }) &&
+            (notification.purpose !== 'transcript' || this.state.config.transport !== 'media' ||
+              s.get('message', notification.messageId)?.crmVerified === true));
           if (!item) break;
           jobs.push(['notification', item]);
         }

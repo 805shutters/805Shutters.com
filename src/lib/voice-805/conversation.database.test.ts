@@ -4,6 +4,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
+import { createHmac } from 'node:crypto';
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { NextRequest } from 'next/server';
@@ -29,7 +30,7 @@ const config = { ...loadSupabaseConfig({}), transport: 'media', mode: 'live', da
   number: '+18055550100', accountSid: 'AC' + 'a'.repeat(32), authToken: 'x', origin: 'https://phone.example',
   controlKey: 'c'.repeat(32), toolsKey: 't'.repeat(32), workerKey: 'w'.repeat(32),
   hours: Object.fromEntries(Array.from({ length: 7 }, (_, i) => [i, [[0, 1440]]])), holidays: {},
-  staff: { mike: { kind: 'cell', destination: '+18055550101' }, jessica: { kind: 'cell', destination: '+18055550102' } },
+  staff: { mike: { kind: 'cell', destination: '+18055550101', sms: '+18055550101' }, jessica: { kind: 'cell', destination: '+18055550102', sms: '+18055550102' } },
 };
 let failWrites = 0, failReads = 0;
 beforeAll(async () => {
@@ -212,4 +213,55 @@ it.each(providerReport.cases as any[])('provider audio $caseName survives SQL an
   }
   expect((await db.query('select * from crm_calendar_events')).rows).toHaveLength(0);
   if (!captured.messages.length) expect((await db.query('select * from crm_callback_items')).rows).toHaveLength(0);
+}, 30000);
+
+it('staff notices wait for verified SQL save, retain long-message evidence and send once per recipient after recovery', async () => {
+  const f = await fixture();
+  const text = 'The bedroom shade needs service. '.repeat(50).trim();
+  const sends: any[] = [];
+  try {
+    await f.say('This is Pat Example. ' + text); await f.play();
+    failWrites = 2; await f.say('yes'); await f.play();
+    const worker = new SupabaseWorker(new SupabaseState(client, config), {
+      send: async (note: any, message: any) => {
+        expect(message.crmVerified).toBe(true);
+        expect((await db.query<any>('select * from crm_callback_items')).rows[0].reason).toContain(text);
+        sends.push({ ...note });
+        return { sid: 'SM' + String(sends.length).repeat(32), status: 'accepted' };
+      },
+    }, { transcriptSmsSendingEnabled: () => true, syncMessage: (call: any, message: any) => savePhoneMessage(client, call, message) });
+    await f.state.transact((_e: any, s: any) => {
+      for (const effect of s.list('effect')) if (effect.type !== 'sync-message') s.put('effect', { ...effect, status: 'done' });
+    });
+    failWrites = 1; await worker.drain();
+    expect(sends).toHaveLength(0);
+    expect((await f.state.transact((_e: any, s: any) => s.list('notification'))).every((n: any) => n.status === 'pending' && n.attempts === 0)).toBe(true);
+    await f.state.transact((_e: any, s: any) => { for (const effect of s.list('effect')) if (effect.type === 'sync-message') s.put('effect', { ...effect, nextAt: 0 }); });
+    await worker.drain(); await worker.drain();
+    await f.state.transact((e: any, s: any) => { const message = s.list('message')[0]; e.queueTranscript(message); e.queueTranscript(message); });
+    await worker.drain();
+    expect(sends).toHaveLength(2);
+    expect(sends.map(n => n.recipient).sort()).toEqual(['jessica', 'mike']);
+    for (const note of sends) {
+      expect(note.destination).toBe(config.staff[note.recipient as 'mike' | 'jessica'].sms);
+      expect(note.body.length).toBeLessThanOrEqual(1600);
+      expect(note.body).toContain('Message shortened; full transcript in CRM Message Center');
+      expect(note.body).toContain('Reply STOP to unsubscribe; HELP for help.');
+    }
+    expect((await db.query('select * from crm_callback_items')).rows).toHaveLength(1);
+    const notes = await f.state.transact((_e: any, s: any) => s.list('notification'));
+    const handler = createSupabaseHandler({ state: f.state, client, worker: { drain: async () => {} } });
+    for (const note of notes) {
+      const path = '/twilio/sms/' + encodeURIComponent(note.id);
+      for (const status of [note.recipient === 'mike' ? 'delivered' : 'undelivered', 'queued']) {
+        const fields = new URLSearchParams({ AccountSid: config.accountSid, MessageSid: note.sid, To: note.destination, From: '+18055908050', MessageStatus: status });
+        const payload = config.origin + path + [...new Set(fields.keys())].sort().map(key => key + fields.get(key)).join('');
+        const result = await handler(new Request(config.origin + path, { method: 'POST', body: fields, headers: { 'x-twilio-signature': createHmac('sha1', config.authToken).update(payload).digest('base64') } }));
+        expect(result.status).toBe(200);
+      }
+    }
+    await worker.drain(); expect(sends).toHaveLength(2);
+    await renderSavedDesk(new SupabaseState(client, config), text, 'This is Pat Example. ' + text);
+    await renderSavedDesk(new SupabaseState(client, config), 'jessica: undelivered', 'This is Pat Example. ' + text);
+  } finally { f.session.finish(); }
 }, 30000);
