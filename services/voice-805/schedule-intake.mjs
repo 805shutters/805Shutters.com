@@ -236,7 +236,10 @@ function extractAddress(raw) {
   const source = led ? led[1] : raw;
   const match = source.match(/\b\d{1,6}\s+(?:[a-z0-9.'-]+\s+){0,6}(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd|way|court|ct|place|pl|circle|cir)\b(?:\s*,\s*[a-z][a-z .'-]{1,40})?/i);
   if (!match || looksLikeQuestion(match[0])) return null;
-  return clean(match[0]).slice(0, 512);
+  // Telephone ASR may space a spoken house number as "1 2 3" or "1 25".
+  // Normalize only the leading digit run; the caller still confirms the exact
+  // address aloud before geocoding or booking. Ordinal street names stay intact.
+  return clean(match[0]).replace(/^(\d+(?:\s+\d+)+)(?=\s+[a-z])/i, digits => digits.replace(/\s/g, '')).replace(/[.,]+$/, '').slice(0, 512);
 }
 function hasTime(state) { return Boolean(state.time || state.requestedTime || state.window || state.pendingHour); }
 function ask(state) {

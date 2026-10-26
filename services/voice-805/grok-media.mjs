@@ -39,6 +39,10 @@ const SAVE_FAIL = 'I could not verify the save. May I take a callback message so
 const REPLAN_QUESTION = 'That time no longer fits. What day or time should I check instead?';
 const CHANGE_QUESTION = 'Nothing new was saved. Tell me what you would like to change.';
 const SILENCE_QUESTION = 'I did not hear a clear yes, so nothing was saved. May I take a callback message so our team can check it?';
+// The force_message response has no client correlation metadata. Its completed
+// output transcript is the ownership proof; arrival order is not proof.
+export const spokenLineKey = text => String(text || '').normalize('NFKC').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ').trim();
+const MAX_SCRIPT_AUDIO_BYTES = 1200000;
 
 // The carrier socket is authenticated before construction. The model can propose.
 // A spoken yes counts only after the exact readback has played on this call.
@@ -68,6 +72,11 @@ export class GrokMediaSession {
     this.pcmBytes = 0;
     this.trace = [];
     this.promptTranscripts = new Map();
+    this.promptSequence = 0;
+    this.bufferBytes = new Map();
+    this.inputSpeaking = false;
+    this.pendingCallerEvent = null;
+    this.inputFinalTimer = null;
     this.chain = Promise.resolve();
     this.done = new Promise(resolve => { this.resolveDone = resolve; });
     this.startTimer = clock.setTimeout(() => this.recoverNow('Voice connection timed out'), 10000);
@@ -198,23 +207,22 @@ export class GrokMediaSession {
     if (this.prompt?.responseId) this.stray.add(this.prompt.responseId);
     for (const id of this.pending) this.stray.add(id);
     if (this.openResponseId) this.stray.add(this.openResponseId);
-    this.prompt = { text, responseId: null };
+    this.prompt = { text, responseId: null, sequence: ++this.promptSequence };
     this.pending = [];
     this.buffers = new Map();
     this.settled = new Map();
+    this.promptTranscripts = new Map();
+    this.bufferBytes = new Map();
     this.cancelSent = false;
     this.forceRetries = 0;
     this.clearSilence();
     this.releasePlayback();
     this.marks.clear();
-    // A response already created for this caller turn is the automatic server_vad turn. Cancel that id.
-    // If speech has ended and no id has arrived yet, cancel whatever is in progress, then speak the scripted line.
+    // Cancel only a known old response. An unscoped cancel can race the new
+    // force_message. All unverified model output is buffered/discarded below.
     if (this.openResponseId && !this.responses.has(this.openResponseId)) {
       this.stray.add(this.openResponseId);
       this.cancel(this.openResponseId);
-    } else if (this.vadTurn) {
-      this.cancelSent = true;
-      this.cancel();
     }
     this.vadTurn = false;
     this.sendAI({ type: 'session.update', session: this.voiceSession({ turn_detection: this.listening ? { type: 'server_vad' } : { type: null }, tools: [] }) });
@@ -266,6 +274,10 @@ export class GrokMediaSession {
     const body = { event: 'voice-805-checkpoint', call: this.call.id, step, stage: this.stage };
     if (typeof awaiting === 'string' && awaiting) body.awaiting = awaiting;
     console.error(JSON.stringify(body));
+  }
+  logOutput(step, id, extra = {}) {
+    console.error(JSON.stringify({ event: 'voice-805-output', call: this.call.id, step,
+      stage: this.stage, sequence: this.prompt?.sequence || null, response: id || null, ...extra }));
   }
   // Deadlines run here, not on the serial queue. A state save can stay unresolved
   // after it has committed, and that wait must not block fallback.
@@ -325,26 +337,9 @@ export class GrokMediaSession {
     if (this.closed || !call) return null;
     return call;
   }
-  // Two completed responses means the automatic turn and the scripted line both finished.
-  // Neither may play: metadata is null for both, so the audio cannot be assigned safely.
-  retryScript() {
-    if (this.forceRetries >= 1 || !this.prompt?.text) return this.fail('Scripted line was not the only response');
-    this.forceRetries += 1;
-    for (const id of this.pending) this.stray.add(id);
-    this.pending = [];
-    this.buffers = new Map();
-    this.settled = new Map();
-    this.audioBytes = 0;
-    this.pcmBytes = 0;
-    this.cancelSent = false;
-    this.prompt.responseId = null;
-    this.note('retry');
-    this.logLifecycle('Scripted line overlapped an automatic response');
-    this.speakLine();
-  }
   mark(next) {
     const name = randomUUID();
-    this.marks.set(name, async () => { this.releasePlayback(); this.note('mark'); this.logCheckpoint('played'); await next(); });
+    this.marks.set(name, async () => { this.releasePlayback(); this.note('mark'); this.logCheckpoint('played'); this.logOutput('played', this.prompt?.responseId, { bytes: this.pcmBytes }); await next(); });
     this.sendCarrier({ event: 'mark', mark: { name } });
   }
   assist() { this.assistMessages(); }
@@ -354,7 +349,7 @@ export class GrokMediaSession {
     this.pending = [];
     this.vadTurn = false;
     this.clearSilence();
-    this.sendAI({ type: 'session.update', session: this.voiceSession({ instructions: 'Stay silent. Do not speak, ask questions, or call tools. The server records each answer and supplies the next line.', turn_detection: { type: 'server_vad' }, tools: [] }) });
+    this.sendAI({ type: 'session.update', session: this.voiceSession({ instructions: 'The application supplies each spoken reply using force_message. Wait for that supplied reply. Do not generate additional answers or tools.', turn_detection: { type: 'server_vad' }, tools: [] }) });
   }
   assistMessages() { this.stage = 'assist'; this.prompt = null; this.pending = []; this.vadTurn = false; this.messageOnly = true; this.clearSilence(); this.sendAI({ type: 'session.update', session: this.voiceSession({ instructions: RECEPTIONIST_PROMPT, turn_detection: { type: 'server_vad' }, tools: RECEPTIONIST_TOOLS }) }); }
   output(id, result) { this.sendAI({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: id, output: JSON.stringify(result) } }); }
@@ -388,16 +383,27 @@ export class GrokMediaSession {
     this.ignoreCancelError = true;
     this.sendAI(id ? { type: 'response.cancel', response_id: id } : { type: 'response.cancel' });
   }
-  // The scripted line is the force_message lifecycle: response.created, audio deltas, response.done.
-  // A response created before that send, or one the server reports as cancelled, is not that line.
+  // Release no audio until the completed response says exactly the server's
+  // prepared line. Automatic VAD responses can arrive before or after the force
+  // response and can complete even after cancellation.
   acceptResponse(id) {
-    if (!this.prompt || !id || this.stray.has(id) || (this.prompt.responseId && this.prompt.responseId !== id)) return;
+    if (!this.prompt || !id || this.stray.has(id) || this.prompt.responseId || !this.pending.includes(id)) return;
+    if (this.settled.get(id) !== 'completed' || !this.promptTranscripts.has(id)) return;
+    const matches = spokenLineKey(this.promptTranscripts.get(id)) === spokenLineKey(this.prompt.text);
+    this.logOutput(matches ? 'verified' : 'rejected', id, { matches, bytes: this.bufferBytes.get(id) || 0 });
+    if (!matches) {
+      this.stray.add(id); this.buffers.delete(id); this.bufferBytes.delete(id); this.promptTranscripts.delete(id);
+      this.pending = this.pending.filter(value => value !== id);
+      return;
+    }
     this.prompt.responseId = id;
     this.cancelSent = false;
     for (const other of this.pending) if (other !== id) this.stray.add(other);
     this.pending = [id];
     for (const delta of this.buffers.get(id) || []) this.playDelta(delta);
     this.buffers.delete(id);
+    this.logOutput('sent', id, { bytes: this.pcmBytes });
+    this.advancePrompt();
   }
   advancePrompt() {
     if (!['opening', 'readback', 'result', 'welcome'].includes(this.stage)) return;
@@ -425,14 +431,8 @@ export class GrokMediaSession {
     this.buffers.delete(id);
     this.pending = this.pending.filter(item => item !== id);
     this.settled.set(id, 'cancelled');
-    const rest = this.pending.filter(item => !this.stray.has(item));
-    if (this.prompt?.responseId === id) return this.fail('Grok response incomplete');
-    if (this.prompt && !this.prompt.responseId && rest.length === 1) {
-      this.acceptResponse(rest[0]);
-      if (this.settled.get(rest[0]) === 'completed') this.advancePrompt();
-      return;
-    }
-    if (rest.length === 0) this.cancelSent = false;
+    this.bufferBytes.delete(id);
+    this.promptTranscripts.delete(id);
   }
   callerTurn(event) {
     if (event.type === 'conversation.item.input_audio_transcription.updated') return null;
@@ -457,6 +457,7 @@ export class GrokMediaSession {
       return;
     }
     if (event.type === 'error') {
+      this.logOutput('provider-error', null, { code: String(event.error?.code || '').slice(0, 80), kind: String(event.error?.type || '').slice(0, 80) });
       if (this.ignoreCancelError) {
         this.ignoreCancelError = false;
         if (this.cancelSent && this.prompt && !this.prompt.responseId) {
@@ -475,9 +476,21 @@ export class GrokMediaSession {
       if (earlyId) this.beforeReadback.add(String(earlyId));
     }
     const turn = this.callerTurn(event);
-    // Replayed final captions must not clear the next question before the
-    // collector's own duplicate guard runs.
+    // A replay must not replace a new in-progress caller caption either.
     if (turn && this.heard.has(turn.id)) return;
+    // The provider can emit a completed caption before its VAD end event.
+    // Replying then reconfigures the input session mid-sentence and truncates
+    // the rest of an address. Keep receiving audio until the speaker stops.
+    if (turn && this.inputSpeaking) {
+      if (READBACK_STAGES.has(this.stage)) this.beforeReadback.add(turn.id);
+      this.pendingCallerEvent = event;
+      return;
+    }
+    if (turn && this.inputFinalTimer) {
+      this.clock.clearTimeout(this.inputFinalTimer);
+      this.inputFinalTimer = null;
+      this.pendingCallerEvent = null;
+    }
     if (turn && (this.stage === 'confirm' || this.stage === 'collect' || this.stage === 'welcome' || this.stage === 'welcome-playback' || QUESTION_STAGES.has(this.stage))) this.noteChoice();
     if (turn && READBACK_STAGES.has(this.stage)) {
       this.beforeReadback.add(turn.id);
@@ -495,6 +508,17 @@ export class GrokMediaSession {
     }
     if (turn) return;
     if (event.type === 'input_audio_buffer.speech_stopped' || event.type === 'input_audio_buffer.timeout_triggered') {
+      this.inputSpeaking = false;
+      if (this.pendingCallerEvent) {
+        if (this.inputFinalTimer) this.clock.clearTimeout(this.inputFinalTimer);
+        this.inputFinalTimer = this.clock.setTimeout(() => this.enqueue(async () => {
+          this.inputFinalTimer = null;
+          if (this.inputSpeaking) return;
+          const final = this.pendingCallerEvent;
+          this.pendingCallerEvent = null;
+          if (final) await this.grok(final);
+        }), 250);
+      }
       if (['collect', 'confirm', 'assist', 'opening', 'opening-playback', 'result', 'result-playback', 'readback', 'readback-playback'].includes(this.stage)) this.vadTurn = true;
       return;
     }
@@ -502,6 +526,7 @@ export class GrokMediaSession {
       const id = String(event.response.id);
       this.openResponseId = id;
       this.note('created', { bound: Boolean(this.prompt?.responseId) });
+      this.logOutput('created', id);
       if (this.stage === 'assist' && !this.prompt) { this.audioBytes = 0; return; }
       if (!this.prompt || this.stray.has(id)) {
         this.stray.add(id);
@@ -514,21 +539,27 @@ export class GrokMediaSession {
         return;
       }
       if (!this.pending.includes(id)) this.pending.push(id);
-      // A retry still has to see the whole lifecycle. Accepting the first created response
-      // would play automatic speech when a second response arrives late.
-      if (!this.cancelSent && this.forceRetries === 0) this.acceptResponse(id);
+      if (this.pending.length > 4) return this.fail('Too many concurrent voice responses');
+      return;
+    }
+    if (['response.output_audio_transcript.done', 'response.audio_transcript.done'].includes(event.type)) {
+      const id = String(event.response_id || '');
+      if (!id || !this.prompt || this.stray.has(id) || !this.pending.includes(id)) return;
+      if (typeof event.transcript !== 'string' || event.transcript.length > 12000) return;
+      this.promptTranscripts.set(id, event.transcript);
+      this.logOutput('transcript', id, { matches: spokenLineKey(event.transcript) === spokenLineKey(this.prompt.text) });
+      this.acceptResponse(id);
       return;
     }
     if (['response.output_audio.delta', 'response.audio.delta'].includes(event.type)) {
       if (this.stage === 'collect' || this.stage === 'confirm') return;
       const id = event.response_id ? String(event.response_id) : '';
       if (id && this.stray.has(id)) return;
-      if (this.prompt?.responseId) {
-        if (id && id !== this.prompt.responseId) return;
-        if (['opening', 'readback', 'result', 'assist', 'welcome', 'welcome-playback'].includes(this.stage) && validAudio(event.delta)) this.playDelta(event.delta);
-        return;
-      }
-      if (this.prompt && id && validAudio(event.delta)) {
+      if (this.prompt?.responseId) return;
+      if (this.prompt && id && this.pending.includes(id) && validAudio(event.delta)) {
+        const bytes = (this.bufferBytes.get(id) || 0) + pcmByteLength(event.delta);
+        if (bytes > MAX_SCRIPT_AUDIO_BYTES) return this.fail('Voice response exceeded audio limit');
+        this.bufferBytes.set(id, bytes);
         const queued = this.buffers.get(id) || [];
         queued.push(event.delta);
         this.buffers.set(id, queued);
@@ -538,6 +569,7 @@ export class GrokMediaSession {
       return;
     }
     if (event.type === 'input_audio_buffer.speech_started') {
+      this.inputSpeaking = true;
       if (QUESTION_STAGES.has(this.stage)) {
         // VAD also fires for noise and incomplete speech. Keep the scripted
         // question and its deadline until a final caller turn replaces it.
@@ -573,6 +605,7 @@ export class GrokMediaSession {
     const responseId = String(event.response.id);
     this.responses.add(responseId);
     this.note('done', { status: event.response.status || 'completed' });
+    this.logOutput('completed', responseId, { status: event.response.status || 'completed', bytes: this.bufferBytes.get(responseId) || 0 });
     if (this.openResponseId === responseId) this.openResponseId = null;
     if (this.stray.has(responseId)) {
       this.buffers.delete(responseId);
@@ -580,23 +613,10 @@ export class GrokMediaSession {
       return;
     }
     if (event.response.status === 'cancelled') return this.noteCancelled(responseId);
-    if (this.prompt?.responseId === responseId) {
-      if (event.response.status && event.response.status !== 'completed') return this.fail('Grok response incomplete');
-      return this.advancePrompt();
-    }
-    if (this.prompt && !this.prompt.responseId) {
-      const open = this.pending.filter(id => !this.stray.has(id));
-      if (open.length > 1) {
-        this.settled.set(responseId, event.response.status || 'completed');
-        const statuses = open.map(id => this.settled.get(id));
-        if (!statuses.every(Boolean)) return;
-        if (this.forceRetries >= 1) return this.fail('Scripted line was not the only response');
-        if (this.cancelSent && statuses.every(status => status === 'completed')) return this.retryScript();
-        return this.fail('Grok response incomplete');
-      }
-      if (event.response.status && event.response.status !== 'completed') return this.fail('Grok response incomplete');
-      this.acceptResponse(responseId);
-      return this.advancePrompt();
+    if (this.prompt) {
+      this.settled.set(responseId, event.response.status || 'completed');
+      if (event.response.status && event.response.status !== 'completed') return this.noteCancelled(responseId);
+      return this.acceptResponse(responseId);
     }
     if (!this.prompt && this.stage !== 'assist') return;
     if (event.response.status && event.response.status !== 'completed') return this.fail('Grok response incomplete');
@@ -923,6 +943,11 @@ export class GrokMediaSession {
     this.closed = true;
     this.clock.clearTimeout(this.startTimer);
     this.clock.clearTimeout(this.limitTimer);
+    if (this.inputFinalTimer) this.clock.clearTimeout(this.inputFinalTimer);
+    this.pendingCallerEvent = null;
+    this.buffers.clear();
+    this.bufferBytes.clear();
+    this.promptTranscripts.clear();
     if (this.offerTimer) this.clock.clearTimeout(this.offerTimer);
     this.clearSilence();
     this.releasePlayback();

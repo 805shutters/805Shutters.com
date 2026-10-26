@@ -29,7 +29,7 @@ function fixture(match='unmatched') {
  const grok=async e=>session.enqueue(()=>session.grok(e));
  const carrier=async e=>session.enqueue(()=>session.carrier(e));
  const mark=async()=>carrier({event:'mark',streamSid,mark:socket.sent.findLast(x=>x.event==='mark').mark});
- const audio=async(id='r1')=>{await grok({type:'response.created',response:{id}});await grok({type:'response.output_audio.delta',delta:'YWJj'});await grok({type:'response.done',response:{id,status:'completed'}});};
+ const audio=async(id='r1')=>{await grok({type:'response.created',response:{id}});await grok({type:'response.output_audio.delta',response_id:id,delta:'YWJj'});await grok({type:'response.output_audio_transcript.done',response_id:id,transcript:session.prompt?.text});await grok({type:'response.done',response:{id,status:'completed'}});};
  const begin=async()=>{await carrier(start);ai.onopen();await session.chain;await grok({type:'session.updated'});};
  const say=async(text,id='turn-'+text)=>grok({type:'conversation.item.input_audio_transcription.completed',transcript:text,item_id:id});
  return {c,call,state,store,engine,socket,ai,session,streamSid,start,grok,carrier,mark,audio,begin,say,timers,worker,get drains(){return drains;}};
@@ -231,7 +231,7 @@ test('wrong account, call, format and reused start cannot attach',async()=>{
  const f=fixture();await f.begin();const other=new GrokMediaSession({socket:new Socket(),call:f.call,state:f.state,worker:f.worker,connect:()=>new Socket(),clock:{setTimeout:()=>1,clearTimeout:()=>{}}});await other.carrier(f.start);assert.equal(other.closed,true);f.session.finish();
 });
 test('missing audio and the worker deadline fall back without confirmation',async()=>{
- const f=fixture();await f.begin();await f.grok({type:'response.done',response:{id:'silent',status:'completed'}});assert.equal(f.session.closed,true);assert.equal(f.store.get('call',f.call.id).mediaFailed,true);
+ const f=fixture();await f.begin();await f.grok({type:'response.created',response:{id:'silent'}});await f.grok({type:'response.output_audio_transcript.done',response_id:'silent',transcript:lastLine(f)});await f.grok({type:'response.done',response:{id:'silent',status:'completed'}});assert.equal(f.session.closed,true);assert.equal(f.store.get('call',f.call.id).mediaFailed,true);
  const g=fixture();await g.begin();const limit=g.timers.find(timer=>timer.ms===MEDIA_SESSION_MS);await limit.fn();await g.session.chain;assert.equal(g.session.closed,true);assert.equal(limit.cleared,true);assert.equal(g.drains,1);
  const expired=g.store.get('call',g.call.id);assert.equal(expired.mediaFailed,true);assert.equal(expired.bookingIntent,undefined);assert.equal(expired.booking,undefined);assert.equal(g.store.list('message').length,0);
  await limit.fn();await g.session.chain;assert.equal(g.drains,1);
@@ -358,109 +358,59 @@ test('server caller ID is used for a message tool',async()=>{
  assert.match(lastLine(blocked),/1 8 0 5 5 5 5 0 1 9 8/);
  f.session.finish();blocked.session.finish();
 });
-test('a forced question plays from the documented lifecycle when no automatic response arrives',async()=>{
- const only=fixture();await ready(only);await only.grok({type:'input_audio_buffer.speech_stopped'});await only.say('Friday at 3 pm');
- const media=only.socket.sent.filter(item=>item.media?.payload==='YWJj').length;
- const marks=only.socket.sent.filter(item=>item.event==='mark').length;
- await only.grok({type:'response.created',response:{id:'forced-only'}});
- await only.grok({type:'response.output_audio.delta',response_id:'forced-only',delta:'YWJj'});
- await only.grok({type:'response.done',response:{id:'forced-only',status:'completed'}});
- assert.equal(only.session.stage,'result-playback');
- assert.equal(only.session.stray.has('forced-only'),false);
- assert.equal(only.session.prompt.responseId,'forced-only');
- assert.equal(only.socket.sent.filter(item=>item.media?.payload==='YWJj').length,media+1);
- assert.equal(only.socket.sent.filter(item=>item.event==='mark').length,marks+1);
- assert.equal(only.store.get('call',only.call.id).schedule.date,'2026-10-23');
- assert.equal(only.ai.sent.some(item=>item.type==='response.cancel'&&item.response_id==null),true);
- only.session.finish();
+test('scripted audio is released only after exact text and complete audio are verified',async()=>{
+ const f=fixture();await ready(f);await f.say('Thursday');
+ const before=f.socket.sent.filter(x=>x.event==='media').length;
+ await f.grok({type:'response.created',response:{id:'forced'}});
+ await f.grok({type:'response.output_audio.delta',response_id:'forced',delta:'Rk9SQ0U'});
+ assert.equal(f.socket.sent.filter(x=>x.event==='media').length,before);
+ await f.grok({type:'response.output_audio_transcript.done',response_id:'forced',transcript:lastLine(f)});
+ assert.equal(f.socket.sent.filter(x=>x.event==='media').length,before);
+ await f.grok({type:'response.done',response:{id:'forced',status:'completed'}});
+ assert.equal(f.session.stage,'result-playback');assert.equal(f.session.prompt.responseId,'forced');
+ assert.equal(f.socket.sent.filter(x=>x.event==='media').length,before+1);f.session.finish();
 });
-test('an overlapping automatic response does not take the scripted question in either order',async()=>{
- const ahead=fixture();await ready(ahead);await ahead.grok({type:'input_audio_buffer.speech_stopped'});await ahead.say('Friday at 3 pm');
- await ahead.grok({type:'response.created',response:{id:'auto-ahead'}});
- await ahead.grok({type:'response.output_audio.delta',response_id:'auto-ahead',delta:'QUJD'});
- await ahead.grok({type:'response.done',response:{id:'auto-ahead',status:'cancelled'}});
- assert.equal(ahead.session.stage,'result');assert.equal(ahead.socket.sent.some(item=>item.media?.payload==='QUJD'),false);
- await ahead.grok({type:'response.created',response:{id:'forced-ahead'}});
- await ahead.grok({type:'response.output_audio.delta',response_id:'forced-ahead',delta:'Rk9SQ0U'});
- await ahead.grok({type:'response.done',response:{id:'forced-ahead',status:'completed'}});
- assert.equal(ahead.session.stage,'result-playback');assert.equal(ahead.socket.sent.some(item=>item.media?.payload==='Rk9SQ0U'),true);
- const behind=fixture();await ready(behind);await behind.grok({type:'input_audio_buffer.speech_stopped'});await behind.say('Friday at 3 pm');
- await behind.grok({type:'response.created',response:{id:'forced-behind'}});
- await behind.grok({type:'response.output_audio.delta',response_id:'forced-behind',delta:'QkVISU5E'});
- await behind.grok({type:'response.created',response:{id:'auto-behind'}});
- await behind.grok({type:'response.output_audio.delta',response_id:'auto-behind',delta:'QUJD'});
- await behind.grok({type:'response.done',response:{id:'forced-behind',status:'completed'}});
- assert.equal(behind.session.stage,'result');assert.equal(behind.socket.sent.some(item=>item.media?.payload==='QUJD'),false);
- await behind.grok({type:'response.done',response:{id:'auto-behind',status:'cancelled'}});
- assert.equal(behind.session.stage,'result-playback');assert.equal(behind.socket.sent.some(item=>item.media?.payload==='QkVISU5E'),true);
- await behind.grok({type:'response.created',response:{id:'late-auto'}});
- await behind.grok({type:'response.output_audio.delta',response_id:'late-auto',delta:'TEFURQ'});
- await behind.grok({type:'response.done',response:{id:'late-auto',status:'completed'}});
- assert.equal(behind.session.stage,'result-playback');assert.equal(behind.socket.sent.some(item=>item.media?.payload==='TEFURQ'),false);
- const stale=fixture();await ready(stale);await stale.grok({type:'input_audio_buffer.speech_stopped'});
- await stale.grok({type:'response.created',response:{id:'stale-auto'}});
- assert.equal(stale.ai.sent.some(item=>item.type==='response.cancel'&&item.response_id==='stale-auto'),true);
- await stale.say('Friday at 3 pm');
- await stale.grok({type:'response.output_audio.delta',response_id:'stale-auto',delta:'U1RBTEU'});
- await stale.grok({type:'response.done',response:{id:'stale-auto',status:'completed'}});
- assert.equal(stale.session.stage,'result');assert.equal(stale.socket.sent.some(item=>item.media?.payload==='U1RBTEU'),false);
- await stale.grok({type:'response.created',response:{id:'forced-stale'}});
- await stale.grok({type:'response.output_audio.delta',response_id:'forced-stale',delta:'U1RBTEVT'});
- await stale.grok({type:'response.done',response:{id:'forced-stale',status:'completed'}});
- assert.equal(stale.session.stage,'result-playback');assert.equal(stale.socket.sent.some(item=>item.media?.payload==='U1RBTEVT'),true);
- ahead.session.finish();behind.session.finish();stale.session.finish();
-});
-test('a completed automatic response does not take the day question in either order',async()=>{
- for(const order of [['auto-choice','forced-choice'],['forced-choice','auto-choice']]){
-  const f=fixture();await ready(f);await f.grok({type:'input_audio_buffer.speech_stopped'});await f.say('schedule an appointment');
-  assert.equal(f.store.get('call',f.call.id).schedule.purpose,'appointment');
-  assert.equal(f.store.get('call',f.call.id).schedule.awaiting,'day');
-  assert.match(lastLine(f),/What day works for you/);
-  const media=f.socket.sent.filter(item=>item.event==='media').length;
-  const marks=f.socket.sent.filter(item=>item.event==='mark').length;
-  for(const id of order)await f.grok({type:'response.created',response:{id}});
-  await f.grok({type:'response.output_audio.delta',response_id:'forced-choice',delta:'Rk9SQ0U'});
-  await f.grok({type:'response.output_audio.delta',response_id:'auto-choice',delta:'QVVUTw'});
-  for(const id of order)await f.grok({type:'response.done',response:{id,status:'completed'}});
-  assert.equal(f.session.stage,'result');
-  assert.equal(f.session.cancelSent,false);
-  assert.equal(f.session.pending.length,0);
-  assert.equal(f.socket.sent.filter(item=>item.event==='media').length,media);
-  assert.equal(f.ai.sent.filter(item=>item.item?.type==='force_message'&&/What day works for you/.test(item.item.content[0].text||'')).length,2);
-  await f.grok({type:'response.created',response:{id:'retry-choice'}});
-  await f.grok({type:'response.output_audio.delta',response_id:'retry-choice',delta:'REFUUlk'});
-  await f.grok({type:'response.done',response:{id:'retry-choice',status:'completed'}});
-  assert.equal(f.session.stage,'result-playback');
-  assert.equal(f.session.prompt.responseId,'retry-choice');
-  assert.equal(f.socket.sent.some(item=>item.media?.payload==='REFUUlk'),true);
-  assert.equal(f.socket.sent.some(item=>item.media?.payload==='Rk9SQ0U'||item.media?.payload==='QVVUTw'),false);
-  assert.equal(f.socket.sent.filter(item=>item.event==='mark').length,marks+1);
-  const trace=JSON.stringify(f.session.trace);
-  assert.equal(trace.includes('schedule an appointment'),false);
-  assert.equal(trace.includes('+1805'),false);
-  assert.equal(trace.includes(f.c.authToken),false);
-  assert.match(trace,/"event":"retry"/);
-  f.session.finish();
+for(const order of ['auto-first','force-first','auto-finishes-after','late-transcript'])test('literal silent response cannot replace Thursday question: '+order,async()=>{
+ const f=fixture();await ready(f);await speak(f,'schedule an appointment');await f.say('Thursday');
+ const before=f.socket.sent.filter(x=>x.event==='media').length;
+ const send=async(id,text,payload,late=false)=>{
+  await f.grok({type:'response.created',response:{id}});
+  await f.grok({type:'response.output_audio.delta',response_id:id,delta:payload});
+  if(!late)await f.grok({type:'response.output_audio_transcript.done',response_id:id,transcript:text});
+  await f.grok({type:'response.done',response:{id,status:'completed'}});
+  if(late)await f.grok({type:'response.output_audio_transcript.done',response_id:id,transcript:text});
+ };
+ const expected=lastLine(f);
+ if(order==='auto-first'||order==='late-transcript')await send('auto','silent','U0lMRU5U');
+ if(order==='auto-finishes-after'){
+  await f.grok({type:'response.created',response:{id:'auto'}});
+  await f.grok({type:'response.output_audio.delta',response_id:'auto',delta:'U0lMRU5U'});
  }
- const stuck=fixture();await ready(stuck);await stuck.grok({type:'input_audio_buffer.speech_stopped'});await stuck.say('schedule an appointment');
- for(const id of ['auto-stuck','forced-stuck'])await stuck.grok({type:'response.created',response:{id}});
- await stuck.grok({type:'response.output_audio.delta',response_id:'forced-stuck',delta:'Rk9SQ0U'});
- for(const id of ['forced-stuck','auto-stuck'])await stuck.grok({type:'response.done',response:{id,status:'completed'}});
- const deadline=stuck.timers.filter(timer=>timer.ms===FORCE_DEADLINE_MS&&!timer.cleared).at(-1);
- await deadline.fn();await stuck.session.chain;
- assert.equal(stuck.session.closed,true);
- assert.equal(stuck.store.get('call',stuck.call.id).mediaFailed,true);
- assert.equal(stuck.socket.sent.some(item=>item.media?.payload==='Rk9SQ0U'),false);
- assert.equal(stuck.store.get('call',stuck.call.id).schedule.awaiting,'day');
- const again=fixture();await ready(again);await again.grok({type:'input_audio_buffer.speech_stopped'});await again.say('schedule an appointment');
- for(const id of ['auto-again','forced-again'])await again.grok({type:'response.created',response:{id}});
- for(const id of ['auto-again','forced-again'])await again.grok({type:'response.done',response:{id,status:'completed'}});
- for(const id of ['auto-second','forced-second'])await again.grok({type:'response.created',response:{id}});
- await again.grok({type:'response.output_audio.delta',response_id:'forced-second',delta:'U0VDT05E'});
- for(const id of ['forced-second','auto-second'])await again.grok({type:'response.done',response:{id,status:'completed'}});
- assert.equal(again.session.closed,true);
- assert.equal(again.store.get('call',again.call.id).mediaFailed,true);
- assert.equal(again.socket.sent.some(item=>item.media?.payload==='U0VDT05E'),false);
+ await send('forced',expected,'Rk9SQ0U',order==='late-transcript');
+ if(order==='force-first')await send('auto','silent','U0lMRU5U');
+ if(order==='auto-finishes-after'){
+  await f.grok({type:'response.output_audio_transcript.done',response_id:'auto',transcript:'silent'});
+  await f.grok({type:'response.done',response:{id:'auto',status:'completed'}});
+ }
+ assert.equal(f.session.stage,'result-playback');assert.equal(f.session.prompt.responseId,'forced');
+ assert.equal(f.socket.sent.some(x=>x.media?.payload==='U0lMRU5U'),false);
+ assert.equal(f.socket.sent.filter(x=>x.event==='media').length,before+1);
+ assert.match(expected,/What time on Thursday/);
+ await f.mark();assert.equal(f.session.stage,'collect');assert.equal(f.store.list('message').length,0);f.session.finish();
+});
+test('missing, mismatched and cancelled output never arms readback or a booking',async()=>{
+ for(const kind of ['missing','mismatch','cancelled']){
+  const f=fixture();await messageMode(f);const before=f.socket.sent.filter(x=>x.event==='media').length;
+  await f.grok({type:'response.created',response:{id:kind}});
+  await f.grok({type:'response.output_audio.delta',response_id:kind,delta:'QkFE'});
+  if(kind!=='missing')await f.grok({type:'response.output_audio_transcript.done',response_id:kind,transcript:kind==='mismatch'?'silent':lastLine(f)});
+  await f.grok({type:'response.done',response:{id:kind,status:kind==='cancelled'?'cancelled':'completed'}});
+  assert.equal(f.socket.sent.filter(x=>x.event==='media').length,before);
+  assert.equal(f.session.stage,'readback');assert.equal(f.store.get('call',f.call.id).intent.playedAt,undefined);
+  await f.say('yes','unsafe-yes');assert.equal(f.store.list('message').length,0);
+  await openPlayback(f,FORCE_DEADLINE_MS).fn();await f.session.chain;
+  assert.equal(f.session.closed,true);assert.equal(f.store.list('message').length,0);
+ }
 });
 function appointmentSchedule(f){
  const requests=[];
@@ -473,6 +423,7 @@ test('a lost playback mark uses voicemail and a matched long readback cancels it
  assert.equal(day.store.get('call',day.call.id).schedule.awaiting,'day');
  await day.grok({type:'response.created',response:{id:'day-lost'}});
  await day.grok({type:'response.output_audio.delta',response_id:'day-lost',delta:'YWJj'});
+ await day.grok({type:'response.output_audio_transcript.done',response_id:'day-lost',transcript:lastLine(day)});
  await day.grok({type:'response.done',response:{id:'day-lost',status:'completed'}});
  assert.equal(day.session.stage,'result-playback');
  const dayWait=playbackWaitMs(pcmByteLength('YWJj'));
@@ -549,6 +500,7 @@ test('a lost playback mark uses voicemail and a matched long readback cancels it
  assert.ok(longWait>FORCE_DEADLINE_MS);
  await booked.grok({type:'response.created',response:{id:'long-readback'}});
  await booked.grok({type:'response.output_audio.delta',response_id:'long-readback',delta:payload});
+ await booked.grok({type:'response.output_audio_transcript.done',response_id:'long-readback',transcript:lastLine(booked)});
  await booked.grok({type:'response.done',response:{id:'long-readback',status:'completed'}});
  assert.equal(booked.session.stage,'readback-playback');
  assert.equal(booked.session.pcmBytes,96000);
@@ -620,6 +572,7 @@ test('speech detection alone cannot discard a saved scheduling question',async()
  assert.equal(f.session.prompt.text,line);
  await f.mark();
  assert.equal(f.session.stage,'collect');
+ await f.grok({type:'input_audio_buffer.speech_stopped'});
  await f.say('123 Oak Street, Camarillo','address-answer');
  assert.equal(f.store.get('call',f.call.id).schedule.address,'123 Oak Street, Camarillo');
  assert.equal(f.store.get('call',f.call.id).schedule.awaiting,'address-confirm');
@@ -630,6 +583,7 @@ test('speech detection alone cannot discard a saved scheduling question',async()
 test('a final reply still interrupts a question after speech detection',async()=>{
  const f=fixture();await ready(f);await f.say('schedule an appointment','purpose');await f.audio('day');
  await f.grok({type:'input_audio_buffer.speech_started'});
+ await f.grok({type:'input_audio_buffer.speech_stopped'});
  await f.say('Friday anytime','day-answer');
  assert.equal(f.store.get('call',f.call.id).schedule.date,'2026-10-23');
  assert.equal(f.store.get('call',f.call.id).schedule.window,'anytime');
@@ -638,6 +592,56 @@ test('a final reply still interrupts a question after speech detection',async()=
  assert.match(lastLine(f),/May I please get your address/);
  await f.audio('address');await f.mark();
  assert.equal(f.session.stage,'collect');f.session.finish();
+});
+test('a completed prefix while speaking cannot advance or cut off an address',async()=>{
+ const f=fixture();await ready(f);await speak(f,'schedule an appointment');await speak(f,'Friday');await speak(f,'10 am');
+ const sent=f.ai.sent.length;
+ await f.grok({type:'input_audio_buffer.speech_started',item_id:'address'});
+ await f.say('1 2','address');
+ assert.equal(f.store.get('call',f.call.id).schedule.address,null);
+ assert.equal(f.ai.sent.length,sent);
+ await f.carrier({event:'media',streamSid:f.streamSid,media:{payload:'YWJj'}});
+ assert.equal(f.ai.sent.at(-1).type,'input_audio_buffer.append');
+ await f.grok({type:'input_audio_buffer.speech_stopped',item_id:'address'});
+ await f.say('123 Oak Street, Camarillo','address');
+ assert.equal(f.store.get('call',f.call.id).schedule.address,'123 Oak Street, Camarillo');
+ assert.equal(f.store.get('call',f.call.id).schedule.awaiting,'address-confirm');
+ assert.match(lastLine(f),/123 Oak Street, Camarillo/);
+ assert.equal(f.timers.findLast(timer=>timer.ms===250).cleared,true);
+ f.session.finish();
+});
+test('an old duplicate cannot replace the caption buffered for the current speaker',async()=>{
+ const f=fixture();await ready(f);await speak(f,'schedule an appointment');
+ await f.say('Friday','previous-day');await f.audio('time');await f.mark();
+ await f.grok({type:'input_audio_buffer.speech_started',item_id:'current-time'});
+ await f.say('10 am','current-time');await f.say('Friday','previous-day');
+ await f.grok({type:'input_audio_buffer.speech_stopped',item_id:'current-time'});
+ await f.timers.findLast(timer=>timer.ms===250&&!timer.cleared).fn();await f.session.chain;
+ assert.equal(f.store.get('call',f.call.id).schedule.time,'10:00');
+ assert.equal(f.store.get('call',f.call.id).schedule.awaiting,'address');
+ f.session.finish();
+});
+test('a final caption arriving before VAD stop is accepted once after the end grace',async()=>{
+ const f=fixture();await ready(f);
+ await f.grok({type:'input_audio_buffer.speech_started',item_id:'purpose'});
+ await f.say('schedule an appointment','purpose');
+ assert.equal(f.store.get('call',f.call.id).schedule,undefined);
+ await f.grok({type:'input_audio_buffer.speech_stopped',item_id:'purpose'});
+ await f.timers.findLast(timer=>timer.ms===250&&!timer.cleared).fn();await f.session.chain;
+ assert.equal(f.store.get('call',f.call.id).schedule.awaiting,'day');
+ const count=f.ai.sent.length;
+ await f.say('schedule an appointment','purpose');assert.equal(f.ai.sent.length,count);
+ f.session.finish();
+});
+test('a buffered early yes cannot authorize a readback after its playback mark',async()=>{
+ const f=fixture();await messageMode(f);await f.audio('readback');
+ await f.grok({type:'input_audio_buffer.speech_started',item_id:'early'});
+ await f.say('yes','early');
+ await f.grok({type:'input_audio_buffer.speech_stopped',item_id:'early'});
+ await f.timers.findLast(timer=>timer.ms===250&&!timer.cleared).fn();await f.session.chain;
+ assert.equal(f.store.list('message').length,0);
+ assert.equal(f.store.get('call',f.call.id).booking,undefined);
+ f.session.finish();
 });
 const conversationCases = [
  {intent:"I'd like to schedule an appointment",answers:['Friday','10 a.m.'],date:'2026-10-23',time:'10:00'},
@@ -658,6 +662,7 @@ for (const order of ['history-first','final-first','vad-during-output','duplicat
    await f.grok({type:'input_audio_buffer.speech_started'});
    await f.grok({type:'conversation.item.input_audio_transcription.updated',item_id:id,transcript:'partial'});
    if(order==='history-first')await f.grok(history);
+   await f.grok({type:'input_audio_buffer.speech_stopped'});
    await f.say(text,id);
    if(order==='final-first')await f.grok(history);
    await f.say(text,id);
@@ -668,6 +673,7 @@ for (const order of ['history-first','final-first','vad-during-output','duplicat
     if(order==='vad-during-output')await f.grok({type:'input_audio_buffer.speech_started'});
     else await f.say(text,id);
     await f.grok({type:'response.output_audio.delta',response_id:`question-${i}`,delta:'YWJj'});
+    await f.grok({type:'response.output_audio_transcript.done',response_id:`question-${i}`,transcript:lastLine(f)});
     await f.grok({type:'response.done',response:{id:`question-${i}`,status:'completed'}});
    } else await f.audio(`question-${i}`);
    await f.mark();assert.equal(f.session.stage,'collect');

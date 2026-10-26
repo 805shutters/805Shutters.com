@@ -5,6 +5,15 @@ import { applyFindResult, applyScheduleTurn, bookedSchedule, callbackSchedule, c
 const caller = '+18055550199';
 const NOW = new Date('2026-10-20T18:00:00Z');
 const FRIDAY = 'Friday, October 23';
+test('provider-spaced house numbers are read back as one number without changing ordinal street names', () => {
+ for (const [heard,expected] of [['1 2 3 Test Street, Camarillo.','123 Test Street, Camarillo'],['1 25 Test Street, Camarillo.','125 Test Street, Camarillo'],['123 42nd Street, Camarillo','123 42nd Street, Camarillo']]) {
+  let state=initialSchedule(caller);
+  for(const text of ['schedule an appointment','Friday','10 am'])state=applyScheduleTurn(state,text,caller,'',NOW).state;
+  const result=applyScheduleTurn(state,heard,caller,'',NOW);
+  assert.equal(result.state.address,expected);assert.equal(result.state.addressConfirmed,false);
+  assert.equal(result.say,`I have ${expected}. Is that correct?`);
+ }
+});
 test('unrecognized or ambiguous choices clarify once instead of repeating forever', () => {
  for (const text of ['the other thing', 'leave a message or schedule an appointment']) {
   const first=applyScheduleTurn(initialSchedule(caller),text,caller,'',NOW);

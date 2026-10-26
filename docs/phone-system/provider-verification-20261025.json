@@ -1,0 +1,1222 @@
+{
+  "testedAt": "2026-10-26",
+  "scope": "Synthetic callers through real xAI speech, production media adapter and isolated booking fixtures. Separate actual CRM SQL integration tests. No Twilio call, production CRM write, SMS or stored audio.",
+  "conversations": 13,
+  "audioOutputs": 119,
+  "runs": [
+    {
+      "requestId": 104452,
+      "case": "booked",
+      "voice": "rex",
+      "stateDelayMs": 250,
+      "durationMs": 88290,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "booking": true,
+        "message": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "response": "217a62f2-322e-46ba-8182-f7b322830b6e",
+          "bytes": 74164,
+          "hash": "76bede5b7b08ba0d",
+          "expected": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "transcribedAudio": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "85dffd03-13b3-4345-9fa9-f8b18ed80910",
+          "bytes": 12721,
+          "hash": "58e82652d46da76d",
+          "expected": "What day works for you?",
+          "transcribedAudio": "What day works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "d4cdfda2-8c8f-405a-93fa-9e75d76e44a6",
+          "bytes": 25521,
+          "hash": "53355081f1e1ee76",
+          "expected": "What time on Thursday, October 29 works for you?",
+          "transcribedAudio": "What time on Thursday, October 29th works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "782ca49d-4513-4de4-98fe-ba22f82c6c69",
+          "bytes": 51123,
+          "hash": "4b6cf0df29f4b854",
+          "expected": "Absolutely, I'll check Thursday, October 29, 10:00 AM Pacific. May I please get your address?",
+          "transcribedAudio": "Absolutely, I'll check Thursday, October 29th, 10 AM Pacific. May I please get your address?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "8e8ae611-8078-475a-96c4-f30ad37ce0fb",
+          "bytes": 33202,
+          "hash": "59233481d72a80e0",
+          "expected": "I have 1 2 3 Test Street, Camarillo.. Is that correct?",
+          "transcribedAudio": "I have 123 Test Street, Camarillo. Is that correct?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "e117a62a-27d7-4534-9056-cf0cb79ddd07",
+          "bytes": 20403,
+          "hash": "c0371d5937aa74ac",
+          "expected": "Is this for your home or a commercial property?",
+          "transcribedAudio": "Is this for your home or a commercial property",
+          "wordAgreement": 1
+        },
+        {
+          "response": "f3fc2dc8-4f63-4cd7-8840-3b01b940c40f",
+          "bytes": 10161,
+          "hash": "b154fe1449f019b9",
+          "expected": "May I have your name?",
+          "transcribedAudio": "May I have your name?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "dc30243e-194e-4fde-aea7-3545c69298f9",
+          "bytes": 46003,
+          "hash": "8bee1e8467b4a85a",
+          "expected": "Thursday, October 29, 10:00 AM Pacific is open on our calendar. Does that work for you?",
+          "transcribedAudio": "Thursday, October 29th, 10 a.m. Pacific is open on our calendar. Does that work for you?",
+          "wordAgreement": 0.9285714285714286
+        },
+        {
+          "response": "a09209fa-cfc2-47aa-97ff-a2f34fed667b",
+          "bytes": 71603,
+          "hash": "9223d732112f60fb",
+          "expected": "Your consultation is Thursday, October 29, 10:00 AM Pacific at 1 2 3 Test Street, Camarillo.. Please say yes to book this appointment.",
+          "transcribedAudio": "Your consultation is Thursday, October 29th, 10 AM Pacific at 123 Test Street, Camarillo. Please say yes to book this appointment.",
+          "wordAgreement": 1
+        },
+        {
+          "response": "7d9f34c1-29cb-4522-82dc-575b540efb1f",
+          "bytes": 56242,
+          "hash": "eded6bf965124bb8",
+          "expected": "Absolutely, we're confirmed for Thursday, October 29, 10:00 AM Pacific. Is there anything else I can help with?",
+          "transcribedAudio": "Absolutely, we're confirmed for Thursday, October 29th, 10 a.m. Pacific. Is there anything else I can help with?",
+          "wordAgreement": 0.9375
+        }
+      ],
+      "bookingVerified": true,
+      "finalAwaiting": "done"
+    },
+    {
+      "requestId": 104453,
+      "case": "unavailable",
+      "voice": "rex",
+      "stateDelayMs": 250,
+      "durationMs": 104587,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "booking": true,
+        "message": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "response": "91e6306f-7dd0-481a-939b-2af9af955fff",
+          "bytes": 69043,
+          "hash": "de1ec11de0675298",
+          "expected": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "transcribedAudio": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "60ef4280-0e04-4eb9-b6e8-536aad0f8ed2",
+          "bytes": 10161,
+          "hash": "d24cfd3a22d674f2",
+          "expected": "What day works for you?",
+          "transcribedAudio": "What day works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "9b3091f1-3505-42f5-ad16-e92ca2df4942",
+          "bytes": 25521,
+          "hash": "2681bbec0d39cd58",
+          "expected": "What time on Sunday, October 25 works for you?",
+          "transcribedAudio": "What time on Sunday, October 25th, works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "faa1ece7-a937-4f82-a7b1-6d3c972fe56f",
+          "bytes": 48562,
+          "hash": "1b6c2b82a1415d0a",
+          "expected": "Absolutely, I'll check Sunday, October 25, 10:00 PM Pacific. May I please get your address?",
+          "transcribedAudio": "Absolutely, I'll check Sunday, October 25th, 10 PM Pacific. May I please get your address?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "14c96688-3065-41b0-8bcc-c31261e9eb04",
+          "bytes": 30641,
+          "hash": "ffeaada35255d98e",
+          "expected": "I have 1 2 3 Test Street, Camarillo.. Is that correct?",
+          "transcribedAudio": "I have 123 Test Street, Camarillo. Is that correct?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "05f25f5b-82f1-459f-8d95-513952569ff5",
+          "bytes": 20403,
+          "hash": "ad3929c0e54fe81f",
+          "expected": "Is this for your home or a commercial property?",
+          "transcribedAudio": "Is this for your home or a commercial property",
+          "wordAgreement": 1
+        },
+        {
+          "response": "8703fc0a-cd8f-412d-99f0-589bfdec28f9",
+          "bytes": 10161,
+          "hash": "3b7671c860e180d0",
+          "expected": "May I have your name?",
+          "transcribedAudio": "May I have your name?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "3bc28763-d990-4b99-b508-2fc64400ce36",
+          "bytes": 46004,
+          "hash": "8d675d68ea347f20",
+          "expected": "No open CRM time fits. May I take a callback message so staff can see whether they can accommodate it?",
+          "transcribedAudio": "No open CRM time fits. May I take a callback message so staff can see whether they can accommodate it?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "4956304a-5584-46f2-bf96-f2cb061aa1c3",
+          "bytes": 53683,
+          "hash": "750ecc05a1a18c53",
+          "expected": "I can call you back at + 1 8 0 5 5 5 5 0 1 9 9. Is that the right number?",
+          "transcribedAudio": "I can call you back at +1 805-555-0199. Is that the right number?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "7e05b9a4-d141-4dfa-a3c3-036c0f166d58",
+          "bytes": 12721,
+          "hash": "1984e43fb365a25f",
+          "expected": "What is the reason for your call?",
+          "transcribedAudio": "What is the reason for your call",
+          "wordAgreement": 1
+        },
+        {
+          "response": "ad57b765-e18f-4765-a303-0e01cae7235a",
+          "bytes": 99764,
+          "hash": "5ec8068830dcfda5",
+          "expected": "Message from Pat Example.. Callback number + 1 8 0 5 5 5 5 0 1 9 9. Please call me about another opening.. Please say yes to save this message, or say what you want changed.",
+          "transcribedAudio": "Message from Pat Example. Callback number +1 805-555-0199. Please call me about another opening. Please say yes to save this message, or say what you want changed.",
+          "wordAgreement": 1
+        },
+        {
+          "response": "a1398e00-7dcf-4938-9c97-35d8b1453ca1",
+          "bytes": 35763,
+          "hash": "243ea9d96bf9a94a",
+          "expected": "Your message has been saved for our team to review. Is there anything else I can help with?",
+          "transcribedAudio": "Your message has been saved for our team to review. Is there anything else I can help with?",
+          "wordAgreement": 1
+        }
+      ],
+      "bookingVerified": false,
+      "finalAwaiting": "help"
+    },
+    {
+      "requestId": 104454,
+      "case": "correction",
+      "voice": "rex",
+      "stateDelayMs": 250,
+      "durationMs": 110350,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "booking": true,
+        "message": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "response": "68155037-73ea-46ec-9566-ff84a74b8ecf",
+          "bytes": 71604,
+          "hash": "9ec2961083b91e8d",
+          "expected": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "transcribedAudio": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "637ac763-ea1a-40b2-b148-2de74f9389d6",
+          "bytes": 10161,
+          "hash": "8e2fefc5db70be9d",
+          "expected": "What day works for you?",
+          "transcribedAudio": "What day works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "21128e12-a8e2-4c35-bb8d-1261f944f4b3",
+          "bytes": 25521,
+          "hash": "7cad7a0b0e61004d",
+          "expected": "What time on Thursday, October 29 works for you?",
+          "transcribedAudio": "What time on Thursday, October 29th works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "5382365c-b2c2-4b20-9c83-af6dbe3dec88",
+          "bytes": 51123,
+          "hash": "e6f8eafb0e71482b",
+          "expected": "Absolutely, I'll check Thursday, October 29, 10:00 AM Pacific. May I please get your address?",
+          "transcribedAudio": "Absolutely, I'll check Thursday, October 29th, 10 a.m. Pacific. May I please get your address?",
+          "wordAgreement": 0.9166666666666666
+        },
+        {
+          "response": "50e3c4fb-408d-4918-aa13-33375ce52e09",
+          "bytes": 48562,
+          "hash": "5b0c14d2cf32639d",
+          "expected": "Absolutely, I'll check Friday, October 30, 3:00 PM Pacific. May I please get your address?",
+          "transcribedAudio": "Absolutely, I'll check Friday, October 30, 3PM Pacific. May I please get your address?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "1f726dd4-3692-4e51-bbd9-f93238d9949d",
+          "bytes": 33202,
+          "hash": "f265030400540d5b",
+          "expected": "I have 1 2 3 Test Street, Camarillo.. Is that correct?",
+          "transcribedAudio": "I have 123 Test Street, Camarillo. Is that correct?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "9589f247-1b17-4aea-a3ed-810641dbd404",
+          "bytes": 33203,
+          "hash": "d1d5d87f4f6ecf1e",
+          "expected": "I have 1 25 Test Street, Camarillo.. Is that correct?",
+          "transcribedAudio": "I have 1 25 Test Street, Camarillo. Is that correct?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "d00b1271-6e19-42ef-9f84-9f8f70540e47",
+          "bytes": 20403,
+          "hash": "2b3627cb1f732861",
+          "expected": "Is this for your home or a commercial property?",
+          "transcribedAudio": "Is this for your home or a commercial property",
+          "wordAgreement": 1
+        },
+        {
+          "response": "e9759ed6-8fb3-47ab-bf13-767d3a2eae16",
+          "bytes": 10161,
+          "hash": "51a8d9733d6eb7ca",
+          "expected": "May I have your name?",
+          "transcribedAudio": "May I have your name?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "ce98ecf1-109e-4541-bade-f20e9c7ee306",
+          "bytes": 46003,
+          "hash": "9f6d68abbe7185d0",
+          "expected": "Friday, October 30, 3:00 PM Pacific is open on our calendar. Does that work for you?",
+          "transcribedAudio": "Friday, October 30th, 3 PM Pacific is open on our calendar. Does that work for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "19470191-0d3c-4854-a3d2-a05cefc37493",
+          "bytes": 71604,
+          "hash": "450b95cfbfc50e9b",
+          "expected": "Your consultation is Friday, October 30, 3:00 PM Pacific at 1 25 Test Street, Camarillo.. Please say yes to book this appointment.",
+          "transcribedAudio": "Your consultation is Friday, October 30, 3PM Pacific, at 01:25 Test Street, Camarillo. Please say yes to book this appointment.",
+          "wordAgreement": 1
+        },
+        {
+          "response": "ccc99eef-ad23-412c-aa32-887ed83d7777",
+          "bytes": 53683,
+          "hash": "1c4db7b28e269448",
+          "expected": "Absolutely, we're confirmed for Friday, October 30, 3:00 PM Pacific. Is there anything else I can help with?",
+          "transcribedAudio": "Absolutely, we're confirmed for Friday, October 30, three PM Pacific. Is there anything else I can help with?",
+          "wordAgreement": 1
+        }
+      ],
+      "bookingVerified": true,
+      "finalAwaiting": "done"
+    },
+    {
+      "requestId": 104476,
+      "case": "flexible",
+      "voice": "eve",
+      "stateDelayMs": 600,
+      "durationMs": 93545,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "booking": true,
+        "message": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "response": "902bfa52-2fb1-4c30-8311-a83d2a15bb74",
+          "bytes": 69043,
+          "hash": "b59d60b1a4417086",
+          "expected": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "transcribedAudio": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "8b022495-84de-4d03-b43d-8fdc35632170",
+          "bytes": 10161,
+          "hash": "40e15404b7e2277e",
+          "expected": "What day works for you?",
+          "transcribedAudio": "What day works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "b7d03024-4a44-45b3-8acb-a7620e565bb6",
+          "bytes": 22962,
+          "hash": "09482798ea29fedc",
+          "expected": "What time on Friday, October 30 works for you?",
+          "transcribedAudio": "What time on Friday, October 30, it works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "16cc934f-b5f5-4d39-81af-4a5da42729e6",
+          "bytes": 35763,
+          "hash": "f153e27ec8a9b688",
+          "expected": "Absolutely, I'll check Friday, October 30. May I please get your address?",
+          "transcribedAudio": "Absolutely, I'll check Friday, October 30th. May I please get your address?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "33476667-98f4-445d-82e7-7cc6b2f83b74",
+          "bytes": 30641,
+          "hash": "98fa33c3559e437c",
+          "expected": "I have 1 2 3 Test Street, Camarillo.. Is that correct?",
+          "transcribedAudio": "I have 123 Test Street, Camarillo. Is that correct?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "8e9a6914-59c7-4592-9ed4-54403984315e",
+          "bytes": 20403,
+          "hash": "f1b76cc6591248df",
+          "expected": "Is this for your home or a commercial property?",
+          "transcribedAudio": "Is this for your home or a commercial property",
+          "wordAgreement": 1
+        },
+        {
+          "response": "dc796dba-ab2a-4e0f-b15c-bf29b3e450c7",
+          "bytes": 10161,
+          "hash": "ecb6f281f5b0b616",
+          "expected": "May I have your name?",
+          "transcribedAudio": "May I have your name?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "f3af393d-40e9-4461-ab9e-66ed51a0d587",
+          "bytes": 43444,
+          "hash": "a61cc2b5a5550076",
+          "expected": "Friday, October 30, 10:00 AM Pacific is open on our calendar. Does that work for you?",
+          "transcribedAudio": "Friday, October 30th, 10 AM Pacific is open on our calendar. Does that work for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "3b622c7e-1cb1-47fb-be5f-663bb1bf989c",
+          "bytes": 69044,
+          "hash": "b1a7d906f18c2e74",
+          "expected": "Your consultation is Friday, October 30, 10:00 AM Pacific at 1 2 3 Test Street, Camarillo.. Please say yes to book this appointment.",
+          "transcribedAudio": "Your consultation is Friday, October 30th, 10 AM Pacific at 123 Test Street, Camarillo. Please say yes to book this appointment.",
+          "wordAgreement": 1
+        },
+        {
+          "response": "583dee08-8e25-49a6-925d-60db9c80d460",
+          "bytes": 51123,
+          "hash": "52e46193dfbd8ae4",
+          "expected": "Absolutely, we're confirmed for Friday, October 30, 10:00 AM Pacific. Is there anything else I can help with?",
+          "transcribedAudio": "Absolutely, we're confirmed for Friday, October 30, 10AM Pacific. Is there anything else I can help with?",
+          "wordAgreement": 1
+        }
+      ],
+      "bookingVerified": true,
+      "finalAwaiting": "done"
+    },
+    {
+      "requestId": 104477,
+      "case": "alternative",
+      "voice": "eve",
+      "stateDelayMs": 600,
+      "durationMs": 99288,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "booking": true,
+        "message": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "response": "83c6506e-f61b-4e57-ae56-cc57bf64cd54",
+          "bytes": 71604,
+          "hash": "26fa48bfd0ab65bb",
+          "expected": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "transcribedAudio": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "17b214e8-33b5-4029-b997-12a5f9e63c31",
+          "bytes": 12721,
+          "hash": "0f7c9dc15a1b9af6",
+          "expected": "What day works for you?",
+          "transcribedAudio": "What day works for you",
+          "wordAgreement": 1
+        },
+        {
+          "response": "2a88f05d-7cc4-4190-9686-8cb29c8ac426",
+          "bytes": 22962,
+          "hash": "1a6219e843a317de",
+          "expected": "What time on Friday, October 30 works for you?",
+          "transcribedAudio": "What time on Friday, October 30 works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "e3fa8ca9-61b2-407a-b693-0a9b4899900d",
+          "bytes": 48562,
+          "hash": "f42e7066da876f68",
+          "expected": "Absolutely, I'll check Friday, October 30, 10:00 AM Pacific. May I please get your address?",
+          "transcribedAudio": "Absolutely, I'll check Friday, October 30, 10AM Pacific. May I please get your address?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "a9480ffc-58fa-4539-8915-da6903a64fc2",
+          "bytes": 33203,
+          "hash": "223acbd8cf345885",
+          "expected": "I have 1 2 3 Test Street, Camarillo.. Is that correct?",
+          "transcribedAudio": "I have 123 Test Street, Camarillo. Is that correct?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "58cbb209-1d57-4052-b21f-692d8dc6ecbd",
+          "bytes": 20403,
+          "hash": "7b90e12ec845de94",
+          "expected": "Is this for your home or a commercial property?",
+          "transcribedAudio": "Is this for your home or a commercial property",
+          "wordAgreement": 1
+        },
+        {
+          "response": "2323eaea-24bd-4d4c-9f8c-f4fbb69abe67",
+          "bytes": 10161,
+          "hash": "a9a9cb8335e8ceb4",
+          "expected": "May I have your name?",
+          "transcribedAudio": "May I have your name?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "7aa5847c-158b-4af0-9c00-35d297e701a4",
+          "bytes": 43444,
+          "hash": "888f71b7bcd36b69",
+          "expected": "Friday, October 30, 11:00 AM Pacific is open on our calendar. Does that work for you?",
+          "transcribedAudio": "Friday, October 30, 11 AM Pacific is open on our calendar. Does that work for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "5e068934-7a54-439f-9729-689ae6f281f5",
+          "bytes": 71604,
+          "hash": "034f594792992060",
+          "expected": "Your consultation is Friday, October 30, 11:00 AM Pacific at 1 2 3 Test Street, Camarillo.. Please say yes to book this appointment.",
+          "transcribedAudio": "Your consultation is Friday, October 30, 11AM Pacific at 123 Test Street, Camarillo. Please say yes to book this appointment.",
+          "wordAgreement": 1
+        },
+        {
+          "response": "8513dab7-4aee-42a7-a0ba-6e3c9e51251e",
+          "bytes": 53683,
+          "hash": "cf389901dd21960d",
+          "expected": "Absolutely, we're confirmed for Friday, October 30, 11:00 AM Pacific. Is there anything else I can help with?",
+          "transcribedAudio": "Absolutely, we're confirmed for Friday, October 30, 11AM Pacific. Is there anything else I can help with?",
+          "wordAgreement": 1
+        }
+      ],
+      "bookingVerified": true,
+      "finalAwaiting": "done"
+    },
+    {
+      "requestId": 104478,
+      "case": "decline",
+      "voice": "eve",
+      "stateDelayMs": 600,
+      "durationMs": 91339,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "booking": true,
+        "message": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "response": "747ebe27-3bed-40a1-afa7-42eaf141b9ba",
+          "bytes": 69043,
+          "hash": "10a8726faa6a4fae",
+          "expected": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "transcribedAudio": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "16e843bc-ebee-4ec8-bcb9-954d512ea92a",
+          "bytes": 12721,
+          "hash": "4d7e9457563825a4",
+          "expected": "What day works for you?",
+          "transcribedAudio": "What day works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "ddb1476b-511d-4b59-8a22-fd9a4c0eb32a",
+          "bytes": 25521,
+          "hash": "0c76104189bd47b6",
+          "expected": "What time on Thursday, October 29 works for you?",
+          "transcribedAudio": "What time on Thursday, October 29th works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "7a8d55c7-db96-40dd-a7de-4b1bab22e568",
+          "bytes": 51122,
+          "hash": "1cbdbcea2c94c89c",
+          "expected": "Absolutely, I'll check Thursday, October 29, 10:00 AM Pacific. May I please get your address?",
+          "transcribedAudio": "Absolutely, I'll check Thursday, October 29th, 10 AM Pacific. May I please get your address?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "0430a455-2232-4fa0-9b47-a94d9ff3d615",
+          "bytes": 30641,
+          "hash": "400923420ea4751c",
+          "expected": "I have 1 2 3 Test Street, Camarillo.. Is that correct?",
+          "transcribedAudio": "I have 123 Test Street, Camarillo. Is that correct?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "53c04be3-e55d-4e37-96fc-08369da75602",
+          "bytes": 20403,
+          "hash": "b0b1cdcca06f8b43",
+          "expected": "Is this for your home or a commercial property?",
+          "transcribedAudio": "Is this for your home or a commercial property",
+          "wordAgreement": 1
+        },
+        {
+          "response": "a4c2e25a-e886-4ced-bbba-79f81466385e",
+          "bytes": 10161,
+          "hash": "01266b4f9ee922cc",
+          "expected": "May I have your name?",
+          "transcribedAudio": "May I have your name?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "eee06c14-9728-4a7a-bf25-1388071ec085",
+          "bytes": 43444,
+          "hash": "e217c8e6de92b201",
+          "expected": "Thursday, October 29, 10:00 AM Pacific is open on our calendar. Does that work for you?",
+          "transcribedAudio": "Thursday, October 29th, 10 AM Pacific is open on our calendar. Does that work for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "a5043edc-6587-4a03-a883-452f33ffac68",
+          "bytes": 69044,
+          "hash": "66dd2ad9e1a0b3c6",
+          "expected": "Your consultation is Thursday, October 29, 10:00 AM Pacific at 1 2 3 Test Street, Camarillo.. Please say yes to book this appointment.",
+          "transcribedAudio": "Your consultation is Thursday, October 29th, 10 AM Pacific at 123 Test Street, Camarillo. Please say yes to book this appointment.",
+          "wordAgreement": 1
+        },
+        {
+          "response": "f1e4876d-412a-4314-bbd7-25d7cfd539fb",
+          "bytes": 25521,
+          "hash": "b070775ea5e62b91",
+          "expected": "Nothing new was saved. Tell me what you would like to change.",
+          "transcribedAudio": "Nothing new was saved tell me what you would like to change",
+          "wordAgreement": 1
+        }
+      ],
+      "bookingVerified": false,
+      "finalAwaiting": "correction"
+    },
+    {
+      "requestId": 104486,
+      "case": "duration",
+      "voice": "rex",
+      "stateDelayMs": 0,
+      "durationMs": 37858,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "booking": true,
+        "message": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "response": "ed9d7b7c-a3e8-46ff-969c-bc563ad559c0",
+          "bytes": 71604,
+          "hash": "8c3e746e77e9daaf",
+          "expected": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "transcribedAudio": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "f7d50e26-53e3-4eee-b8ef-772d9e1110d7",
+          "bytes": 10161,
+          "hash": "412d06dacf66dcac",
+          "expected": "What day works for you?",
+          "transcribedAudio": "What day works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "beb2f496-4467-4294-ba3c-6becb5495eb4",
+          "bytes": 25521,
+          "hash": "6db97cedb07c79da",
+          "expected": "What time on Thursday, October 29 works for you?",
+          "transcribedAudio": "What time on Thursday, October 29th works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "e88bbd26-7205-4f28-bd96-f2d634faed41",
+          "bytes": 38323,
+          "hash": "5818a273bd8006b3",
+          "expected": "Generally about one hour. What time on Thursday, October 29 works for you?",
+          "transcribedAudio": "Generally about 1 h. What time on Thursday, October 29th works for you?",
+          "wordAgreement": 0.8333333333333334
+        },
+        {
+          "response": "702b6b6f-09b8-4870-bf2c-4b52dddccfee",
+          "bytes": 51122,
+          "hash": "8c4906b1c540d1eb",
+          "expected": "Absolutely, I'll check Thursday, October 29, 10:00 AM Pacific. May I please get your address?",
+          "transcribedAudio": "Absolutely, I'll check Thursday, October 29th, 10 a.m. Pacific. May I please get your address?",
+          "wordAgreement": 0.9166666666666666
+        }
+      ],
+      "bookingVerified": false,
+      "finalAwaiting": "address"
+    },
+    {
+      "requestId": 104487,
+      "case": "past",
+      "voice": "rex",
+      "stateDelayMs": 0,
+      "durationMs": 35129,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "booking": true,
+        "message": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "response": "b02a35c3-3da6-4d46-8f0d-d64da4edc918",
+          "bytes": 69043,
+          "hash": "6fa4f21558f097e1",
+          "expected": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "transcribedAudio": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "8ec3a1e1-8414-4514-a47d-db77387720c8",
+          "bytes": 10161,
+          "hash": "7b98a48a0f9c8fea",
+          "expected": "What day works for you?",
+          "transcribedAudio": "What day works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "75490885-5c66-4368-9d39-ce5446d5de80",
+          "bytes": 25521,
+          "hash": "d637aa7aac803777",
+          "expected": "That date has already passed. What day works for you?",
+          "transcribedAudio": "That date has already passed what day works for you",
+          "wordAgreement": 1
+        },
+        {
+          "response": "f04ed22b-ce7c-4338-9a4a-bd2f29b8adfb",
+          "bytes": 25521,
+          "hash": "71da84ea008dc912",
+          "expected": "What time on Thursday, October 29 works for you?",
+          "transcribedAudio": "What time on thursday october 29 works for you",
+          "wordAgreement": 1
+        },
+        {
+          "response": "aa75f912-bb01-4f40-a4eb-506ec161f618",
+          "bytes": 51123,
+          "hash": "02811a0d76711927",
+          "expected": "Absolutely, I'll check Thursday, October 29, 10:00 AM Pacific. May I please get your address?",
+          "transcribedAudio": "Absolutely, I'll check Thursday, October 29th, 10 AM Pacific. May I please get your address?",
+          "wordAgreement": 1
+        }
+      ],
+      "bookingVerified": false,
+      "finalAwaiting": "address"
+    },
+    {
+      "requestId": 104488,
+      "case": "unclear",
+      "voice": "rex",
+      "stateDelayMs": 0,
+      "durationMs": 25797,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "booking": true,
+        "message": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "response": "13634842-2c8a-4cb4-be21-17943be7d972",
+          "bytes": 69042,
+          "hash": "012318a3178b12b5",
+          "expected": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "transcribedAudio": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "d3ead1aa-68ef-49a8-98eb-25ee3e99ccf4",
+          "bytes": 40883,
+          "hash": "e0c004e092bbdd13",
+          "expected": "I did not catch that. Would you like to leave a message for a callback, or would you like to schedule an appointment?",
+          "transcribedAudio": "I did not catch that. Would you like to leave a message for a callback, or would you like to schedule an appointment?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "4d3069f0-c747-4e39-ac8a-35188d9beca9",
+          "bytes": 33202,
+          "hash": "e0e5e70932417faa",
+          "expected": "I still did not catch that. May I take a callback message so our team can help?",
+          "transcribedAudio": "I still did not catch that. May I take a callback message so our team can help?",
+          "wordAgreement": 1
+        }
+      ],
+      "bookingVerified": false,
+      "finalAwaiting": "callback"
+    },
+    {
+      "requestId": 104508,
+      "case": "correction",
+      "voice": "eve",
+      "stateDelayMs": 250,
+      "durationMs": 103713,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "booking": true,
+        "message": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "response": "498e4b0b-807a-413d-9a3c-d1af849caa01",
+          "bytes": 69043,
+          "hash": "d2acaaa3cf19d0ed",
+          "expected": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "transcribedAudio": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "070aaef2-bc16-4008-a7e2-4d019365910c",
+          "bytes": 10161,
+          "hash": "c0573b8bc6d27932",
+          "expected": "What day works for you?",
+          "transcribedAudio": "What day works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "9f9bec98-91cc-467a-a97c-10e74c9c7c2b",
+          "bytes": 25521,
+          "hash": "e58994540cf62a1b",
+          "expected": "What time on Thursday, October 29 works for you?",
+          "transcribedAudio": "What time on Thursday, October 29th works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "73e601d7-e410-4d57-96e6-6ed75eda2e13",
+          "bytes": 48562,
+          "hash": "7649d9e2049f3646",
+          "expected": "Absolutely, I'll check Thursday, October 29, 10:00 AM Pacific. May I please get your address?",
+          "transcribedAudio": "Absolutely, I'll check Thursday, October 29th, 10 AM Pacific. May I please get your address?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "95b4a5fb-7dfe-448b-a904-2232c48f22f8",
+          "bytes": 48562,
+          "hash": "81d41007381133c3",
+          "expected": "Absolutely, I'll check Friday, October 30, 3:00 PM Pacific. May I please get your address?",
+          "transcribedAudio": "Absolutely, I'll check Friday, October 30, three PM Pacific. May I please get your address?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "c1af784c-4c2f-46d9-950a-9b09f55c25ba",
+          "bytes": 30642,
+          "hash": "a4cfb4b1592a9c81",
+          "expected": "I have 123 Test Street, Camarillo. Is that correct?",
+          "transcribedAudio": "I have 123 Test Street, Camarillo. Is that correct?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "ae9d430c-09ba-4b7c-91ac-1c7448eab2c6",
+          "bytes": 30642,
+          "hash": "2d72e2365c0ba3d2",
+          "expected": "I have 125 Test Street, Camarillo. Is that correct?",
+          "transcribedAudio": "I have 125 Test Street, Camarillo. Is that correct?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "dfa4b52f-ca2f-44b2-ac4e-2c848ca66750",
+          "bytes": 20403,
+          "hash": "1f84fbe6bf5d688b",
+          "expected": "Is this for your home or a commercial property?",
+          "transcribedAudio": "Is this for your home or a commercial property?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "5feeac9a-6d01-4c5c-9f22-2f11e33ca325",
+          "bytes": 10161,
+          "hash": "a7179bf4d6b72a13",
+          "expected": "May I have your name?",
+          "transcribedAudio": "May I have your name?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "e6dab5a3-23da-408c-905e-040c3faaba62",
+          "bytes": 43444,
+          "hash": "4532b6415ca47996",
+          "expected": "Friday, October 30, 3:00 PM Pacific is open on our calendar. Does that work for you?",
+          "transcribedAudio": "Friday, October 30th, 3 PM Pacific is open on our calendar. Does that work for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "02686a87-fc0c-4561-aa11-43a55cf5bbcb",
+          "bytes": 69043,
+          "hash": "2e1390fc6d0ed1f6",
+          "expected": "Your consultation is Friday, October 30, 3:00 PM Pacific at 125 Test Street, Camarillo. Please say yes to book this appointment.",
+          "transcribedAudio": "Your consultation is Friday, October 30, 3PM Pacific at 125 Test Street, Camarillo. Please say yes to book this appointment.",
+          "wordAgreement": 1
+        },
+        {
+          "response": "a495c36c-24d1-44c7-b666-d92aba339a6d",
+          "bytes": 51123,
+          "hash": "6c5f9233feda298a",
+          "expected": "Absolutely, we're confirmed for Friday, October 30, 3:00 PM Pacific. Is there anything else I can help with?",
+          "transcribedAudio": "Absolutely, we're confirmed for Friday, October 30th, 3 PM Pacific. Is there anything else I can help with?",
+          "wordAgreement": 1
+        }
+      ],
+      "bookingVerified": true,
+      "finalAwaiting": "done"
+    },
+    {
+      "requestId": 104509,
+      "case": "booked",
+      "voice": "eve",
+      "stateDelayMs": 250,
+      "durationMs": 83553,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "booking": true,
+        "message": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "response": "9930ec6a-457d-4fa6-b8d1-5a081030b0ff",
+          "bytes": 69043,
+          "hash": "44317dc2d1370937",
+          "expected": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "transcribedAudio": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "7ed02fff-ab76-4f5d-b24a-ee802938b368",
+          "bytes": 10161,
+          "hash": "574b57ae9fc15aca",
+          "expected": "What day works for you?",
+          "transcribedAudio": "What day works for you",
+          "wordAgreement": 1
+        },
+        {
+          "response": "c0f5f3e2-0999-4a67-b36b-32d143e1e403",
+          "bytes": 22962,
+          "hash": "d6e7d6d5d325a116",
+          "expected": "What time on Thursday, October 29 works for you?",
+          "transcribedAudio": "What time on Thursday, October 29th works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "2a57a464-7974-4d8c-983c-552cffb18a63",
+          "bytes": 48562,
+          "hash": "1f5ae1d66df343df",
+          "expected": "Absolutely, I'll check Thursday, October 29, 10:00 AM Pacific. May I please get your address?",
+          "transcribedAudio": "Absolutely, I'll check Thursday, October 29th, 10 AM Pacific. May I please get your address?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "ebcc18f1-db33-4794-9bc6-55829bd0e3ee",
+          "bytes": 30642,
+          "hash": "ef1708020c277e3d",
+          "expected": "I have 123 Test Street, Camarillo. Is that correct?",
+          "transcribedAudio": "I have 123 Test Street, Camarillo. Is that correct?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "4870f5e5-b108-4e56-9d87-b5888383d421",
+          "bytes": 20403,
+          "hash": "31d4823c5d1cb346",
+          "expected": "Is this for your home or a commercial property?",
+          "transcribedAudio": "Is this for your home or a commercial property",
+          "wordAgreement": 1
+        },
+        {
+          "response": "f954f165-a503-41af-b83e-990031198325",
+          "bytes": 10161,
+          "hash": "ad30a96726824074",
+          "expected": "May I have your name?",
+          "transcribedAudio": "May I have your name?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "d5dc67a9-8db1-4177-a876-8ad5f07bd54a",
+          "bytes": 46003,
+          "hash": "7b21251af71ff0b8",
+          "expected": "Thursday, October 29, 10:00 AM Pacific is open on our calendar. Does that work for you?",
+          "transcribedAudio": "Thursday, October 29th, 10 AM Pacific is open on our calendar. Does that work for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "b5e512f1-6e75-45ea-8735-6dba443acc06",
+          "bytes": 69043,
+          "hash": "71c435a4a80361c6",
+          "expected": "Your consultation is Thursday, October 29, 10:00 AM Pacific at 123 Test Street, Camarillo. Please say yes to book this appointment.",
+          "transcribedAudio": "Your consultation is Thursday, October 29th, 10 AM Pacific at 123 Test Street, Camarillo. Please say yes to book this appointment.",
+          "wordAgreement": 1
+        },
+        {
+          "response": "17878cda-cbaf-4275-93cd-0a401bdc0180",
+          "bytes": 53683,
+          "hash": "1d6e8192d6a32260",
+          "expected": "Absolutely, we're confirmed for Thursday, October 29, 10:00 AM Pacific. Is there anything else I can help with?",
+          "transcribedAudio": "Absolutely, we're confirmed for Thursday, October 29th, 10 a.m. Pacific. Is there anything else I can help with?",
+          "wordAgreement": 0.9375
+        }
+      ],
+      "bookingVerified": true,
+      "finalAwaiting": "done"
+    },
+    {
+      "requestId": 104535,
+      "case": "booked",
+      "voice": "rex",
+      "stateDelayMs": 600,
+      "durationMs": 106726,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "booking": true,
+        "message": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "response": "79eb5902-8749-4b17-a35a-13e7e6d77b72",
+          "bytes": 69043,
+          "hash": "832ba35982208bdb",
+          "expected": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "transcribedAudio": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "b57d0505-5d2a-4b58-be59-7eac363a66e9",
+          "bytes": 10161,
+          "hash": "76ce789fc5395a6b",
+          "expected": "What day works for you?",
+          "transcribedAudio": "What day works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "4f39be43-8ab6-4540-a2f7-d28f87cefb3a",
+          "bytes": 25521,
+          "hash": "6f8e3057f9842582",
+          "expected": "What time on Thursday, October 29 works for you?",
+          "transcribedAudio": "What time on thursday october 29 works for you",
+          "wordAgreement": 1
+        },
+        {
+          "response": "cc906c84-e073-43f3-b8ee-7ab0b9091c54",
+          "bytes": 48562,
+          "hash": "53e0a65d8341e8b5",
+          "expected": "Absolutely, I'll check Thursday, October 29, 10:00 AM Pacific. May I please get your address?",
+          "transcribedAudio": "Absolutely. I'll check Thursday, October 29th, 10 a.m. Pacific. May I please get your address?",
+          "wordAgreement": 0.9166666666666666
+        },
+        {
+          "response": "7e9deb36-eb73-4e81-b7e3-ebd5ffc70871",
+          "bytes": 30642,
+          "hash": "da9e0c038c368cc2",
+          "expected": "I have 123 Test Street, Camarillo. Is that correct?",
+          "transcribedAudio": "I have 123 Test Street, Camarillo. Is that correct?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "7774a40a-c76f-46d0-803d-f3f08e39c80c",
+          "bytes": 20403,
+          "hash": "62c4ee582be1f5f9",
+          "expected": "Is this for your home or a commercial property?",
+          "transcribedAudio": "Is this for your home or a commercial property",
+          "wordAgreement": 1
+        },
+        {
+          "response": "d3d42955-35d1-44a4-a9aa-bdcf85095807",
+          "bytes": 10161,
+          "hash": "a1e3da48bdf479e4",
+          "expected": "May I have your name?",
+          "transcribedAudio": "May I have your name?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "98b309ef-171f-4cca-a9af-5977c69289b7",
+          "bytes": 46003,
+          "hash": "22a42f0368d69498",
+          "expected": "Thursday, October 29, 10:00 AM Pacific is open on our calendar. Does that work for you?",
+          "transcribedAudio": "Thursday, October 29th, 10 a.m. Pacific is open on our calendar. Does that work for you?",
+          "wordAgreement": 0.9285714285714286
+        },
+        {
+          "response": "455d092d-2115-43e4-aaa3-3840aaf1be22",
+          "bytes": 148406,
+          "hash": "78edb648bfc0ccce",
+          "expected": "Consultation for Pat Example., at 123 Test Street, Camarillo, on 2026-10-29 at 10:00 Pacific time, for 60 minutes. Callback number + 1 8 0 5 5 5 5 0 1 9 9. Please say yes to book this appointment, or say what you want changed.",
+          "transcribedAudio": "Consultation for Pat example at 123 Test Street, Camarillo on 20 26 10 29 at 10 Pacific Time for 60 min. Callback number plus 18055550199. Please say yes to book this appointment or say what you want changed.",
+          "wordAgreement": 0.9655172413793104
+        },
+        {
+          "response": "121207eb-e6ba-4d1d-8cbc-9be4708bd39d",
+          "bytes": 53682,
+          "hash": "613632644e61215c",
+          "expected": "Absolutely, we're confirmed for Thursday, October 29, 10:00 AM Pacific. Is there anything else I can help with?",
+          "transcribedAudio": "Absolutely. We're confirmed for Thursday, October 29th, 10 a.m. Pacific. Is there anything else I can help with?",
+          "wordAgreement": 0.9375
+        }
+      ],
+      "bookingVerified": true,
+      "finalAwaiting": "done",
+      "fullProductionReadback": true
+    },
+    {
+      "requestId": 104536,
+      "case": "decline",
+      "voice": "rex",
+      "stateDelayMs": 600,
+      "durationMs": 100320,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "booking": true,
+        "message": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "response": "8f6350a0-5204-4f87-a721-d8a8a1cbc86a",
+          "bytes": 69043,
+          "hash": "bc24b251e1cba66e",
+          "expected": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "transcribedAudio": "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "bb55348e-b633-4dcb-89d3-a79569de0de4",
+          "bytes": 10161,
+          "hash": "7a5ce08d876fc818",
+          "expected": "What day works for you?",
+          "transcribedAudio": "What day works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "47d8c61d-a028-4495-a815-eaf83760055f",
+          "bytes": 25521,
+          "hash": "ee7d93ffb8d62159",
+          "expected": "What time on Thursday, October 29 works for you?",
+          "transcribedAudio": "What time on Thursday, October 29th works for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "d417aae8-a6dc-48f3-8478-28a388e96be6",
+          "bytes": 51122,
+          "hash": "8c6a9c66b30620ee",
+          "expected": "Absolutely, I'll check Thursday, October 29, 10:00 AM Pacific. May I please get your address?",
+          "transcribedAudio": "Absolutely, I'll check Thursday, October 29th, 10 AM Pacific. May I please get your address?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "ca51ae55-4ac1-4a68-98a0-da109b57331d",
+          "bytes": 30642,
+          "hash": "f2cedcf065ef0529",
+          "expected": "I have 123 Test Street, Camarillo. Is that correct?",
+          "transcribedAudio": "I have 123 Test Street, Camarillo. Is that correct?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "55ae2c2c-d61e-49b9-8a49-c18b0aa843ff",
+          "bytes": 20403,
+          "hash": "dd56166227e4c82a",
+          "expected": "Is this for your home or a commercial property?",
+          "transcribedAudio": "Is this for your home or a commercial property",
+          "wordAgreement": 1
+        },
+        {
+          "response": "dd6e5ddd-bf8f-40a7-90da-7bf14884740c",
+          "bytes": 10161,
+          "hash": "dd9d052016364c0a",
+          "expected": "May I have your name?",
+          "transcribedAudio": "May I have your name?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "a592bdde-8cb3-4645-8ec9-84c1e1a10682",
+          "bytes": 46003,
+          "hash": "12efa3c44b844308",
+          "expected": "Thursday, October 29, 10:00 AM Pacific is open on our calendar. Does that work for you?",
+          "transcribedAudio": "Thursday, October 29th, 10 AM Pacific is open on our calendar. Does that work for you?",
+          "wordAgreement": 1
+        },
+        {
+          "response": "3e5d11e6-8a23-4251-ab95-632724292982",
+          "bytes": 148406,
+          "hash": "8c52de03080daf3d",
+          "expected": "Consultation for Pat Example., at 123 Test Street, Camarillo, on 2026-10-29 at 10:00 Pacific time, for 60 minutes. Callback number + 1 8 0 5 5 5 5 0 1 9 9. Please say yes to book this appointment, or say what you want changed.",
+          "transcribedAudio": "Consultation for Pat example at 123 Test Street, Camarillo on 2026 10 29 at 10 Pacific Time for 60 minutes. Callback number plus 18055550199. Please say yes to book this appointment or say what you want changed.",
+          "wordAgreement": 1
+        },
+        {
+          "response": "df7fabf4-9aeb-4a3a-a98b-64571cc7cea2",
+          "bytes": 25521,
+          "hash": "4a03471a73991178",
+          "expected": "Nothing new was saved. Tell me what you would like to change.",
+          "transcribedAudio": "Nothing new was saved. Tell me what you would like to change.",
+          "wordAgreement": 1
+        }
+      ],
+      "bookingVerified": false,
+      "finalAwaiting": "correction",
+      "fullProductionReadback": true
+    }
+  ]
+}
