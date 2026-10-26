@@ -608,6 +608,78 @@ test('audio history cannot consume the turn before its final transcription',asyn
   f.session.finish();
  }
 });
+test('speech detection alone cannot discard a saved scheduling question',async()=>{
+ const f=fixture();await ready(f);await speak(f,'schedule an appointment');await speak(f,'Friday');
+ await f.say('10 a.m.','time-answer');
+ assert.equal(f.store.get('call',f.call.id).schedule.awaiting,'address');
+ const line=lastLine(f);
+ await f.grok({type:'input_audio_buffer.speech_started'});
+ await f.grok({type:'conversation.item.input_audio_transcription.updated',item_id:'noise',transcript:'hello'});
+ await f.audio('address-question');
+ assert.equal(f.session.stage,'result-playback');
+ assert.equal(f.session.prompt.text,line);
+ await f.mark();
+ assert.equal(f.session.stage,'collect');
+ await f.say('123 Oak Street, Camarillo','address-answer');
+ assert.equal(f.store.get('call',f.call.id).schedule.address,'123 Oak Street, Camarillo');
+ assert.equal(f.store.get('call',f.call.id).schedule.awaiting,'address-confirm');
+ assert.match(lastLine(f),/123 Oak Street, Camarillo/);
+ assert.equal(f.store.get('call',f.call.id).booking,undefined);
+ f.session.finish();
+});
+test('a final reply still interrupts a question after speech detection',async()=>{
+ const f=fixture();await ready(f);await f.say('schedule an appointment','purpose');await f.audio('day');
+ await f.grok({type:'input_audio_buffer.speech_started'});
+ await f.say('Friday anytime','day-answer');
+ assert.equal(f.store.get('call',f.call.id).schedule.date,'2026-10-23');
+ assert.equal(f.store.get('call',f.call.id).schedule.window,'anytime');
+ assert.equal(f.store.get('call',f.call.id).schedule.awaiting,'address');
+ assert.equal(f.session.stage,'result');
+ assert.match(lastLine(f),/May I please get your address/);
+ await f.audio('address');await f.mark();
+ assert.equal(f.session.stage,'collect');f.session.finish();
+});
+const conversationCases = [
+ {intent:"I'd like to schedule an appointment",answers:['Friday','10 a.m.'],date:'2026-10-23',time:'10:00'},
+ {intent:'Can I book a consultation?',answers:['tomorrow','three thirty pm'],date:'2026-10-21',time:'15:30'},
+ {intent:'I want to book a visit',answers:['next Tuesday','9 am'],date:'2026-10-27',time:'09:00'},
+ {intent:'An appointment please',answers:['Monday','morning'],date:'2026-10-26',window:'morning'},
+ {intent:'Schedule me please',answers:['Friday anytime'],date:'2026-10-23',window:'anytime'},
+ {intent:'I would like a free in-home consultation',answers:['October 23','10 pm'],date:'2026-10-23',requestedTime:'22:00'},
+ {intent:'I need an estimate',answers:['Saturday','afternoon'],date:'2026-10-24',window:'afternoon'},
+ {intent:'Please schedule an appointment',answers:['Friday','9 am to 11 am'],date:'2026-10-23',window:'09:00-11:00'},
+];
+for (const order of ['history-first','final-first','vad-during-output','duplicate-during-output']) for (const scenario of conversationCases) {
+ test(`conversation matrix ${order}: ${scenario.intent}; ${scenario.answers.join('; ')}`,async()=>{
+  const f=fixture();await ready(f);
+  for (const [i,text] of [scenario.intent,...scenario.answers].entries()) {
+   const id=`matrix-${i}`;
+   const history={type:'conversation.item.added',item:{id,role:'user',status:'completed',content:[{type:'input_audio',transcript:'unclear history caption'}]}};
+   await f.grok({type:'input_audio_buffer.speech_started'});
+   await f.grok({type:'conversation.item.input_audio_transcription.updated',item_id:id,transcript:'partial'});
+   if(order==='history-first')await f.grok(history);
+   await f.say(text,id);
+   if(order==='final-first')await f.grok(history);
+   await f.say(text,id);
+   assert.equal((lastLine(f).match(/\?/g)||[]).length,1);
+   assert.doesNotMatch(lastLine(f),/we.?re confirmed|is booked/i);
+   if(order==='vad-during-output'||order==='duplicate-during-output') {
+    await f.grok({type:'response.created',response:{id:`question-${i}`}});
+    if(order==='vad-during-output')await f.grok({type:'input_audio_buffer.speech_started'});
+    else await f.say(text,id);
+    await f.grok({type:'response.output_audio.delta',response_id:`question-${i}`,delta:'YWJj'});
+    await f.grok({type:'response.done',response:{id:`question-${i}`,status:'completed'}});
+   } else await f.audio(`question-${i}`);
+   await f.mark();assert.equal(f.session.stage,'collect');
+  }
+  const saved=f.store.get('call',f.call.id).schedule;
+  for(const key of ['date','time','window','requestedTime'])if(scenario[key])assert.equal(saved[key],scenario[key]);
+  assert.equal(saved.awaiting,'address');assert.equal(saved.purpose,'appointment');
+  assert.equal(f.store.get('call',f.call.id).booking,undefined);
+  assert.equal(f.store.list('effect').some(item=>item.type==='record'),false);
+  f.session.finish();
+ });
+}
 test('audio history and partial captions during readback cannot become a late confirmation',async()=>{
  for (const type of ['conversation.item.added','conversation.item.input_audio_transcription.updated']) {
   const f=fixture();await messageMode(f);await f.audio('readback');

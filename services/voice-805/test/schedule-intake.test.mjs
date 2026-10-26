@@ -172,6 +172,16 @@ test('a rejected offer moves to the returned alternative, then asks once instead
   assert.equal(repeated.prepare, false);
   assert.notEqual(repeated.state.awaiting, 'offer');
 });
+test('date and time corrections invalidate the old offer before another availability check', () => {
+ const ready=sanitizeSchedule({...initialSchedule(caller),purpose:'appointment',date:'2026-10-23',weekday:'friday',time:'15:00',address:'123 Oak Street, Camarillo',addressConfirmed:true,city:'Camarillo',kind:'residential',name:'Pat Example',awaiting:'offer',offer:{date:'2026-10-23',time:'15:00'}});
+ for(const [text,date,time] of [['Actually Monday at 10 am','2026-10-26','10:00'],['Actually 2 pm','2026-10-23','14:00']]) {
+  const corrected=applyScheduleTurn(ready,text,caller,'',NOW);
+  assert.equal(corrected.state.date,date);assert.equal(corrected.state.time,time);
+  assert.equal(corrected.state.offer,null);assert.equal(corrected.search,true);
+  assert.equal(corrected.prepare,false);assert.equal(corrected.state.address,ready.address);
+  assert.doesNotMatch(corrected.say,/we.?re confirmed|is booked/i);
+ }
+});
 
 test('an offer uses the returned date when it is not the requested weekday', () => {
   const ready = sanitizeSchedule({ ...initialSchedule(caller), purpose: 'appointment', weekday: 'friday', date: '2026-10-23', time: '15:00', address: '123 Oak Street', addressConfirmed: true, city: 'Camarillo', kind: 'residential', name: 'Pat', awaiting: 'search' });

@@ -475,6 +475,9 @@ export class GrokMediaSession {
       if (earlyId) this.beforeReadback.add(String(earlyId));
     }
     const turn = this.callerTurn(event);
+    // Replayed final captions must not clear the next question before the
+    // collector's own duplicate guard runs.
+    if (turn && this.heard.has(turn.id)) return;
     if (turn && (this.stage === 'confirm' || this.stage === 'collect' || this.stage === 'welcome' || this.stage === 'welcome-playback' || QUESTION_STAGES.has(this.stage))) this.noteChoice();
     if (turn && READBACK_STAGES.has(this.stage)) {
       this.beforeReadback.add(turn.id);
@@ -536,7 +539,9 @@ export class GrokMediaSession {
     }
     if (event.type === 'input_audio_buffer.speech_started') {
       if (QUESTION_STAGES.has(this.stage)) {
-        this.stopOverlap();
+        // VAD also fires for noise and incomplete speech. Keep the scripted
+        // question and its deadline until a final caller turn replaces it.
+        this.note('speech-started', { questionPending: Boolean(this.prompt) });
         return;
       }
       if (this.stage === 'readback' || this.stage === 'readback-playback') {
