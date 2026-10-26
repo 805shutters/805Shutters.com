@@ -6,7 +6,7 @@ edit each section). Photo/video paths point at real assets in this repo under `p
 `~/805/805Shutters.com/public/images/...` and `.../public/videos/...`.
 
 House rules baked in: no prices anywhere, free in-home consultation is the offer,
-phone is (805) 806-9344, booking link is https://www.805shutters.com/book-consultation/
+phone is (805) 590-8050, booking link is https://www.805shutters.com/book-consultation/
 
 ---
 
@@ -16,9 +16,9 @@ phone is (805) 806-9344, booking link is https://www.805shutters.com/book-consul
 | --- | --- |
 | Page name | 805 Shutters, Shades & Blinds |
 | Categories | Window Treatment Store (primary), Home Improvement Service, Blinds & Curtains Store |
-| Bio / About | Family-owned custom shutters, shades & blinds — measured and installed across Ventura County for 30 years. Free in-home consultation: 805-806-9344 or book online. |
+| Bio / About | Family-owned custom shutters, shades & blinds — measured and installed across Ventura County for 30 years. Free in-home consultation: 805-590-8050 or book online. |
 | Website | https://www.805shutters.com |
-| Phone | (805) 806-9344 |
+| Phone | (805) 590-8050 |
 | Service area | Camarillo, Thousand Oaks, Simi Valley, Ventura, Oxnard, Moorpark, Westlake Village, Newbury Park, Santa Rosa Valley |
 | Hours | Match the Google Business Profile hours |
 | Action button | **Book Now** → https://www.805shutters.com/book-consultation/ |
@@ -27,7 +27,7 @@ phone is (805) 806-9344, booking link is https://www.805shutters.com/book-consul
 **Messenger automation** (Settings → Messaging → Automated responses):
 
 - *Instant reply:* "Thanks for reaching out to 805 Shutters! We usually reply within the
-  hour during business hours. For fastest service call or text 805-806-9344, or book a
+  hour during business hours. For fastest service call or text 805-590-8050, or book a
   free in-home consultation at https://www.805shutters.com/book-consultation/ — Ken & the 805 team"
 - *Away message:* "Thanks for your message! We're away from the desk — we'll reply first
   thing. If it's about a consultation, you can book a time that works for you anytime at
@@ -45,7 +45,7 @@ Attach: `public/images/portfolio-enhanced/recent-bay-window-plantation-shutters-
 > Ventura County — we're still here, still family-owned, and still measuring every
 > window ourselves after 30 years. Custom shutters, shades, and blinds, installed by
 > the same local crew you talk to on the phone. If your windows need a refresh,
-> the in-home consultation is free: 805-806-9344 or book online at 805shutters.com.
+> the in-home consultation is free: 805-590-8050 or book online at 805shutters.com.
 
 **Post 2 — install video**
 Attach: `public/videos/recent-living-room-roller-shades.mp4`
@@ -58,7 +58,7 @@ Attach: `public/images/portfolio-enhanced/recent-patio-door-plantation-shutters-
 > Sliding doors are the window most people give up on — curtains snag, vertical
 > blinds crack. Plantation shutters on a patio door open fully, block heat, and last
 > decades. This install is from a recent Ventura County project. Questions about your
-> slider? Ask below or call 805-806-9344.
+> slider? Ask below or call 805-590-8050.
 
 **Post 4 — arched specialty work (credibility)**
 Attach: `public/images/portfolio-enhanced/recent-two-story-arch-plantation-shutters-card.jpg`
@@ -77,7 +77,7 @@ Attach: `public/images/portfolio-enhanced/recent-bedroom-plantation-shutters-car
 > "Our gorgeous shutters were just installed and we could not be happier!" — thank you
 > Amanda S. ⭐⭐⭐⭐⭐ Reviews like this are why we've stayed a small local company for
 > 30 years. Read more on our Google profile, or see what we'd suggest for your windows:
-> 805-806-9344.
+> 805-590-8050.
 
 **Post 7 — solar shades / seasonal**
 Attach: `public/images/portfolio-enhanced/recent-solar-roller-shade-detail-card.jpg`

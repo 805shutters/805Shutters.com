@@ -14,7 +14,7 @@ const render = () => renderToStaticMarkup(createElement(BusinessStructuredData, 
 it("includes the corrected business in server HTML without executing browser JavaScript", () => {
   const html = render();
   const business = JSON.parse(html.match(/<script[^>]*>(.*)<\/script>/s)![1])["@graph"][0];
-  expect(business).toMatchObject({ name: "805 Shutters", telephone: "+1-805-806-9344", email: "805@805shutters.com", url: "https://www.805shutters.com/" });
+  expect(business).toMatchObject({ name: "805 Shutters", telephone: "+1-805-590-8050", email: "805@805shutters.com", url: "https://www.805shutters.com/" });
 });
 it.each(["/", "/shades", "/shades/", "/shutters/"])("renders the same corrected entity on %s", (path) => {
   route.pathname = path;

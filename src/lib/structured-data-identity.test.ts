@@ -12,11 +12,11 @@ describe("approved schema-only business identity", () => {
   it("locks the rendered business name, international phone, email, URL and established ID", () => {
     expect(business()).toMatchObject({
       "@id": "https://www.805shutters.com#local-business",
-      name: "805 Shutters", telephone: "+1-805-806-9344",
+      name: "805 Shutters", telephone: "+1-805-590-8050",
       email: "805@805shutters.com", url: "https://www.805shutters.com/",
       foundingDate: "1995"
     });
-    expect(business().contactPoint).toMatchObject({ telephone: "+1-805-806-9344", email: "805@805shutters.com" });
+    expect(business().contactPoint).toMatchObject({ telephone: "+1-805-590-8050", email: "805@805shutters.com" });
   });
 
   it("includes the fourteen Ventura areas plus Santa Clarita and north LA County without an address", () => {
@@ -61,7 +61,7 @@ describe("approved schema-only business identity", () => {
   it("uses a reference to the shared business on the shades page", () => {
     const page = normalize(servicePageJsonLd(getPageByPath("/shades/")!));
     expect(JSON.stringify(page)).toContain('"@id":"https://www.805shutters.com#local-business"');
-    expect(JSON.stringify(page)).not.toContain('"telephone":"805-806-9344"');
+    expect(JSON.stringify(page)).not.toContain('"telephone":"805-590-8050"');
   });
 
   it("replaces duplicate business definitions with references and retains service city detail", () => {
@@ -79,6 +79,6 @@ describe("approved schema-only business identity", () => {
     expect(normalize({ review })).toEqual({ review });
     const page = getAnswerPage("commercial-roller-shades-ventura-county")!;
     const nodes = normalize(answerPageJsonLd(page))["@graph"] as Node[];
-    expect(nodes.find((n) => n["@type"] === "Service")?.availableChannel.servicePhone).toEqual({ "@type": "ContactPoint", telephone: "+1-805-806-9344" });
+    expect(nodes.find((n) => n["@type"] === "Service")?.availableChannel.servicePhone).toEqual({ "@type": "ContactPoint", telephone: "+1-805-590-8050" });
   });
 });

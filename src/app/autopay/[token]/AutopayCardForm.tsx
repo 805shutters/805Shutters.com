@@ -60,7 +60,7 @@ export function AutopayCardForm({
         console.error(error);
         if (!cancelled) {
           setState("error");
-          setMessage("The secure card form could not load. Please refresh, or call 805-806-9344.");
+          setMessage("The secure card form could not load. Please refresh, or call 805-590-8050.");
         }
       }
     }

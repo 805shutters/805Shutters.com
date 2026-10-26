@@ -52,7 +52,7 @@ Use this when building the launch manually in Meta Ads Manager.
    - `https://www.805shutters.com/privacy-policy/`
 9. Completion screen CTA:
    - Call business.
-   - `805-806-9344`.
+   - `805-590-8050`.
 
 ## Campaign C - Retargeting
 

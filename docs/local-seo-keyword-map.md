@@ -67,5 +67,5 @@ Examples:
 ## Meta-description formula
 
 ```text
-[Service] for [city/region] homes and businesses. [Trust/proof]. Free consultation. Call 805-806-9344.
+[Service] for [city/region] homes and businesses. [Trust/proof]. Free consultation. Call 805-590-8050.
 ```

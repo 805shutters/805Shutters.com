@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(prior.response, { headers: { "Cache-Control": "no-store" } });
     }
     if (isBookingDeliveryEnabled() && (!toE164(salesRepSmsNumberForName("Mike")) || !isTwilioConfigured()))
-      throw new BookingError(503, "Time requests are temporarily unavailable. Please text 805-806-9344.");
+      throw new BookingError(503, "Time requests are temporarily unavailable. Please text 805-590-8050.");
     const snapshot = await readSchedule(supabase, date.slice(0, 7));
     if (snapshot.revision !== p.revision || requestSlotReason(date, time, snapshot.events))
       throw new BookingError(409, "The calendar changed. Choose an open time; your details are saved.");
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       p_key: key, p_hash: hash, p_revision: snapshot.revision, p_start: zonedTimeToUtc(date, time).toISOString(),
       p_lead: lead, p_details: { ...details, bookingNotes },
     });
-    if (error?.message?.includes("BOOKING_REQUEST_LIMIT")) throw new BookingError(429, "Your requests are saved. Please wait for us to contact you, or text 805-806-9344.");
+    if (error?.message?.includes("BOOKING_REQUEST_LIMIT")) throw new BookingError(429, "Your requests are saved. Please wait for us to contact you, or text 805-590-8050.");
     if (error) scheduleError(error);
     after(async () => { try { await processBookingOutbox(supabase, key); } catch { console.error("Time request notification remains queued"); } });
     return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });

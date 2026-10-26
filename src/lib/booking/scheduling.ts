@@ -39,7 +39,7 @@ export type ScheduleSnapshot = {
 };
 export function scheduleError(error: { message?: string } | null): never {
   if (error?.message?.includes("BOOKING_DUPLICATE"))
-    throw new BookingError(409, "You already booked a consultation within the last 24 hours. Please call 805-806-9344 if you need to change it.");
+    throw new BookingError(409, "You already booked a consultation within the last 24 hours. Please call 805-590-8050 if you need to change it.");
   if (/BOOKING_/.test(error?.message || ""))
     throw new BookingError(
       409,
@@ -95,7 +95,7 @@ export async function validateServiceAddress(address: string) {
     if (!result.configured)
       throw new BookingError(
         503,
-        "We couldn't check appointment availability right now. Please try again shortly or call/text 805-806-9344 to book.",
+        "We couldn't check appointment availability right now. Please try again shortly or call/text 805-590-8050 to book.",
       );
     if (!result.point)
       throw new BookingError(
@@ -107,7 +107,7 @@ export async function validateServiceAddress(address: string) {
     if (error instanceof BookingError) throw error;
     throw new BookingError(
       503,
-      "We couldn't check appointment availability right now. Please try again shortly or call/text 805-806-9344 to book.",
+      "We couldn't check appointment availability right now. Please try again shortly or call/text 805-590-8050 to book.",
     );
   }
 }

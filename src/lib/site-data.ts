@@ -1216,7 +1216,7 @@ const supportPages: SitePage[] = [
       {
         heading: "Start With A Free Consultation",
         body:
-          "Call (805) 806-9344 or visit our contact page to schedule a free in-home consultation.",
+          "Call (805) 590-8050 or visit our contact page to schedule a free in-home consultation.",
         links: [{ label: "Contact 805 Shutters", href: "/contact/" }]
       }
     ],
@@ -1238,7 +1238,7 @@ const supportPages: SitePage[] = [
       {
         heading: "Call Or Send A Request",
         body:
-          "Call 805-806-9344 or send a consultation request with your city, product interest, and the best way to reach you."
+          "Call 805-590-8050 or send a consultation request with your city, product interest, and the best way to reach you."
       },
       {
         heading: "Local Ventura County Service",
@@ -1338,7 +1338,7 @@ const supportPages: SitePage[] = [
       {
         question: "How do I request an in-house payment plan?",
         answer:
-          "Ask during your free in-home consultation or contact 805 Shutters at 805-806-9344. Our team will review the request and confirm any approved plan in writing."
+          "Ask during your free in-home consultation or contact 805 Shutters at 805-590-8050. Our team will review the request and confirm any approved plan in writing."
       }
     ],
     cta: "Request a free consultation"
@@ -1359,7 +1359,7 @@ const supportPages: SitePage[] = [
       {
         heading: "Prefer To Talk Now?",
         body:
-          "Call 805-806-9344 if you want to talk through your project right away. We can help compare products, service areas, timing, and next steps."
+          "Call 805-590-8050 if you want to talk through your project right away. We can help compare products, service areas, timing, and next steps."
       },
       {
         heading: "What Happens Next",
@@ -1416,7 +1416,7 @@ const supportPages: SitePage[] = [
       {
         heading: "Contact",
         body:
-          "For privacy requests or questions, call 805-806-9344 or use the contact form on this website."
+          "For privacy requests or questions, call 805-590-8050 or use the contact form on this website."
       }
     ],
     cta: "Request a free consultation"
@@ -2076,7 +2076,7 @@ const priorityCityPageOverrides: Record<string, CityPageOverride> = {
   "/shutters/camarillo/": priorityCityPage({
     title: "Custom Shutters Camarillo | Plantation Shutters | 805 Shutters",
     description:
-      "Custom shutters and plantation shutters for Camarillo homes. Family-owned Ventura County installer with free in-home consultation. Call 805-806-9344.",
+      "Custom shutters and plantation shutters for Camarillo homes. Family-owned Ventura County installer with free in-home consultation. Call 805-590-8050.",
     intro:
       "805 Shutters measures and installs custom shutters for Camarillo homes, including plantation shutters, specialty shutters, sliding door shutters, and whole-home shutter projects.",
     gallery: shutterCityGallery("Camarillo"),

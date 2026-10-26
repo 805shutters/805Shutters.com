@@ -24,7 +24,7 @@ type AssistantResponse = {
 
 type AssistantView = "closed" | "choices" | "chat" | "text" | "text-sent";
 
-const textQuestionHref = `sms:+18058069344?&body=${encodeURIComponent(
+const textQuestionHref = `sms:+18055908050?&body=${encodeURIComponent(
   "Hi 805 Shutters, I have a question: "
 )}`;
 
@@ -258,7 +258,7 @@ export function MessagingAssistantWidget() {
           </div>
 
           <div className="assistant-privacy-note">
-            We reply by text to the number you enter. Prefer your own messaging app? Text us at (805) 806-9344.
+            We reply by text to the number you enter. Prefer your own messaging app? Text us at (805) 590-8050.
           </div>
 
           <form className="assistant-form assistant-form--text" onSubmit={submitTextRequest}>
@@ -321,7 +321,7 @@ export function MessagingAssistantWidget() {
               Thanks{textName.trim() ? `, ${textName.trim()}` : ""}! Your question is on its way to our team. We will
               text you back at {textPhone.trim()} shortly.
             </p>
-            <p>Need us sooner? Call or text (805) 806-9344.</p>
+            <p>Need us sooner? Call or text (805) 590-8050.</p>
             <button type="button" className="assistant-text-submit" onClick={() => setView("chat")}>
               Ask the AI assistant while you wait
             </button>

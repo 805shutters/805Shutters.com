@@ -21,7 +21,7 @@ Six selected originals are unchanged. JPG quality 85, embedded sRGB. Flattened s
 | ad-woven-shades-1x1.jpg | 1080 × 1080 | 236,805 |
 | ad-woven-shades-4x5.jpg | 1080 × 1350 | 324,716 |
 
-The same asset pair supports both Meta button variants. Book Now goes to `/book-consultation/` with UTMs. Call Now uses +1 805-806-9344 and does not produce a website Schedule conversion until a booking is actually completed.
+The same asset pair supports both Meta button variants. Book Now goes to `/book-consultation/` with UTMs. Call Now uses +1 805-590-8050 and does not produce a website Schedule conversion until a booking is actually completed.
 
 ## Preview verification — September 27, 2026
 

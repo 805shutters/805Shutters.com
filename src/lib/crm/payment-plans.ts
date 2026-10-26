@@ -257,7 +257,7 @@ export async function activatePaymentPlanForJob(
         body:
           `Hi ${String(job.customer_name || "").trim().split(/\s+/)[0] || "there"}, your 805 Shutters installation is complete - thank you! ` +
           `Your payment plan starts today: ${activated.installments.length} monthly payments of ${formatMoney(installmentChargeAmount(first))}${feeNote}, first one due today (${first.due_date}).${collectionNote} ` +
-          `Questions? Call or text 805-806-9344.`
+          `Questions? Call or text 805-590-8050.`
       });
     }
 
@@ -416,7 +416,7 @@ export async function runPaymentPlanReminders(supabase: CrmSupabaseClient, now: 
           ? `It will be charged automatically to your card on file - nothing to do.`
           : setupUrl
             ? `Set up automatic payments here: ${setupUrl}`
-            : `Questions? Call or text 805-806-9344.`;
+            : `Questions? Call or text 805-590-8050.`;
         const sms = await sendSms({
           to: jobRow.phone,
           body:
@@ -435,7 +435,7 @@ export async function runPaymentPlanReminders(supabase: CrmSupabaseClient, now: 
             body:
               `Hi ${firstName}, this is 805 Shutters - payment ${inst.seq} of ${plan.installment_count} ` +
               `(${formatMoney(installmentChargeAmount(inst))}, due ${inst.due_date}) hasn't come through yet. ` +
-              `Please call or text 805-806-9344 so we can get it sorted. Thank you!`
+              `Please call or text 805-590-8050 so we can get it sorted. Thank you!`
           });
         }
         const alertBody = `805 Shutters: payment plan OVERDUE — ${jobRow.customer_name || "customer"}, payment ${inst.seq}/${plan.installment_count} (${formatMoney(installmentChargeAmount(inst))}) was due ${inst.due_date}.`;
@@ -543,7 +543,7 @@ export async function linkAutopayCard(
     return { ok: true, cardBrand: card.brand, cardLast4: card.last4 };
   } catch (error) {
     console.error("autopay card link failed", error);
-    return { ok: false, error: "We could not save this card. Please double-check the details or call 805-806-9344." };
+    return { ok: false, error: "We could not save this card. Please double-check the details or call 805-590-8050." };
   }
 }
 

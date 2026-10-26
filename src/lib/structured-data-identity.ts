@@ -3,7 +3,7 @@
 export const businessIdentity = {
   "@id": "https://www.805shutters.com#local-business",
   name: "805 Shutters",
-  telephone: "+1-805-806-9344",
+  telephone: "+1-805-590-8050",
   email: "805@805shutters.com",
   url: "https://www.805shutters.com/"
 } as const;

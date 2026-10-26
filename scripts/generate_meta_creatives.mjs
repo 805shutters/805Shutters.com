@@ -18,7 +18,7 @@ const concepts = [
     eyebrow: "VENTURA COUNTY",
     headline: "Free In-Home Consultation",
     body: "Custom shutters, shades, blinds and drapery.",
-    cta: "Call 805-806-9344"
+    cta: "Call 805-590-8050"
   },
   {
     slug: "light-privacy",

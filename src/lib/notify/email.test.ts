@@ -47,7 +47,7 @@ describe("buildQuoteEmail", () => {
     expect(html).toContain("Hi Jane,");
     expect(text).not.toContain("Hi Jane Smith");
     expect(html).not.toContain("Hi Jane Smith");
-    expect(text).toContain("Official 805 Shutters contact: 805Shutters.com | 805-806-9344");
+    expect(text).toContain("Official 805 Shutters contact: 805Shutters.com | 805-590-8050");
     expect(html).toContain("805@805shutters.com");
   });
   it("falls back to a generic greeting and omits amount when zero", () => {
@@ -225,7 +225,7 @@ describe("financing options section", () => {
     expect(mail.html).not.toContain("6 payments");
     expect(mail.html).not.toContain("6 monthly");
     expect(mail.html).toContain("/brand/805-shutters-logo-exact-transparent.png");
-    expect(mail.html).toContain("sms:+18058069344");
+    expect(mail.html).toContain("sms:+18055908050");
     expect(mail.html).toContain("Q-1042");
     expect(mail.html).not.toContain("subject to credit approval");
     expect(mail.text).toContain("IN-HOUSE PAYMENT PLAN");
@@ -271,7 +271,7 @@ describe("buildPaymentLinkEmail", () => {
     expect(text).toContain("Square card payment: https://x/quote/abc#payment");
     expect(text).not.toMatch(/venmo|ken-hill/i);
     expect(text).toContain("Zelle");
-    expect(text).toContain("Official 805 Shutters contact: 805Shutters.com | 805-806-9344");
+    expect(text).toContain("Official 805 Shutters contact: 805Shutters.com | 805-590-8050");
     expect(html).toContain("805@805shutters.com");
   });
 });

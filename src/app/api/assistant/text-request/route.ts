@@ -67,7 +67,7 @@ function staffSmsRecipients() {
 export async function POST(request: NextRequest) {
   if (!checkRateLimit(clientKey(request))) {
     return NextResponse.json(
-      { message: "Too many messages. Please wait a few minutes or text us directly at (805) 806-9344." },
+      { message: "Too many messages. Please wait a few minutes or text us directly at (805) 590-8050." },
       { status: 429 }
     );
   }
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
     // Best-effort confirmation back to the visitor; ignore failures.
     void sendSms({
       to: phone,
-      body: "Thanks for reaching out to 805 Shutters! We received your question and will text you back shortly. - 805 Shutters, (805) 806-9344"
+      body: "Thanks for reaching out to 805 Shutters! We received your question and will text you back shortly. - 805 Shutters, (805) 590-8050"
     });
   }
 
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
       supabaseConfigured: Boolean(supabase)
     });
     return NextResponse.json(
-      { message: "We could not deliver your message right now. Please text us directly at (805) 806-9344." },
+      { message: "We could not deliver your message right now. Please text us directly at (805) 590-8050." },
       { status: 503 }
     );
   }

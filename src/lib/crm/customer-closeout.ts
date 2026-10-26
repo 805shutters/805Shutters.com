@@ -73,16 +73,16 @@ export function buildCustomerCloseoutEmail(input: CloseoutEmailInput) {
   const amount = money(input.total);
   const paidOn = shortDate(input.paidOn);
   const subject = `Thank you - ${order} is paid in full`;
-  const text = `Hello ${firstName},\n\nThank you so much for your order with 805 Shutters. We have received your final payment and your balance is now paid in full.\n\nReceipt\nOrder: ${order}\nOrder total: ${amount}\nPaid in full: ${paidOn}\nBalance remaining: $0.00\n\nWarranty information\nYour window treatments remain covered by the applicable manufacturer warranty. Installation workmanship is covered by 805 Shutters for 12 months from installation. If you need warranty service, contact us at 805-806-9344 or 805@805shutters.com and include your order number.\n\nYour paid-in-full receipt is attached for your records.\n\nThank you,\n805 Shutters\n805-806-9344\n805shutters.com`;
+  const text = `Hello ${firstName},\n\nThank you so much for your order with 805 Shutters. We have received your final payment and your balance is now paid in full.\n\nReceipt\nOrder: ${order}\nOrder total: ${amount}\nPaid in full: ${paidOn}\nBalance remaining: $0.00\n\nWarranty information\nYour window treatments remain covered by the applicable manufacturer warranty. Installation workmanship is covered by 805 Shutters for 12 months from installation. If you need warranty service, contact us at 805-590-8050 or 805@805shutters.com and include your order number.\n\nYour paid-in-full receipt is attached for your records.\n\nThank you,\n805 Shutters\n805-590-8050\n805shutters.com`;
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#111;max-width:640px;margin:auto;padding:28px 18px">
     <div style="border-bottom:2px solid #111;padding-bottom:16px"><div style="font-size:18px;font-weight:700;letter-spacing:.06em">805 SHUTTERS</div><h1 style="font-size:26px;margin:14px 0 0">Thank you for your order</h1></div>
     <p style="font-size:15px;line-height:1.6">Hello ${escapeHtml(firstName)},</p>
     <p style="font-size:15px;line-height:1.6">Thank you so much for your order with 805 Shutters. We received your final payment and your balance is now <strong>paid in full</strong>.</p>
     <div style="border:2px solid #111;padding:16px;margin:22px 0"><div style="font-size:12px;text-transform:uppercase;letter-spacing:.1em;font-weight:700">Receipt</div><table style="width:100%;margin-top:10px;font-size:14px"><tr><td>Order</td><td style="text-align:right;font-weight:700">${escapeHtml(order)}</td></tr><tr><td>Order total</td><td style="text-align:right;font-weight:700">${amount}</td></tr><tr><td>Paid in full</td><td style="text-align:right">${escapeHtml(paidOn)}</td></tr><tr><td>Balance remaining</td><td style="text-align:right;font-weight:700">$0.00</td></tr></table></div>
     <h2 style="font-size:19px">Warranty information</h2>
-    <p style="font-size:14px;line-height:1.6">Your window treatments remain covered by the applicable manufacturer warranty. Installation workmanship is covered by 805 Shutters for 12 months from installation. For warranty service, call <a href="tel:+18058069344">805-806-9344</a> or email <a href="mailto:805@805shutters.com">805@805shutters.com</a> and include your order number.</p>
+    <p style="font-size:14px;line-height:1.6">Your window treatments remain covered by the applicable manufacturer warranty. Installation workmanship is covered by 805 Shutters for 12 months from installation. For warranty service, call <a href="tel:+18055908050">805-590-8050</a> or email <a href="mailto:805@805shutters.com">805@805shutters.com</a> and include your order number.</p>
     <p style="font-size:14px;line-height:1.6">Your paid-in-full receipt is attached for your records.</p>
-    <div style="border-top:1px solid #ccc;padding-top:16px;margin-top:24px;font-size:13px;line-height:1.6">Thank you,<br><strong>805 Shutters</strong><br>805-806-9344 &middot; <a href="https://www.805shutters.com">805shutters.com</a></div>
+    <div style="border-top:1px solid #ccc;padding-top:16px;margin-top:24px;font-size:13px;line-height:1.6">Thank you,<br><strong>805 Shutters</strong><br>805-590-8050 &middot; <a href="https://www.805shutters.com">805shutters.com</a></div>
   </div>`;
   return { subject, text, html };
 }
@@ -102,7 +102,7 @@ export function buildCustomerReceiptPdf(input: CloseoutEmailInput) {
     [`Order total: ${money(input.total)}`, 54, 552, 14, "F2"],
     ["Balance remaining: $0.00", 54, 526, 14, "F2"],
     ["Thank you for choosing 805 Shutters.", 54, 470, 11, "F1"],
-    ["805-806-9344  |  805shutters.com  |  805@805shutters.com", 54, 62, 9, "F1"]
+    ["805-590-8050  |  805shutters.com  |  805@805shutters.com", 54, 62, 9, "F1"]
   ] as const;
   const stream = lines.map(([text, x, y, size, font]) => `BT /${font} ${size} Tf 1 0 0 1 ${x} ${y} Tm (${pdfEscape(text)}) Tj ET`).join("\n");
   const objects = [

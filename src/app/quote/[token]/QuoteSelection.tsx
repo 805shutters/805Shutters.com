@@ -409,7 +409,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
                     </div>
                   </>
                 ) : (
-                  <p className={styles.paidMessage}>{isInHouse&&!planCollectible?"Payment collection is paused. Please call or text 805-806-9344 for help.":"No payment is currently due."}</p>
+                  <p className={styles.paidMessage}>{isInHouse&&!planCollectible?"Payment collection is paused. Please call or text 805-590-8050 for help.":"No payment is currently due."}</p>
                 )}
               </section>
             ) : null}
@@ -544,7 +544,7 @@ const discountTag = {
   padding: "2px 8px",
 } as const;
 
-const FINANCING_SMS_NUMBER = "+18058069344";
+const FINANCING_SMS_NUMBER = "+18055908050";
 
 function financingSmsHref(body: string) {
   return `sms:${FINANCING_SMS_NUMBER}?&body=${encodeURIComponent(body)}`;

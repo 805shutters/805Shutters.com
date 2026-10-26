@@ -385,7 +385,7 @@ export function installmentMessage(
       : i.due_date! < today
         ? `overdue since ${i.due_date}`
         : `due on ${i.due_date}`;
-  return `Hi ${plan.current.customerName}, your 805 Shutters payment ${i.number} of 3 for ${plan.current.quoteNumber || "your project"} is ${when}. Amount remaining: ${money(unpaidCents(i))}. Pay securely: ${url}. Questions? Call or text 805-806-9344.`;
+  return `Hi ${plan.current.customerName}, your 805 Shutters payment ${i.number} of 3 for ${plan.current.quoteNumber || "your project"} is ${when}. Amount remaining: ${money(unpaidCents(i))}. Pay securely: ${url}. Questions? Call or text 805-590-8050.`;
 }
 async function sendDue(
   db: SupabaseClient,

@@ -39,7 +39,7 @@ communities.
 Recommended CTA copy:
 
 ```text
-Schedule a free in-home consultation or call 805-806-9344 to talk through your
+Schedule a free in-home consultation or call 805-590-8050 to talk through your
 project.
 ```
 

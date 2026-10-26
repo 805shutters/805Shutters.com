@@ -165,7 +165,7 @@ export function buildSquareOrderPaymentEmail(
   return { subject, html, text };
 }
 
-const FINANCING_SMS_NUMBER = "+18058069344";
+const FINANCING_SMS_NUMBER = "+18055908050";
 const DEFAULT_SITE_ORIGIN = "https://www.805shutters.com";
 
 function siteOriginFromLogo(logoUrl?: string) {
@@ -229,14 +229,14 @@ export function buildFinancingOptionsSection(details: {
         "Auto-charged to your card, starting install day",
         "Set it up once &mdash; nothing to remember"
       ],
-      ctaLabel: "Reply or text 805-806-9344",
+      ctaLabel: "Reply or text 805-590-8050",
       ctaHref: housePlanSms
     })}
   </div>
   <p style="font-size:10.5px;line-height:1.5;color:#6b6b66;margin:8px 0 0 0">In-house plan collected by automatic card payment through Square; 3 monthly payments shown include a 3% card processing fee (credit cards).</p>
 </div>`;
 
-  const text = `\n\nIN-HOUSE PAYMENT PLAN\n\n805 In-House Plan: 0% interest, no credit application.${monthly > 0 ? ` On this quote: 50% deposit, then 3 monthly payments of ${money(monthly)} auto-charged to your card, starting the day of installation.` : " 50% deposit, then up to 3 monthly card payments starting the day of installation."} Reply or text 805-806-9344 to set it up.\n\nIn-house monthly amount includes a 3% card processing fee.`;
+  const text = `\n\nIN-HOUSE PAYMENT PLAN\n\n805 In-House Plan: 0% interest, no credit application.${monthly > 0 ? ` On this quote: 50% deposit, then 3 monthly payments of ${money(monthly)} auto-charged to your card, starting the day of installation.` : " 50% deposit, then up to 3 monthly card payments starting the day of installation."} Reply or text 805-590-8050 to set it up.\n\nIn-house monthly amount includes a 3% card processing fee.`;
 
   return { html, text };
 }

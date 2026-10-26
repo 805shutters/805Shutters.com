@@ -23,7 +23,7 @@ export default async function AutopaySetupPage({ params }: { params: Promise<{ t
         <h1>Set Up Automatic Payments</h1>
         <p>
           This payment setup link is no longer valid. Please call or text 805 Shutters at{" "}
-          <a href="tel:+18058069344">805-806-9344</a> and we will send you a fresh one.
+          <a href="tel:+18055908050">805-590-8050</a> and we will send you a fresh one.
         </p>
       </div>
     );
@@ -65,12 +65,12 @@ export default async function AutopaySetupPage({ params }: { params: Promise<{ t
       ) : (
         <p>
           Online card setup is temporarily unavailable. Please call or text us at{" "}
-          <a href="tel:+18058069344">805-806-9344</a> and we will set up your automatic payments over the phone.
+          <a href="tel:+18055908050">805-590-8050</a> and we will set up your automatic payments over the phone.
         </p>
       )}
       <p className="autopay-fine">
         Payments are processed securely by Square. 805 Shutters never sees or stores your card number. Monthly amount
-        includes a 3% card processing fee. Questions? Call or text 805-806-9344.
+        includes a 3% card processing fee. Questions? Call or text 805-590-8050.
       </p>
     </div>
   );

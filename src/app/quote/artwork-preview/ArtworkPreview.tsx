@@ -48,7 +48,7 @@ export function ArtworkPreview() {
     status:"draft",signed:false,signedAt:null,lines,subtotal:5500,fees:[],discount:0,tax:0,sourceTotalAdjustment:0,depositDue:2750,balanceDue:2750,total:5500,
     allPriced:true,hasOnyxShutters:false,versions:[],payment:{available:true,dueType:"deposit",amountDue:2750,outstanding:5500,depositPaid:0,paidTotal:0},
     adjustments:{totalOverride:null,balanceDueOverride:null,balanceAdjustmentNote:null,discountPercent:0,discountFlat:0,taxPercent:0,depositPercent:50,fees:[]},
-    business:{name:"805 Shutters",phone:"805-806-9344",website:"https://www.805shutters.com",email:"805@805shutters.com"},
+    business:{name:"805 Shutters",phone:"805-590-8050",website:"https://www.805shutters.com",email:"805@805shutters.com"},
   };
   return <>
     <div className="no-print" style={{padding:20,background:"#eee",display:"flex",gap:16,flexWrap:"wrap",position:"relative",zIndex:30}}>

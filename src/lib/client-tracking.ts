@@ -197,7 +197,7 @@ export function trackPhoneClick(location: string) {
 
   window.gtag?.("event", "phone_click", {
     event_category: "contact",
-    event_label: "805-806-9344",
+    event_label: "805-590-8050",
     phone_location: location,
     send_to: googleAdsSendTo(process.env.NEXT_PUBLIC_GOOGLE_ADS_PHONE_CONVERSION_LABEL)
   });

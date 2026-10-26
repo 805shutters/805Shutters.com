@@ -34,7 +34,7 @@ describe("booking address service failures", () => {
     const response = await request();
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
-      message: "We couldn't check appointment availability right now. Please try again shortly or call/text 805-806-9344 to book.",
+      message: "We couldn't check appointment availability right now. Please try again shortly or call/text 805-590-8050 to book.",
     });
     expect(state.rpc).not.toHaveBeenCalled();
     expect(console.error).toHaveBeenCalledWith(`[booking] Google Places text search failed (HTTP ${status}; BILLING_DISABLED)`);

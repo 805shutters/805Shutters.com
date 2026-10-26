@@ -22,7 +22,7 @@ describe("confirmed appointment Google Calendar link", () => {
     expect(url.searchParams.get("action")).toBe("TEMPLATE");
     expect(url.searchParams.get("text")).toBe("805 Shutters consultation with Jessica");
     expect(url.searchParams.get("location")).toBe(address);
-    expect(url.searchParams.get("details")).toContain("805-806-9344");
+    expect(url.searchParams.get("details")).toContain("805-590-8050");
     expect(url.searchParams.get("details")).toContain("Jessica");
     expect(url.searchParams.has("add")).toBe(false);
   });

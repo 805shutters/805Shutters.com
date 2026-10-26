@@ -69,7 +69,7 @@ Descriptions (≤90 chars):
 
 ## Assets (extensions)
 
-- **Call:** 805-806-9344 (call reporting ON)
+- **Call:** 805-590-8050 (call reporting ON)
 - **Sitelinks:** Free Consultation → /book-consultation/ · Reviews → /reviews/ · Financing → /financing/ · Recent Projects → /recent-projects/
 - **Callouts:** Free In-Home Consultation · Flexible Financing · Locally Owned · Expert Installation · Custom Made-to-Measure
 - **Location:** link Google Business Profile

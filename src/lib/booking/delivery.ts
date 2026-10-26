@@ -32,7 +32,8 @@ type BookingAutomationDetails = {
 };
 
 const defaultStaffEmail = brandIdentity.email;
-const defaultStaffSmsNumbers = [brandIdentity.phone];
+// Internal alert recipient: keep separate from the public phone-agent number.
+const defaultStaffSmsNumbers = ["805-806-9344"];
 function splitList(value: string | undefined) {
   return (value || "")
     .split(",")

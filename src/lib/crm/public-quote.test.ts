@@ -271,7 +271,7 @@ describe("signed SMS copy", () => {
   it("contract share message uses the requested 805 Shutters copy", () => {
     const msg = buildQuoteShareSms("https://www.805shutters.com/quote/test-token");
     expect(msg).toBe(
-      "805 Shutters: Thank you for the opportunity to cover your windows. Your contract is ready to review and approve:\n\nContract: https://www.805shutters.com/quote/test-token\n\nOfficial contact: 805Shutters.com | 805-806-9344"
+      "805 Shutters: Thank you for the opportunity to cover your windows. Your contract is ready to review and approve:\n\nContract: https://www.805shutters.com/quote/test-token\n\nOfficial contact: 805Shutters.com | 805-590-8050"
     );
     expect(msg).not.toContain("attached quote");
   });
@@ -287,7 +287,7 @@ describe("signed SMS copy", () => {
     expect(msg).toContain("Zelle");
     expect(msg).toContain("#payment");
     expect(msg).toContain("3 monthly payments");
-    expect(msg).toContain("Verify this request at 805Shutters.com or 805-806-9344");
+    expect(msg).toContain("Verify this request at 805Shutters.com or 805-590-8050");
   });
 
   it("shop message has the requested sale fields", () => {
@@ -363,7 +363,7 @@ describe("signed SMS copy", () => {
   it("customer message thanks them by name", () => {
     const message = buildSignedCustomerSms("Jane");
     expect(message).toContain("Jane");
-    expect(message).toContain("805Shutters.com | 805-806-9344");
+    expect(message).toContain("805Shutters.com | 805-590-8050");
   });
 });
 

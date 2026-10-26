@@ -113,7 +113,7 @@ const CONTRACT_HEADERS: Record<
 > = {
   [ACCOUNT_IDS.SHUTTERS_805]: {
     title: "Shutters - Shades - Blinds",
-    phone: "(805) 806-9344",
+    phone: "(805) 590-8050",
     website: "805shutters.com",
     email: "805@805shutters.com",
     logoUrl: "/brand/805-shutters-logo-header.png",
