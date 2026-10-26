@@ -14,7 +14,7 @@
  * or written message, because this backup runs when the Edge call state
  * is unavailable.
  */
-const SPOKEN = "Our team members are tied up at the moment. We could not continue this call, and no recording was made. Please call back to leave a message or schedule an appointment.";
+const SPOKEN = "Our team members are tied up at the moment. We could not continue this call, and no recording was made. Please call back to leave a message.";
 
 function fallbackTwiml() {
   return `<?xml version="1.0" encoding="UTF-8"?><Response><Say>${SPOKEN}</Say><Hangup/></Response>`;

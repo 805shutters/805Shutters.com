@@ -84,7 +84,7 @@ test('no answer leaves the listening stream and does not restart the welcome',as
  assert.equal(f.provider.operations.some(item=>item.type==='ringback'||(item.type==='route'&&item.sid===sid)),false);
  const continued=await f.handler(carrier(f,`/twilio/continue/${call.id}`,{CallSid:sid,To:f.c.number,From:'+18055550199'}));
  const continuedXml=await continued.text();
- assert.doesNotMatch(continuedXml,/<Record|After the tone/);assert.match(continuedXml,/no recording was made/);assert.match(continuedXml,/call back to leave a message or schedule an appointment/);
+ assert.doesNotMatch(continuedXml,/<Record|After the tone/);assert.match(continuedXml,/no recording was made/);assert.match(continuedXml,/call back to leave a message/);
  assert.doesNotMatch(continuedXml,/Thank you for calling|<Connect>/);
 });
 test('cached greeting audio stays available while the welcome is a listening stream',async()=>{
@@ -390,7 +390,7 @@ test('a failed media attach records the stream error and does not replay the gre
  const continuedXml = await continued.text();
  assert.doesNotMatch(continuedXml, /<Record|After the tone/);
  assert.match(continuedXml, /no recording was made/);
- assert.match(continuedXml, /call back to leave a message or schedule an appointment/);
+ assert.match(continuedXml, /call back to leave a message/);
  assert.doesNotMatch(continuedXml, /Thank you for calling|Would you like|greeting\.wav|<Connect>/);
  assert.equal((await callAfter(f, before.sid)).streamError, 'Media stream did not attach');
  const streamSid = 'MZ' + '3'.repeat(32);

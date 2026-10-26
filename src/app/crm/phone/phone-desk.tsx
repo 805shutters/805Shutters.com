@@ -23,6 +23,7 @@ type Call = {
   summary?: { text?: string; outcome?: string; streamDetached?: boolean };
   summarySync?: string;
   summaryJobId?: string | null;
+  callerTranscript?: { id: string; text: string }[];
 };
 export type PhoneMessage = {
   kind?: "sms";
@@ -361,6 +362,19 @@ export function PhoneDesk({
                         </p>
                       )}
                       <p className="mt-3 whitespace-pre-wrap">{m.text}</p>
+                      {state.calls.filter((call) => call.id === m.callId).map((call) => (
+                        <div key={call.id}>
+                          <CallSummary call={call} />
+                          {!!call.callerTranscript?.length && (
+                            <details className="mt-3">
+                              <summary className="cursor-pointer text-sm font-semibold">Caller transcript</summary>
+                              <div className="mt-2 space-y-2 whitespace-pre-wrap text-sm">
+                                {call.callerTranscript.map((turn) => <p key={turn.id}>Caller: {turn.text}</p>)}
+                              </div>
+                            </details>
+                          )}
+                        </div>
+                      ))}
                       {m.optOut && <p>Recipient opted out of texts.</p>}
                       {!!m.mediaCount && (
                         <p>

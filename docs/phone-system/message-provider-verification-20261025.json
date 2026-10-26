@@ -1,0 +1,1184 @@
+{
+  "testedAt": "2026-10-26T02:25:00Z",
+  "providerFunctionVersion": 9,
+  "scope": "Fictional caller audio through actual GrokMediaSession and real xAI ASR/TTS. Simulated Twilio playback; isolated memory saves replayed through real SQL and CRM UI. No production call, customer record, booking, SMS, or audio file.",
+  "caseCount": 10,
+  "outputClipCount": 41,
+  "cases": [
+    {
+      "requestId": 104967,
+      "caseName": "short",
+      "voice": "rex",
+      "delayMs": 0,
+      "stateDelayMs": 600,
+      "durationMs": 61402,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "bookingDisabled": true,
+        "message": true,
+        "completeLongMessage": true,
+        "noRepeatedLongPrefixes": true,
+        "correctionsSaved": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "ms": 2948,
+          "bytes": 48563,
+          "hash": "18b489ce5f390384",
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "96255ba7-4f88-40ea-9dcd-98bd154b3cfe",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 13552,
+          "bytes": 15283,
+          "hash": "68be398309a1207b",
+          "stage": "result-playback",
+          "expected": "What message would you like me to pass along?",
+          "response": "46f6d2dc-5932-4d78-83e2-39909bab2a5b",
+          "transcript": "What message would you like me to pass along?",
+          "audioTranscript": "What message would you like me to pass along?",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 21587,
+          "bytes": 12721,
+          "hash": "2f5f28afd9255aad",
+          "stage": "result-playback",
+          "expected": "May I please have your name?",
+          "response": "94881efa-b24b-448c-a7ed-e18ef736a357",
+          "transcript": "May I please have your name?",
+          "audioTranscript": "May I please have your name?",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 32258,
+          "bytes": 94644,
+          "hash": "57edecc083db0183",
+          "stage": "readback-playback",
+          "expected": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 9 9. Please call me about my shutters. Please say yes to save this message, or say what you want changed.",
+          "response": "f15cb723-283a-4511-93eb-9839c9aa7c06",
+          "transcript": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 9 9. Please call me about my shutters. Please say yes to save this message, or say what you want changed.",
+          "audioTranscript": "Message from Pat Example, callback number +1 805-555-0199. Please call me about my shutters. Please say yes to save this message, or say what you want changed.",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 55013,
+          "bytes": 46005,
+          "hash": "8c32f2b3e5b7aa6e",
+          "stage": "result-playback",
+          "expected": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "response": "bf2158c0-f6af-42e7-bb3b-c73282420e78",
+          "transcript": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "audioTranscript": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "wordAgreement": 1
+        }
+      ],
+      "schedule": {
+        "purpose": "message",
+        "awaiting": "done",
+        "asked": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+        "name": "Pat Example",
+        "phone": "+18055550199",
+        "phoneSource": "caller-id",
+        "messageText": "Please call me about my shutters.",
+        "consent": true,
+        "clarifyCount": 0,
+        "lastAnswer": "Pat Example"
+      },
+      "call": {
+        "id": "33c83565-a02b-47e3-a863-15992305d8cc",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "createdAt": 1792981357720,
+        "callerTranscript": [
+          {
+            "id": "343e0456-2ef4-4af7-9dba-24d0d1fad162",
+            "text": "Yes."
+          },
+          {
+            "id": "46487dac-c8e7-469f-9e92-66c85413ff34",
+            "text": "Please call me about my shutters."
+          },
+          {
+            "id": "e154e2ad-ea48-4741-a593-d87422670071",
+            "text": "Pat Example"
+          },
+          {
+            "id": "f7255a9e-4e66-4d73-9d6a-c0d12358685a",
+            "text": "Yes."
+          }
+        ],
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: message. Transcript: Please call me about my shutters. Captured before the next question: name Pat Example; callback +18055550199.",
+          "outcome": "message",
+          "streamDetached": false
+        }
+      },
+      "messages": [
+        {
+          "id": "3b664187-f4a3-425f-84e0-e4a871bb7108",
+          "callId": "33c83565-a02b-47e3-a863-15992305d8cc",
+          "name": "Pat Example",
+          "callback": "+18055550199",
+          "text": "Please call me about my shutters.",
+          "confirmed": true,
+          "createdAt": 1792981409025,
+          "toolId": "bc54d0f8-5c20-49fb-bd5b-1f96426e3942",
+          "status": "open",
+          "customerId": null,
+          "customerName": null,
+          "crmId": "isolated-callback",
+          "crmVerified": true
+        }
+      ]
+    },
+    {
+      "requestId": 104968,
+      "caseName": "volunteered",
+      "voice": "rex",
+      "delayMs": 0,
+      "stateDelayMs": 600,
+      "durationMs": 50299,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "bookingDisabled": true,
+        "message": true,
+        "completeLongMessage": true,
+        "noRepeatedLongPrefixes": true,
+        "correctionsSaved": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "ms": 2668,
+          "bytes": 48563,
+          "hash": "8a9d59e50156192b",
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "5abf105a-d30d-4cf1-84bf-45dcc74ca698",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible?",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 20319,
+          "bytes": 104886,
+          "hash": "52aa36615ace281c",
+          "stage": "readback-playback",
+          "expected": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 9 9. Please call me about my broken bedroom shade. Please say yes to save this message, or say what you want changed.",
+          "response": "6e33dce6-2880-48e0-bc2a-085616d562fa",
+          "transcript": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 9 9. Please call me about my broken bedroom shade. Please say yes to save this message, or say what you want changed.",
+          "audioTranscript": "Message from Pat Example, callback number +1 805-555-0199. Please call me about my broken bedroom shade. Please say yes to save this message, or say what you want changed.",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 43928,
+          "bytes": 46005,
+          "hash": "eb59a5038e5ee75d",
+          "stage": "result-playback",
+          "expected": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "response": "2dc737cc-f1d6-4f3b-aaa7-37b43249bdd7",
+          "transcript": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "audioTranscript": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "wordAgreement": 1
+        }
+      ],
+      "schedule": {
+        "purpose": "message",
+        "awaiting": "done",
+        "asked": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+        "name": "Pat Example",
+        "phone": "+18055550199",
+        "phoneSource": "caller-id",
+        "messageText": "Please call me about my broken bedroom shade.",
+        "consent": true,
+        "clarifyCount": 0,
+        "lastAnswer": "I'm Pat Example. Please call me about my broken bedroom shade."
+      },
+      "call": {
+        "id": "c61cc810-d413-422d-a4cf-0e3bf256226e",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "createdAt": 1792981357647,
+        "callerTranscript": [
+          {
+            "id": "70d4639d-fd65-4f0b-b43d-a64947bd5f51",
+            "text": "I'm Pat Example. Please call me about my broken bedroom shade."
+          },
+          {
+            "id": "19b205dd-8ae1-4b9e-9ec1-7eee33dd2eac",
+            "text": "Yes"
+          }
+        ],
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: message. Transcript: Please call me about my broken bedroom shade. Captured before the next question: name Pat Example; callback +18055550199.",
+          "outcome": "message",
+          "streamDetached": false
+        }
+      },
+      "messages": [
+        {
+          "id": "8f0be002-d5ae-453f-b06b-156b423bf7b6",
+          "callId": "c61cc810-d413-422d-a4cf-0e3bf256226e",
+          "name": "Pat Example",
+          "callback": "+18055550199",
+          "text": "Please call me about my broken bedroom shade.",
+          "confirmed": true,
+          "createdAt": 1792981398316,
+          "toolId": "02af7764-c003-47bd-978a-7dc30a2e65f8",
+          "status": "open",
+          "customerId": null,
+          "customerName": null,
+          "crmId": "isolated-callback",
+          "crmVerified": true
+        }
+      ]
+    },
+    {
+      "requestId": 104969,
+      "caseName": "long",
+      "voice": "rex",
+      "delayMs": 0,
+      "stateDelayMs": 600,
+      "durationMs": 96968,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "bookingDisabled": true,
+        "message": true,
+        "completeLongMessage": true,
+        "noRepeatedLongPrefixes": true,
+        "correctionsSaved": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "ms": 3108,
+          "bytes": 48563,
+          "hash": "07fd475e76008c63",
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "41ab1f72-42e8-4071-a3fc-46e9a1e5a33a",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message, and we'll get back to you as soon as possible.",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 14410,
+          "bytes": 17843,
+          "hash": "39b1bfe7d2b75f90",
+          "stage": "result-playback",
+          "expected": "What message would you like me to pass along?",
+          "response": "240b75f6-9c18-4efd-9770-c4caf385226b",
+          "transcript": "What message would you like me to pass along?",
+          "audioTranscript": "What message would you like me to pass along?",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 40731,
+          "bytes": 12721,
+          "hash": "12d6285f552eb8ec",
+          "stage": "result-playback",
+          "expected": "May I please have your name?",
+          "response": "1ef0df5d-db53-4717-a312-577ecd4de137",
+          "transcript": "May I please have your name?",
+          "audioTranscript": "May I please have your name?",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 52781,
+          "bytes": 209847,
+          "hash": "ec7d8f8a93b8b192",
+          "stage": "readback-playback",
+          "expected": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 9 9. The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted, and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available. Please say yes to save this message, or say what you want changed.",
+          "response": "98ccf454-4767-43af-8f64-559cec34f839",
+          "transcript": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 9 9. The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted, and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available. Please say yes to save this message, or say what you want changed.",
+          "audioTranscript": "Message from Pat Example. Callback number +1 805-555-0199. The shade in our living room sticks halfway down. We 1st noticed it on Saturday morning. The cord looks twisted and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available. Please say yes to save this message, or say what you want changed.",
+          "wordAgreement": 0.9861111111111112
+        },
+        {
+          "ms": 90573,
+          "bytes": 46005,
+          "hash": "78efe0b2785bd870",
+          "stage": "result-playback",
+          "expected": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "response": "09b14388-8f76-448b-b393-e945591e9f36",
+          "transcript": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "audioTranscript": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "wordAgreement": 1
+        }
+      ],
+      "schedule": {
+        "purpose": "message",
+        "awaiting": "done",
+        "asked": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+        "name": "Pat Example",
+        "phone": "+18055550199",
+        "phoneSource": "caller-id",
+        "messageText": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted, and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available.",
+        "consent": true,
+        "clarifyCount": 0,
+        "lastAnswer": "Pat Example"
+      },
+      "call": {
+        "id": "99a23a07-0314-440b-be9c-5e5d89a30e02",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "createdAt": 1792981357649,
+        "callerTranscript": [
+          {
+            "id": "139c03e9-4822-4fb1-ab2c-34eeb93842cf",
+            "text": "Yes."
+          },
+          {
+            "id": "5022da4d-cfea-4d2e-99ff-dd7b991ad18a",
+            "text": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted, and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available."
+          },
+          {
+            "id": "9bb5b350-e8d2-40d5-9837-e15876ba62b4",
+            "text": "Pat Example"
+          },
+          {
+            "id": "f13d71d2-20e4-4f06-bc24-5b5802c93baa",
+            "text": "Yes"
+          }
+        ],
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: message. Transcript: The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted, and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available. Captured before the next question: name Pat Example; callback +18055550199.",
+          "outcome": "message",
+          "streamDetached": false
+        }
+      },
+      "messages": [
+        {
+          "id": "b4f07e8a-321d-4c7c-9013-e3c3d338a9bf",
+          "callId": "99a23a07-0314-440b-be9c-5e5d89a30e02",
+          "name": "Pat Example",
+          "callback": "+18055550199",
+          "text": "The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted, and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available.",
+          "confirmed": true,
+          "createdAt": 1792981443892,
+          "toolId": "18946e08-2235-479d-984a-a57e976e0f23",
+          "status": "open",
+          "customerId": null,
+          "customerName": null,
+          "crmId": "isolated-callback",
+          "crmVerified": true
+        }
+      ]
+    },
+    {
+      "requestId": 104970,
+      "caseName": "correction",
+      "voice": "rex",
+      "delayMs": 0,
+      "stateDelayMs": 600,
+      "durationMs": 102756,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "bookingDisabled": true,
+        "message": true,
+        "completeLongMessage": true,
+        "noRepeatedLongPrefixes": true,
+        "correctionsSaved": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "ms": 2498,
+          "bytes": 51123,
+          "hash": "158b4c7f0f6e0675",
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "311b9d90-8c8c-4c2f-b4db-f9c733573a40",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message, and we'll get back to you as soon as possible?",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 19788,
+          "bytes": 99766,
+          "hash": "c010401a8f98bbcb",
+          "stage": "readback-playback",
+          "expected": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 9 9. Please call me about the kitchen shade. Please say yes to save this message, or say what you want changed.",
+          "response": "31c6a7b4-af31-401d-adcc-8d8c21f0ee59",
+          "transcript": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 9 9. Please call me about the kitchen shade. Please say yes to save this message, or say what you want changed.",
+          "audioTranscript": "Message from Pat Example. Callback number +1 805-555-0199. Please call me about the kitchen shade. Please say yes to save this message or say what you want changed.",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 46199,
+          "bytes": 97205,
+          "hash": "9a28b417c44e7a9d",
+          "stage": "readback-playback",
+          "expected": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 9 9. The bedroom blind is broken. Please say yes to save this message, or say what you want changed.",
+          "response": "fa35ea6e-86e0-40ba-8ffe-a17c05a762c4",
+          "transcript": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 9 9. The bedroom blind is broken. Please say yes to save this message, or say what you want changed.",
+          "audioTranscript": "Message from Pat Example. Callback number +1 805-555-0199. The bedroom blind is broken. Please say yes to save this message or say what you want changed.",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 73942,
+          "bytes": 94646,
+          "hash": "368d6bcadc95ca21",
+          "stage": "readback-playback",
+          "expected": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 2 3. The bedroom blind is broken. Please say yes to save this message, or say what you want changed.",
+          "response": "765f19bc-89be-461b-b584-59b926280946",
+          "transcript": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 2 3. The bedroom blind is broken. Please say yes to save this message, or say what you want changed.",
+          "audioTranscript": "Message from Pat Example. Callback number +1 805-555-0123. The bedroom blind is broken. Please say yes to save this message or say what you want changed.",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 96358,
+          "bytes": 46005,
+          "hash": "0112a140cda5d3e3",
+          "stage": "result-playback",
+          "expected": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "response": "f7cbf1d3-09d8-47e9-8a2b-44ff429c6324",
+          "transcript": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "audioTranscript": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "wordAgreement": 1
+        }
+      ],
+      "schedule": {
+        "purpose": "message",
+        "awaiting": "done",
+        "asked": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+        "name": "Pat Example",
+        "phone": "+18055550123",
+        "phoneSource": "spoken",
+        "messageText": "The bedroom blind is broken.",
+        "consent": true,
+        "clarifyCount": 0,
+        "lastAnswer": "My callback number is 8 0 5 5 5 5 0 1 2 3."
+      },
+      "call": {
+        "id": "dcaa38b9-5907-45aa-b04c-8386b8f7b2d9",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "createdAt": 1792981357675,
+        "callerTranscript": [
+          {
+            "id": "07b316a3-1930-4c44-9f50-98b3fd330ec3",
+            "text": "This is Pat Example. Please call me about the kitchen shade."
+          },
+          {
+            "id": "8fd2610c-ab27-4e64-8381-069aab40b5c8",
+            "text": "Change the message to, The bedroom blind is broken."
+          },
+          {
+            "id": "c832b4e5-383b-4455-a3c8-cf73423c613d",
+            "text": "My callback number is 8 0 5 5 5 5 0 1 2 3."
+          },
+          {
+            "id": "e20db84d-a40e-4517-b146-2fed3f7576c8",
+            "text": "Yes."
+          }
+        ],
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: message. Transcript: The bedroom blind is broken. Captured before the next question: name Pat Example; callback +18055550123.",
+          "outcome": "message",
+          "streamDetached": false
+        }
+      },
+      "messages": [
+        {
+          "id": "ef7464c4-1930-4e17-9bfd-9870da108fed",
+          "callId": "dcaa38b9-5907-45aa-b04c-8386b8f7b2d9",
+          "name": "Pat Example",
+          "callback": "+18055550123",
+          "text": "The bedroom blind is broken.",
+          "confirmed": true,
+          "createdAt": 1792981450737,
+          "toolId": "9a5f850a-a041-40d4-b1f5-5e7abcd702cb",
+          "status": "open",
+          "customerId": null,
+          "customerName": null,
+          "crmId": "isolated-callback",
+          "crmVerified": true
+        }
+      ]
+    },
+    {
+      "requestId": 104971,
+      "caseName": "blocked",
+      "voice": "rex",
+      "delayMs": 0,
+      "stateDelayMs": 600,
+      "durationMs": 71802,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "bookingDisabled": true,
+        "message": true,
+        "completeLongMessage": true,
+        "noRepeatedLongPrefixes": true,
+        "correctionsSaved": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "ms": 2836,
+          "bytes": 48563,
+          "hash": "f103390fe366775d",
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "79fd7640-cc4a-450c-b740-36352854aaa2",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message, and we'll get back to you as soon as possible.",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 13686,
+          "bytes": 17843,
+          "hash": "b50953f888981879",
+          "stage": "result-playback",
+          "expected": "What message would you like me to pass along?",
+          "response": "d7239fda-0c8e-4253-b376-1495e7f87044",
+          "transcript": "What message would you like me to pass along?",
+          "audioTranscript": "What message would you like me to pass along",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 21739,
+          "bytes": 12721,
+          "hash": "2372c7a9765e0861",
+          "stage": "result-playback",
+          "expected": "May I please have your name?",
+          "response": "3ef4862d-a9a9-4e93-b31e-4cdf771a68a9",
+          "transcript": "May I please have your name?",
+          "audioTranscript": "May I please have your name?",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 28719,
+          "bytes": 17843,
+          "hash": "afcb465dc099e33e",
+          "stage": "result-playback",
+          "expected": "What phone number should our team call back?",
+          "response": "464a9dce-4668-416c-b281-2a08eba56b2d",
+          "transcript": "What phone number should our team call back?",
+          "audioTranscript": "What phone number should our team call back?",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 42316,
+          "bytes": 99765,
+          "hash": "4517dae518958e56",
+          "stage": "readback-playback",
+          "expected": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 2 3. Please call about repairs. Please say yes to save this message, or say what you want changed.",
+          "response": "f085ae79-d0ef-4695-a68b-394cff46860b",
+          "transcript": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 2 3. Please call about repairs. Please say yes to save this message, or say what you want changed.",
+          "audioTranscript": "Message from Pat Example. Callback number +1 805-555-0123. Please call about repairs. Please say yes to save this message, or say what you want changed.",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 65402,
+          "bytes": 46005,
+          "hash": "f89efb6c6b46f39d",
+          "stage": "result-playback",
+          "expected": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "response": "a45cd9fb-cd2e-49ae-9cfd-95518affdb9a",
+          "transcript": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "audioTranscript": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "wordAgreement": 1
+        }
+      ],
+      "schedule": {
+        "purpose": "message",
+        "awaiting": "done",
+        "asked": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+        "name": "Pat Example",
+        "phone": "+18055550123",
+        "phoneSource": "spoken",
+        "messageText": "Please call about repairs.",
+        "consent": true,
+        "clarifyCount": 0,
+        "lastAnswer": "8 0 5 5 5 5 0 1 2 3."
+      },
+      "call": {
+        "id": "5e7733b9-ce7d-4b36-9753-985274d7c44e",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "anonymous",
+        "createdAt": 1792981357688,
+        "callerTranscript": [
+          {
+            "id": "9b2e8b56-e456-4c48-aba5-70ad5f059844",
+            "text": "Yes."
+          },
+          {
+            "id": "58d4fa2c-0499-47a8-a311-c680c649f6df",
+            "text": "Please call about repairs."
+          },
+          {
+            "id": "cde3fcf5-d833-4407-ad1a-bc6c8be579c9",
+            "text": "Pat Example"
+          },
+          {
+            "id": "45579621-98af-448f-8622-3608db508d5d",
+            "text": "8 0 5 5 5 5 0 1 2 3."
+          },
+          {
+            "id": "8a971967-150c-46fb-9cd8-88c828798d5e",
+            "text": "Yes."
+          }
+        ],
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: message. Transcript: Please call about repairs. Captured before the next question: name Pat Example; callback +18055550123.",
+          "outcome": "message",
+          "streamDetached": false
+        }
+      },
+      "messages": [
+        {
+          "id": "71754f9a-06e6-4f84-9d37-b3bdc83e9ea2",
+          "callId": "5e7733b9-ce7d-4b36-9753-985274d7c44e",
+          "name": "Pat Example",
+          "callback": "+18055550123",
+          "text": "Please call about repairs.",
+          "confirmed": true,
+          "createdAt": 1792981419587,
+          "toolId": "f39d13b6-17bd-4dc5-8d78-7e6a59f19b96",
+          "status": "open",
+          "customerId": null,
+          "customerName": null,
+          "crmId": "isolated-callback",
+          "crmVerified": true
+        }
+      ]
+    },
+    {
+      "requestId": 104972,
+      "caseName": "appointment",
+      "voice": "rex",
+      "delayMs": 0,
+      "stateDelayMs": 600,
+      "durationMs": 59672,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "bookingDisabled": true,
+        "message": true,
+        "completeLongMessage": true,
+        "noRepeatedLongPrefixes": true,
+        "correctionsSaved": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "ms": 2792,
+          "bytes": 51123,
+          "hash": "d2f06b59e6226867",
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "b1e47864-ee9c-4b4d-accd-7abb4715feed",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible?",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 16445,
+          "bytes": 38323,
+          "hash": "d538e820a716a7d6",
+          "stage": "result-playback",
+          "expected": "I can pass that appointment request to our team for a callback. May I please have your name?",
+          "response": "ae3810c9-b6a5-4f19-bf79-4bfbfcc2df58",
+          "transcript": "I can pass that appointment request to our team for a callback. May I please have your name?",
+          "audioTranscript": "I can pass that appointment request to our team for a callback. May I please have your name?",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 29551,
+          "bytes": 102325,
+          "hash": "2051686e5c00e943",
+          "stage": "readback-playback",
+          "expected": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 9 9. Please schedule an appointment Friday at ten. Please say yes to save this message, or say what you want changed.",
+          "response": "ad502d2f-3527-4029-8032-ad2441bfc9be",
+          "transcript": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 9 9. Please schedule an appointment Friday at ten. Please say yes to save this message, or say what you want changed.",
+          "audioTranscript": "Message from Pat Example. Callback number +1 805-555-0199. Please schedule an appointment Friday@ten.please say yes to save this message, or say what you want changed.",
+          "wordAgreement": 0.9615384615384616
+        },
+        {
+          "ms": 53276,
+          "bytes": 46005,
+          "hash": "1760de9bf7b8bf22",
+          "stage": "result-playback",
+          "expected": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "response": "019ea8aa-6a49-4c0e-8da8-05b0c906a0c3",
+          "transcript": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "audioTranscript": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "wordAgreement": 1
+        }
+      ],
+      "schedule": {
+        "purpose": "message",
+        "awaiting": "done",
+        "asked": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+        "name": "Pat Example",
+        "phone": "+18055550199",
+        "phoneSource": "caller-id",
+        "messageText": "Please schedule an appointment Friday at ten.",
+        "consent": true,
+        "clarifyCount": 0,
+        "lastAnswer": "Pat Example"
+      },
+      "call": {
+        "id": "ae383617-bb09-4f13-9b1c-aa70c90be369",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "createdAt": 1792981357710,
+        "callerTranscript": [
+          {
+            "id": "ed475c3e-677d-45fa-82d8-341a61d63e85",
+            "text": "Please schedule an appointment Friday at ten."
+          },
+          {
+            "id": "7652fd49-753c-478c-9653-3def801e8f8d",
+            "text": "Pat Example"
+          },
+          {
+            "id": "85cd1cd1-7e7e-4996-a78f-4aae8d75e312",
+            "text": "Yes"
+          }
+        ],
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: message. Transcript: Please schedule an appointment Friday at ten. Captured before the next question: name Pat Example; callback +18055550199.",
+          "outcome": "message",
+          "streamDetached": false
+        }
+      },
+      "messages": [
+        {
+          "id": "b6f8cdbd-79db-4257-b019-ccae76306922",
+          "callId": "ae383617-bb09-4f13-9b1c-aa70c90be369",
+          "name": "Pat Example",
+          "callback": "+18055550199",
+          "text": "Please schedule an appointment Friday at ten.",
+          "confirmed": true,
+          "createdAt": 1792981407247,
+          "toolId": "63ce8e2b-65a1-473e-8723-081c47886465",
+          "status": "open",
+          "customerId": null,
+          "customerName": null,
+          "crmId": "isolated-callback",
+          "crmVerified": true
+        }
+      ]
+    },
+    {
+      "requestId": 104973,
+      "caseName": "duration",
+      "voice": "rex",
+      "delayMs": 0,
+      "stateDelayMs": 600,
+      "durationMs": 81772,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "bookingDisabled": true,
+        "message": true,
+        "completeLongMessage": true,
+        "noRepeatedLongPrefixes": true,
+        "correctionsSaved": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "ms": 2696,
+          "bytes": 48563,
+          "hash": "f200236b86be8b04",
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "55ac32f2-3e5b-4080-a81a-457e1e1c7ec1",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message, and we'll get back to you as soon as possible.",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 15782,
+          "bytes": 71604,
+          "hash": "4117b83a412cd182",
+          "stage": "result-playback",
+          "expected": "A consultation generally takes about one hour. I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "8f80735d-9e9e-4835-9b30-95c46e3312d9",
+          "transcript": "A consultation generally takes about one hour. I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "audioTranscript": "A consultation generally takes about 1 h. I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "wordAgreement": 0.9354838709677419
+        },
+        {
+          "ms": 29520,
+          "bytes": 17843,
+          "hash": "c489cd23277659c1",
+          "stage": "result-playback",
+          "expected": "What message would you like me to pass along?",
+          "response": "e0dcd153-d487-48a5-8aa9-e1a7abec648f",
+          "transcript": "What message would you like me to pass along?",
+          "audioTranscript": "What message would you like me to pass along?",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 38833,
+          "bytes": 38323,
+          "hash": "93e236dc0804aa72",
+          "stage": "result-playback",
+          "expected": "I can pass that appointment request to our team for a callback. May I please have your name?",
+          "response": "f366718b-ae85-4be4-a915-b5a24263a9f0",
+          "transcript": "I can pass that appointment request to our team for a callback. May I please have your name?",
+          "audioTranscript": "I can pass that appointment request to our team for a callback. May I please have your name?",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 51888,
+          "bytes": 104883,
+          "hash": "8fc72ace7cfe1270",
+          "stage": "readback-playback",
+          "expected": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 9 9. Please call about a free consultation. Please say yes to save this message, or say what you want changed.",
+          "response": "3eadfed6-c14c-4afe-b763-1f938353fab9",
+          "transcript": "Message from Pat Example. Callback number + 1 8 0 5 5 5 5 0 1 9 9. Please call about a free consultation. Please say yes to save this message, or say what you want changed.",
+          "audioTranscript": "Message from Pat Example. Callback number +1 805-555-0199. Please call about a free consultation. Please say yes to save this message, or say what you want changed.",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 75688,
+          "bytes": 43444,
+          "hash": "9a3c52b1e54d7929",
+          "stage": "result-playback",
+          "expected": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "response": "4d83f849-aa60-441e-ace0-044c6559f75d",
+          "transcript": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "audioTranscript": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+          "wordAgreement": 1
+        }
+      ],
+      "schedule": {
+        "purpose": "message",
+        "awaiting": "done",
+        "asked": "Your message has been saved for our team to review. Thank you for calling 805 Shutters. Goodbye.",
+        "name": "Pat Example",
+        "phone": "+18055550199",
+        "phoneSource": "caller-id",
+        "messageText": "Please call about a free consultation.",
+        "consent": true,
+        "clarifyCount": 0,
+        "lastAnswer": "Pat Example"
+      },
+      "call": {
+        "id": "c6317a7c-9aac-4763-bafd-c62bde48d375",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "createdAt": 1792981357672,
+        "callerTranscript": [
+          {
+            "id": "adac8371-9178-433f-8f85-29ef59f70be9",
+            "text": "How long is a consultation?"
+          },
+          {
+            "id": "a5bd3b2b-ba0b-4da8-be7e-4fe53b9cc12f",
+            "text": "Yes."
+          },
+          {
+            "id": "9219fa9f-2eef-4de9-8218-7646250a1399",
+            "text": "Please call about a free consultation."
+          },
+          {
+            "id": "b8bd5c2d-ec9f-4faf-aabe-1309fe3ea463",
+            "text": "Pat Example"
+          },
+          {
+            "id": "07eeee4f-ae65-47cf-bf41-b3e3ec5a28ab",
+            "text": "Yes."
+          }
+        ],
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: message. Transcript: Please call about a free consultation. Captured before the next question: name Pat Example; callback +18055550199.",
+          "outcome": "message",
+          "streamDetached": false
+        }
+      },
+      "messages": [
+        {
+          "id": "de8648ad-83fa-45f0-81bd-fd4769680561",
+          "callId": "c6317a7c-9aac-4763-bafd-c62bde48d375",
+          "name": "Pat Example",
+          "callback": "+18055550199",
+          "text": "Please call about a free consultation.",
+          "confirmed": true,
+          "createdAt": 1792981429896,
+          "toolId": "126fe1ce-dc21-4831-9f14-3f5c16cc9abf",
+          "status": "open",
+          "customerId": null,
+          "customerName": null,
+          "crmId": "isolated-callback",
+          "crmVerified": true
+        }
+      ]
+    },
+    {
+      "requestId": 104974,
+      "caseName": "decline",
+      "voice": "rex",
+      "delayMs": 0,
+      "stateDelayMs": 600,
+      "durationMs": 15558,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "bookingDisabled": true,
+        "message": true,
+        "completeLongMessage": true,
+        "noRepeatedLongPrefixes": true,
+        "correctionsSaved": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "ms": 2804,
+          "bytes": 48563,
+          "hash": "f182f3b459d284d9",
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "13b3a1c3-9510-44e7-9313-a86046647f5a",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message, and we'll get back to you as soon as possible.",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 13934,
+          "bytes": 12721,
+          "hash": "6e3456799bd2c300",
+          "stage": "result-playback",
+          "expected": "May I please have your name?",
+          "response": "f86b399b-9e17-4a6b-8de0-d7ee4fe0078c",
+          "transcript": "May I please have your name?",
+          "audioTranscript": "May I please have your name?",
+          "wordAgreement": 1
+        }
+      ],
+      "schedule": {
+        "purpose": "message",
+        "awaiting": "name",
+        "asked": "May I please have your name?",
+        "name": null,
+        "phone": "+18055550199",
+        "phoneSource": "caller-id",
+        "messageText": "No, thank you.",
+        "consent": true,
+        "clarifyCount": 0,
+        "lastAnswer": "No, thank you."
+      },
+      "call": {
+        "id": "208cf5c6-cc51-47eb-933c-fd11de7a3ee7",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "createdAt": 1792981357733,
+        "callerTranscript": [
+          {
+            "id": "f6106237-04a8-414d-8715-0519ea68e231",
+            "text": "No, thank you."
+          }
+        ]
+      },
+      "messages": []
+    },
+    {
+      "requestId": 104975,
+      "caseName": "unclear",
+      "voice": "rex",
+      "delayMs": 0,
+      "stateDelayMs": 600,
+      "durationMs": 31909,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "bookingDisabled": true,
+        "message": true,
+        "completeLongMessage": true,
+        "noRepeatedLongPrefixes": true,
+        "correctionsSaved": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "ms": 3047,
+          "bytes": 51123,
+          "hash": "0ece72e1bf259578",
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "1d3c431f-749c-429e-8d2a-1b338dbb7887",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message, and we'll get back to you as soon as possible.",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 15746,
+          "bytes": 58803,
+          "hash": "4409a5ba0536bf3f",
+          "stage": "result-playback",
+          "expected": "I did not hear you. I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "df38d3b2-13b6-42e0-a02a-cad6052aab1d",
+          "transcript": "I did not hear you. I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "audioTranscript": "I did not hear you. I'm sorry, our team members are tied up at the moment. May I please take a message, and we'll get back to you as soon as possible.",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 28070,
+          "bytes": 25521,
+          "hash": "f8441e13c1821fad",
+          "stage": "result-playback",
+          "expected": "Thank you for calling 805 Shutters. Goodbye.",
+          "response": "ddf71b42-5b17-439b-89e1-28c942feeb93",
+          "transcript": "Thank you for calling 805 Shutters. Goodbye.",
+          "audioTranscript": "Thank you for calling 805 Shutters. Goodbye.",
+          "wordAgreement": 1
+        }
+      ],
+      "schedule": {
+        "purpose": "message",
+        "awaiting": "done",
+        "asked": "Thank you for calling 805 Shutters. Goodbye.",
+        "name": null,
+        "phone": "+18055550199",
+        "phoneSource": "caller-id",
+        "messageText": null,
+        "consent": false,
+        "clarifyCount": 2,
+        "lastAnswer": "Maybe."
+      },
+      "call": {
+        "id": "b039c383-0750-4347-a046-a3f5b2b73200",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "createdAt": 1792981357634,
+        "callerTranscript": [
+          {
+            "id": "b1a5aca8-d044-4c65-8dd0-92c6fa5e8df7",
+            "text": "Perhaps."
+          },
+          {
+            "id": "b9370857-7bd6-4735-871b-99004703718e",
+            "text": "Maybe."
+          }
+        ],
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: incomplete. Captured before the next question: callback +18055550199. No verified booking or confirmed message was saved.",
+          "outcome": "incomplete",
+          "streamDetached": false
+        }
+      },
+      "messages": []
+    },
+    {
+      "requestId": 104976,
+      "caseName": "hangup",
+      "voice": "rex",
+      "delayMs": 0,
+      "stateDelayMs": 600,
+      "durationMs": 16854,
+      "pass": true,
+      "assertions": {
+        "allAudioMatchesPreparedLine": true,
+        "generatedSpeechVerified": true,
+        "progressedEveryTurn": true,
+        "bookingDisabled": true,
+        "message": true,
+        "completeLongMessage": true,
+        "noRepeatedLongPrefixes": true,
+        "correctionsSaved": true,
+        "awaiting": true
+      },
+      "outputs": [
+        {
+          "ms": 2453,
+          "bytes": 46003,
+          "hash": "c8f685509790eb43",
+          "stage": "opening-playback",
+          "expected": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "response": "700f820e-b9e9-4912-8d76-c071e4bb7a1b",
+          "transcript": "I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.",
+          "audioTranscript": "I'm sorry, our team members are tied up at the moment. May I please take a message, and we'll get back to you as soon as possible.",
+          "wordAgreement": 1
+        },
+        {
+          "ms": 14650,
+          "bytes": 12721,
+          "hash": "92c1c253988f2ff9",
+          "stage": "result-playback",
+          "expected": "May I please have your name?",
+          "response": "313cf999-d6ac-4654-8aa3-0b8a56ffa611",
+          "transcript": "May I please have your name?",
+          "audioTranscript": "May I please have your name",
+          "wordAgreement": 1
+        }
+      ],
+      "schedule": {
+        "purpose": "message",
+        "awaiting": "name",
+        "asked": "May I please have your name?",
+        "name": null,
+        "phone": "+18055550199",
+        "phoneSource": "caller-id",
+        "messageText": "Please call about my broken shade.",
+        "consent": true,
+        "clarifyCount": 0,
+        "lastAnswer": "Please call about my broken shade."
+      },
+      "call": {
+        "id": "cd5024d5-18e2-4657-87cf-f4bdf3b11e92",
+        "sid": "CA11111111111111111111111111111111",
+        "from": "+18055550199",
+        "createdAt": 1792981357649,
+        "callerTranscript": [
+          {
+            "id": "bfb4d157-5c7b-4f6a-aeb7-dc81fad829b1",
+            "text": "Please call about my broken shade."
+          }
+        ],
+        "summary": {
+          "text": "Call CA11111111111111111111111111111111 outcome: incomplete. Unconfirmed transcript: Please call about my broken shade. Captured before the next question: callback +18055550199. No verified booking or confirmed message was saved.",
+          "outcome": "incomplete",
+          "streamDetached": false
+        }
+      },
+      "messages": [
+        {
+          "id": "9d273b7a-a617-4ec1-903e-75237ab3db95",
+          "callId": "cd5024d5-18e2-4657-87cf-f4bdf3b11e92",
+          "name": "Name not confirmed",
+          "callback": "+18055550199",
+          "text": "Please call about my broken shade.",
+          "confirmed": false,
+          "status": "open",
+          "createdAt": 1792981374503,
+          "customerId": null,
+          "customerName": null
+        }
+      ]
+    }
+  ]
+}

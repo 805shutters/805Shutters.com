@@ -143,7 +143,7 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
      }
      if(data.action==='choose') {
       if(data.choice==='message'){const next=e.beginMessage(id,`choose-message:${id}`);return {ok:next.phase==='message',phase:next.phase,callerId:next.from};}
-      if(data.choice==='schedule'){const next=e.beginSchedule(id,`choose-schedule:${id}`);if(next.phase!=='schedule')throw new Conflict('Scheduling is only offered when nobody answers. 805 will call the customer back.');return {ok:true,phase:'schedule'};}
+      if(data.choice==='schedule'){e.beginMessage(id,`choose-message:${id}`);return {ok:true,phase:'message',booking:false};}
       throw new Conflict('Choose message or schedule');
      }
      if(data.action==='transfer') {

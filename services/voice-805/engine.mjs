@@ -5,8 +5,8 @@ import { transcriptNoticeBody } from "./transcript-sms.mjs";
 
 export const MESSAGE_WINDOW_MS = 300000;
 
-// Scheduling intake can run during the listening welcome, while staff are still ringing.
-// A human owner or any later phase stops it. Booking still requires the played spoken yes.
+// Message intake can run during the listening welcome, while staff are still ringing.
+// A human owner or any later phase stops it. Message confirmation requires the played spoken yes.
 export function intakeActive(call) {
   return Boolean(
     call &&
@@ -16,7 +16,7 @@ export function intakeActive(call) {
   );
 }
 
-// The published scheduling route accepts phase "message" only.
+// Message intake uses phase "message".
 // A choice during the welcome moves there without dropping the ringing offer.
 export function retainRingingIntake(call) {
   if (!call || call.owner || call.phase !== "offering" || call.listeningWelcome !== true) return false;
@@ -303,21 +303,8 @@ export class Engine {
       c.deadline = Date.now() + MESSAGE_WINDOW_MS;
     });
   }
-  beginSchedule(id, eventId) {
-    return this.change(id, eventId, (c) => {
-      if (c.owner || c.phase !== "followup") return;
-      c.phase = "schedule";
-      c.deadline = Date.now() + MESSAGE_WINDOW_MS;
-    });
-  }
-  markScheduled(id, eventId, appointment) {
-    return this.change(id, eventId, (c) => {
-      if (c.owner || c.phase !== "schedule") return;
-      c.phase = "booked";
-      c.appointmentId = appointment.appointmentId;
-      c.deadline = Date.now() + 45000;
-    });
-  }
+  beginSchedule(id, eventId) { return this.beginMessage(id, eventId); }
+  markScheduled() { throw new Conflict('Phone appointment booking is retired.'); }
   agentDown(id, eventId) {
     return this.change(id, eventId, (c) => {
       if (!["greeting", "followup"].includes(c.phase)) return;
@@ -623,6 +610,7 @@ export class Engine {
       });
       c.messageId = m.id;
       this.queueTranscript(m);
+      if (this.config.transport === "media") this.effect(c, "sync-message", { messageId: m.id });
       this.store.put("log", {
         id: `partial:${m.id}`,
         callId: c.id,
@@ -808,6 +796,7 @@ export class Engine {
         customerName: call.customerName || null,
       });
       this.queueTranscript(message);
+      if (this.config.transport === "media") this.effect(call, "sync-message", { messageId: message.id });
       call.messageId = message.id;
       call.revision++;
       this.store.put("call", call);

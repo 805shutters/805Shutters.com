@@ -15,6 +15,7 @@ export class SupabaseWorker {
   constructor(state, provider, options = {}) {
     this.state = state;
     this.provider = provider;
+    this.syncMessage = typeof options.syncMessage === 'function' ? options.syncMessage : null;
     this.syncSummary = typeof options.syncSummary === 'function' ? options.syncSummary : null;
     this.transcriptsEnabled = typeof options.transcriptSmsSendingEnabled === 'function' ? options.transcriptSmsSendingEnabled : transcriptSmsSendingEnabled;
   }
@@ -39,6 +40,21 @@ export class SupabaseWorker {
     const read = () => typeof this.state.readCall === 'function' ? this.state.readCall(item.callId) : this.state.transact((_e,s) => s.get('call', item.callId));
     const change = fn => this.state.transact(fn);
     try {
+      if (kind === 'effect' && item.type === 'sync-message') {
+        const data = await change((_e, s) => ({ call: s.get('call', item.callId), message: s.get('message', item.data.messageId) }));
+        if (!data.call || !data.message) throw new Error('Message is unavailable');
+        if (!data.message.crmVerified) {
+          if (!this.syncMessage) throw new Error('Message sync is not configured');
+          const result = await this.syncMessage(data.call, data.message);
+          if (!result?.verified || !result.id || result.call_sid !== data.call.sid) throw new Error('Message sync was not verified');
+          await change((_e, s) => {
+            const fresh = s.get('message', data.message.id);
+            if (fresh) s.put('message', { ...fresh, crmVerified: true, crmId: result.id });
+          });
+        }
+        await change((_e, s) => { const fresh = s.get('effect', item.id); if (fresh) s.put('effect', { ...fresh, status: 'done' }); });
+        return;
+      }
       if (kind === 'effect' && item.type === 'sync-summary') {
         await this.finishSummary(item);
         return;
@@ -112,14 +128,14 @@ export class SupabaseWorker {
       await change((_e,s) => { const fresh=s.get(kind,item.id); return s.put(kind,{...fresh,status:'done'}); });
     } catch (error) {
       const failure = reportFailure('worker-effect', error);
-      if (kind === 'effect' && item.type === 'sync-summary') {
+      if (kind === 'effect' && ['sync-summary','sync-message'].includes(item.type)) {
         await change((_e, s) => {
           const fresh = s.get('effect', item.id);
           const call = s.get('call', item.callId);
           if (!fresh) return fresh;
           const attempts = fresh.attempts || 1;
           const failed = attempts >= 8;
-          if (call) s.put('call', { ...call, summarySync: failed ? 'failed' : 'pending' });
+          if (call && item.type === 'sync-summary') s.put('call', { ...call, summarySync: failed ? 'failed' : 'pending' });
           return s.put('effect', { ...fresh, status: failed ? 'failed' : 'pending', error: failure.message, nextAt: Date.now() + Math.min(300000, 5000 * 2 ** Math.min(attempts, 6)) });
         });
         return;

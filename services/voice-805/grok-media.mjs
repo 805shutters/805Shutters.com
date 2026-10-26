@@ -1,14 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import { reportFailure } from './security.mjs';
 import { COMMON_GREETING } from './caller-context.mjs';
-import { RECEPTIONIST_OPENING, RECEPTIONIST_PROMPT, RECEPTIONIST_TOOLS, schedulingRequest, messageIntent, spokenDecision } from './receptionist.mjs';
+import { RECEPTIONIST_OPENING, RECEPTIONIST_PROMPT, messageIntent, spokenDecision } from './receptionist.mjs';
 import { VOICE_ID } from './prompts.mjs';
-import { applyFindResult, applyScheduleTurn, bookedSchedule, callbackSchedule, callerPhone, findPayload, initialSchedule, preparePayload, speakWhen } from './schedule-intake.mjs';
+import { applyMessageTurn, appendCallerTranscript, initialMessage, messageSilence, mergeCallerCaptions, MESSAGE_SAVED } from './message-intake.mjs';
 import { intakeActive, retainRingingIntake } from './engine.mjs';
 
 const validAudio = value => typeof value === 'string' && value.length > 0 && value.length <= 256000 && /^[A-Za-z0-9+/]+={0,2}$/.test(value);
 const CONFIRM_MS = 60000;
 const SILENCE_MS = 12000;
+export const TURN_SETTLE_MS = 1600;
 // Paid Supabase Edge workers, including this Pro project, are stopped at 400s of wall clock.
 // Free is 150s. https://supabase.com/docs/guides/functions/limits
 // The socket ends first and leaves time for the state write, worker drain, and voicemail fallback.
@@ -34,11 +35,7 @@ export const INPUT_TRANSCRIPTION = Object.freeze({ model: 'grok-transcribe', lan
 const QUESTION_STAGES = new Set(['opening', 'opening-playback', 'result', 'result-playback']);
 const READBACK_STAGES = new Set(['readback', 'readback-playback']);
 const FORWARDED_STAGES = new Set(['assist', 'collect', 'confirm', 'welcome', 'welcome-playback', 'opening', 'opening-playback', 'result', 'result-playback', 'readback', 'readback-playback']);
-const PREPARE_FAIL = 'I could not verify that opening. May I take a callback message so our team can check it?';
-const SAVE_FAIL = 'I could not verify the save. May I take a callback message so our team can check it?';
-const REPLAN_QUESTION = 'That time no longer fits. What day or time should I check instead?';
-const CHANGE_QUESTION = 'Nothing new was saved. Tell me what you would like to change.';
-const SILENCE_QUESTION = 'I did not hear a clear yes, so nothing was saved. May I take a callback message so our team can check it?';
+const SAVE_FAIL = 'I could not verify the message save. Please call back so our team can help. Goodbye.';
 // The force_message response has no client correlation metadata. Its completed
 // output transcript is the ownership proof; arrival order is not proof.
 export const spokenLineKey = text => String(text || '').normalize('NFKC').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ').trim();
@@ -47,8 +44,8 @@ const MAX_SCRIPT_AUDIO_BYTES = 1200000;
 // The carrier socket is authenticated before construction. The model can propose.
 // A spoken yes counts only after the exact readback has played on this call.
 export class GrokMediaSession {
-  constructor({ socket, call, state, worker, connect, clock = globalThis, schedule = schedulingRequest, saveCrm = null, saveSummary = null }) {
-    Object.assign(this, { socket, call, state, worker, connect, clock, schedule, saveCrm, saveSummary });
+  constructor({ socket, call, state, worker, connect, clock = globalThis, saveCrm = null, saveSummary = null }) {
+    Object.assign(this, { socket, call, state, worker, connect, clock, saveCrm, saveSummary });
     this.config = state.config;
     this.stage = 'starting';
     this.closed = false;
@@ -75,7 +72,8 @@ export class GrokMediaSession {
     this.promptSequence = 0;
     this.bufferBytes = new Map();
     this.inputSpeaking = false;
-    this.pendingCallerEvent = null;
+    this.pendingCallerEvents = new Map();
+    this.vadItems = new Set();
     this.inputFinalTimer = null;
     this.chain = Promise.resolve();
     this.done = new Promise(resolve => { this.resolveDone = resolve; });
@@ -181,6 +179,7 @@ export class GrokMediaSession {
     }
     if (!this.streamSid || event.streamSid !== this.streamSid) return;
     if (event.event === 'stop') {
+      await this.flushCallerTurn();
       await this.commitBounded((e, s) => {
         const c = s.get('call', this.call.id);
         if (c?.phase === 'message' || (c?.phase === 'offering' && !c.owner)) e.ended(c.id, c.sid, `media-stop:${this.streamSid}`);
@@ -291,11 +290,18 @@ export class GrokMediaSession {
     return persist;
   }
   persistFailure(reason) {
+    const pending = [...this.pendingCallerEvents.values()];
     if (!this.streamSid) return Promise.resolve();
     return this.state.transact((e, s) => {
       const c = s.get('call', this.call.id);
       if (!c || c.phase === 'ended') return;
       if (c.phase === 'message' || c.phase === 'offering') {
+        if (intakeActive(c) && pending.length) {
+          const turn = { id: String(pending[0].item_id), text: mergeCallerCaptions(pending) };
+          const result = applyMessageTurn(c.schedule || initialMessage(c.from, this.config.number), turn.text, c.from, this.config.number);
+          s.put('call', { ...c, schedule: result.state, callerTranscript: appendCallerTranscript(c, turn) });
+          if (result.state.messageText) e.updateDraft(c.id, { name: result.state.name, callback: result.state.phone, message: result.state.messageText });
+        }
         e.failed(c.id, reason, `media-recover:${this.streamSid}`);
         const next = s.get('call', this.call.id);
         if (next) s.put('call', { ...next, mediaFailed: true, intent: next.intent?.confirmedAt ? next.intent : null });
@@ -326,7 +332,7 @@ export class GrokMediaSession {
     if (this.closed || !intakeActive(call)) return null;
     return call;
   }
-  // Commit phase "message" before a CRM call. The live scheduling route reads that phase.
+  // Commit phase "message" before a CRM call. The callback writer reads that phase.
   async commitIntake() {
     const call = await this.commitBounded((_e, s) => {
       const c = s.get('call', this.call.id);
@@ -349,9 +355,10 @@ export class GrokMediaSession {
     this.pending = [];
     this.vadTurn = false;
     this.clearSilence();
+    this.silenceTimer = this.clock.setTimeout(() => this.enqueue(() => this.silence()), SILENCE_MS);
     this.sendAI({ type: 'session.update', session: this.voiceSession({ instructions: 'The application supplies each spoken reply using force_message. Wait for that supplied reply. Do not generate additional answers or tools.', turn_detection: { type: 'server_vad' }, tools: [] }) });
   }
-  assistMessages() { this.stage = 'assist'; this.prompt = null; this.pending = []; this.vadTurn = false; this.messageOnly = true; this.clearSilence(); this.sendAI({ type: 'session.update', session: this.voiceSession({ instructions: RECEPTIONIST_PROMPT, turn_detection: { type: 'server_vad' }, tools: RECEPTIONIST_TOOLS }) }); }
+  assistMessages() { this.collect(); }
   output(id, result) { this.sendAI({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: id, output: JSON.stringify(result) } }); }
   clearSilence() { if (this.silenceTimer) { this.clock.clearTimeout(this.silenceTimer); this.silenceTimer = null; } }
   stopOverlap() {
@@ -423,7 +430,7 @@ export class GrokMediaSession {
         });
         if (this.closed) return;
         if (armed) this.armConfirm(); else this.finish();
-      } else if (this.messageOnly) this.assistMessages(); else this.collect();
+      } else if (this.endAfterPlayback) await this.endConversation(); else this.collect();
     });
   }
   noteCancelled(id) {
@@ -446,7 +453,21 @@ export class GrokMediaSession {
     }
     return null;
   }
-  async grok(event) {
+  settleCallerTurn() {
+    if (this.inputFinalTimer) this.clock.clearTimeout(this.inputFinalTimer);
+    this.inputFinalTimer = this.clock.setTimeout(() => this.enqueue(() => this.flushCallerTurn()), TURN_SETTLE_MS);
+  }
+  async flushCallerTurn() {
+    if (this.inputFinalTimer) this.clock.clearTimeout(this.inputFinalTimer);
+    this.inputFinalTimer = null;
+    const events = [...this.pendingCallerEvents.values()];
+    this.pendingCallerEvents.clear();
+    if (!events.length || this.closed) return;
+    const first = events[0];
+    for (const event of events.slice(1)) this.heard.add(String(event.item_id));
+    await this.grok({ ...first, transcript: mergeCallerCaptions(events) }, true);
+  }
+  async grok(event, settledCaller = false) {
     if (event.type === 'session.updated' && this.stage === 'starting') {
       this.clock.clearTimeout(this.startTimer);
       const call = await this.startupCall();
@@ -478,18 +499,14 @@ export class GrokMediaSession {
     const turn = this.callerTurn(event);
     // A replay must not replace a new in-progress caller caption either.
     if (turn && this.heard.has(turn.id)) return;
-    // The provider can emit a completed caption before its VAD end event.
-    // Replying then reconfigures the input session mid-sentence and truncates
-    // the rest of an address. Keep receiving audio until the speaker stops.
-    if (turn && this.inputSpeaking) {
+    // Keep the latest caption for each audio item, and merge nearby VAD
+    // segments. Natural sentence pauses are not permission to interrupt a
+    // longer message or reconfigure input while the caller continues.
+    if (turn && !settledCaller && (this.inputSpeaking || this.vadItems.has(turn.id) || this.pendingCallerEvents.size)) {
       if (READBACK_STAGES.has(this.stage)) this.beforeReadback.add(turn.id);
-      this.pendingCallerEvent = event;
+      this.pendingCallerEvents.set(turn.id, { type: 'conversation.item.input_audio_transcription.completed', item_id: turn.id, transcript: turn.text });
+      if (!this.inputSpeaking) this.settleCallerTurn();
       return;
-    }
-    if (turn && this.inputFinalTimer) {
-      this.clock.clearTimeout(this.inputFinalTimer);
-      this.inputFinalTimer = null;
-      this.pendingCallerEvent = null;
     }
     if (turn && (this.stage === 'confirm' || this.stage === 'collect' || this.stage === 'welcome' || this.stage === 'welcome-playback' || QUESTION_STAGES.has(this.stage))) this.noteChoice();
     if (turn && READBACK_STAGES.has(this.stage)) {
@@ -509,15 +526,10 @@ export class GrokMediaSession {
     if (turn) return;
     if (event.type === 'input_audio_buffer.speech_stopped' || event.type === 'input_audio_buffer.timeout_triggered') {
       this.inputSpeaking = false;
-      if (this.pendingCallerEvent) {
-        if (this.inputFinalTimer) this.clock.clearTimeout(this.inputFinalTimer);
-        this.inputFinalTimer = this.clock.setTimeout(() => this.enqueue(async () => {
-          this.inputFinalTimer = null;
-          if (this.inputSpeaking) return;
-          const final = this.pendingCallerEvent;
-          this.pendingCallerEvent = null;
-          if (final) await this.grok(final);
-        }), 250);
+      if (this.pendingCallerEvents.size) this.settleCallerTurn();
+      else if (['collect', 'confirm'].includes(this.stage)) {
+        this.clearSilence();
+        this.silenceTimer = this.clock.setTimeout(() => this.enqueue(() => this.silence()), SILENCE_MS);
       }
       if (['collect', 'confirm', 'assist', 'opening', 'opening-playback', 'result', 'result-playback', 'readback', 'readback-playback'].includes(this.stage)) this.vadTurn = true;
       return;
@@ -570,25 +582,26 @@ export class GrokMediaSession {
     }
     if (event.type === 'input_audio_buffer.speech_started') {
       this.inputSpeaking = true;
+      if (event.item_id) this.vadItems.add(String(event.item_id));
+      if (this.inputFinalTimer) this.clock.clearTimeout(this.inputFinalTimer);
+      this.inputFinalTimer = null;
+      this.clearSilence();
       if (QUESTION_STAGES.has(this.stage)) {
         // VAD also fires for noise and incomplete speech. Keep the scripted
         // question and its deadline until a final caller turn replaces it.
         this.note('speech-started', { questionPending: Boolean(this.prompt) });
         return;
       }
-      if (this.stage === 'readback' || this.stage === 'readback-playback') {
+      if (READBACK_STAGES.has(this.stage)) {
         this.noteChoice();
-        this.marks.clear();
-        this.sendCarrier({ event: 'clear' });
+        this.stopOverlap();
         this.intent = null;
-        const saved = await this.commitBounded((_e, s) => {
+        await this.commitBounded((_e, s) => {
           const c = s.get('call', this.call.id);
-          if (!intakeActive(c)) return false;
-          s.put('call', { ...c, intent: null, schedule: { ...(c.schedule || {}), awaiting: 'correction', asked: CHANGE_QUESTION } });
-          return true;
+          if (intakeActive(c)) s.put('call', { ...c, intent: null, schedule: { ...(c.schedule || {}), awaiting: 'correction', asked: 'What would you like me to change?' } });
         });
-        if (this.closed || saved !== true || !(await this.liveIntake())) return;
-        this.force(CHANGE_QUESTION, 'result');
+        // Wait for the complete interrupted utterance before speaking again.
+        this.stage = 'collect';
         return;
       }
       if (this.stage === 'assist') { this.marks.clear(); this.sendCarrier({ event: 'clear' }); }
@@ -628,16 +641,14 @@ export class GrokMediaSession {
     }
   }
   async silence() {
-    if (this.stage !== 'confirm' || this.closed) return;
-    this.intent = null;
-    const saved = await this.commitBounded((_e, s) => {
-      const c = s.get('call', this.call.id);
-      if (!intakeActive(c) || c.intent?.confirmedAt) return false;
-      s.put('call', { ...c, intent: null, schedule: callbackSchedule(c.schedule || initialSchedule(c.from, this.config.number), SILENCE_QUESTION) });
-      return true;
-    });
-    if (this.closed || saved !== true || !(await this.liveIntake())) return;
-    this.force(SILENCE_QUESTION, 'result');
+    if (!['collect', 'confirm'].includes(this.stage) || this.closed || this.inputSpeaking) return;
+    const current = await this.liveIntake();
+    if (!current) return;
+    const result = messageSilence(current.schedule || initialMessage(current.from, this.config.number));
+    this.endAfterPlayback = result.end === true;
+    if (!(await this.saveSchedule(result.state))) return;
+    if (this.stage === 'confirm' && !result.end && this.intent?.readback) this.force(this.intent.readback, 'readback');
+    else this.force(result.say, 'result');
   }
   async saveSchedule(schedule) {
     if (this.closed) return false;
@@ -645,6 +656,7 @@ export class GrokMediaSession {
       const c = s.get('call', this.call.id);
       if (!intakeActive(c)) return false;
       s.put('call', { ...c, schedule });
+      if (schedule.messageText) _e.updateDraft(c.id, { name: schedule.name, callback: schedule.phone, message: schedule.messageText });
       return true;
     });
     return saved === true && !this.closed;
@@ -657,9 +669,10 @@ export class GrokMediaSession {
       const c = s.get('call', this.call.id);
       retainRingingIntake(c);
       if (!intakeActive(c)) return null;
-      const prior = c.schedule || initialSchedule(c.from, this.config.number);
-      const next = applyScheduleTurn(prior, turn.text, c.from, this.config.number, this.now());
-      const saved = { ...c, schedule: next.state };
+      const prior = c.schedule || initialMessage(c.from, this.config.number);
+      const next = applyMessageTurn(prior, turn.text, c.from, this.config.number);
+      const saved = { ...c, schedule: next.state, callerTranscript: appendCallerTranscript(c, turn) };
+      if (next.state.messageText) e.updateDraft(c.id, { name: next.state.name, callback: next.state.phone, message: next.state.messageText });
       if (!c.intent?.confirmedAt) saved.intent = null;
       s.put('call', saved);
       return next;
@@ -669,8 +682,7 @@ export class GrokMediaSession {
     if (!this.intent?.confirmedAt) this.intent = null;
     this.logCheckpoint('saved', applied.state?.awaiting);
     if (applied.readback && applied.state.purpose === 'message') return this.readbackMessage(applied.state);
-    if (applied.prepare) return this.prepareFromSchedule(applied.state);
-    if (applied.search) return this.searchSchedule(applied.state);
+    this.endAfterPlayback = applied.end === true;
     this.force(applied.say, 'result');
   }
   async afterWelcome() {
@@ -693,23 +705,6 @@ export class GrokMediaSession {
     if (this.closed || this.callerChose || this.stage !== 'collect') return;
     this.force(RECEPTIONIST_OPENING, 'opening');
   }
-  async searchSchedule(state) {
-    if (this.closed || !(await this.commitIntake())) return;
-    this.stage = 'tool';
-    let result;
-    try { result = await this.schedule(this.config, this.call.id, 'find_appointments', findPayload(state)); }
-    catch { result = { fit: false, saved: false }; }
-    if (this.closed) return;
-    const offered = applyFindResult(state, result || { fit: false, saved: false });
-    if (!(await this.saveSchedule(offered.state)) || !(await this.liveIntake())) return;
-    this.force(offered.say, 'result');
-  }
-  async offerCallback(state, say) {
-    if (this.closed) return;
-    this.intent = null;
-    if (!(await this.saveSchedule(callbackSchedule(state, say))) || !(await this.liveIntake())) return;
-    this.force(say, 'result');
-  }
   async readbackMessage(state) {
     if (this.closed || !(await this.commitIntake())) return;
     this.intent = messageIntent({ name: state.name, callback: state.phone, message: state.messageText });
@@ -718,30 +713,6 @@ export class GrokMediaSession {
       const c = s.get('call', this.call.id);
       if (!intakeActive(c)) return false;
       s.put('call', { ...c, intent: this.intent, schedule: next });
-      return true;
-    });
-    if (this.closed || saved !== true || !(await this.liveIntake())) return;
-    this.force(this.intent.readback, 'readback');
-  }
-  async prepareFromSchedule(state) {
-    const current = await this.commitIntake();
-    if (!current) return;
-    if (current.bookingAttention || current.booking?.verified) return this.offerCallback(state, SAVE_FAIL);
-    this.stage = 'tool';
-    let result;
-    try { result = await this.schedule(this.config, this.call.id, 'prepare_appointment', preparePayload(state)); }
-    catch { return this.offerCallback(state, PREPARE_FAIL); }
-    if (this.closed) return;
-    if (result?.bookingAuthorized === false) return this.captureAppointmentRequest(state);
-    if (!result?.intent?.id || result.intent.kind !== 'appointment' || !result.intent.readback || result.intent.payload?.phone !== state.phone) return this.offerCallback(state, PREPARE_FAIL);
-    if (!(await this.liveIntake())) return;
-    this.intent = result.intent;
-    const next = { ...state, awaiting: 'confirm', asked: this.intent.readback };
-    const saved = await this.commitBounded((e, s) => {
-      const c = s.get('call', this.call.id);
-      if (!intakeActive(c) || c.booking?.verified || c.bookingIntent?.confirmedAt || c.bookingAttention) return false;
-      s.put('call', { ...c, intent: this.intent, schedule: next });
-      e.updateDraft(this.call.id, { name: state.name, callback: state.phone, message: `Consultation requested for ${state.offer.date} at ${state.offer.time} Pacific, ${state.address}. Booking not verified; check calendar before following up.` });
       return true;
     });
     if (this.closed || saved !== true || !(await this.liveIntake())) return;
@@ -757,93 +728,60 @@ export class GrokMediaSession {
     const intentId = this.intent?.id;
     if (!(await this.liveIntake())) return;
     if (decision === 'early' && this.intent?.readback) return this.force(this.intent.readback, 'readback');
+    await this.commitBounded((_e, s) => {
+      const c = s.get('call', this.call.id);
+      if (intakeActive(c)) s.put('call', { ...c, callerTranscript: appendCallerTranscript(c, turn) });
+    });
     if (decision !== 'affirmative') {
+      const current = await this.liveIntake();
+      if (!current) return;
+      const applied = applyMessageTurn({ ...(current.schedule || initialMessage(current.from, this.config.number)), awaiting: 'correction' }, turn.text, current.from, this.config.number);
       this.intent = null;
-      const current = await this.current();
-      if (this.closed || !intakeActive(current)) return;
-      const schedule = current?.schedule || initialSchedule(current?.from, this.config.number);
-      const applied = applyScheduleTurn({ ...schedule, awaiting: 'correction' }, turn.text, current?.from, this.config.number, this.now());
-      const cleared = await this.commitBounded((_e, s) => {
+      await this.commitBounded((_e, s) => {
         const c = s.get('call', this.call.id);
-        if (!intakeActive(c) || c.intent?.confirmedAt) return false;
-        s.put('call', { ...c, intent: null, lastCallerTurn: { id: turn.id, decision, at: Date.now() } });
-        return true;
+        if (intakeActive(c)) s.put('call', { ...c, intent: null, lastCallerTurn: { id: turn.id, decision, at: Date.now() } });
       });
-      if (this.closed || cleared !== true || !(await this.liveIntake())) return;
-      if (applied.changed) {
-        if (!(await this.saveSchedule(applied.state)) || !(await this.liveIntake())) return;
-        if (applied.readback && applied.state.purpose === 'message') return this.readbackMessage(applied.state);
-        if (applied.search) return this.searchSchedule(applied.state);
-        this.force(applied.say, 'result');
-        return;
-      }
-      if (!(await this.saveSchedule({ ...schedule, awaiting: 'correction', asked: CHANGE_QUESTION, offer: null, alternatives: [] })) || !(await this.liveIntake())) return;
-      this.force(CHANGE_QUESTION, 'result');
+      if (!(await this.saveSchedule(applied.state)) || !(await this.liveIntake())) return;
+      if (applied.readback) return this.readbackMessage(applied.state);
+      this.force(applied.say, 'result');
       return;
     }
     const intent = await this.commitBounded((_e, s) => {
       const c = s.get('call', this.call.id);
       if (!intakeActive(c)) return { blocked: true };
-      if (c.intent?.id !== intentId || !c.intent.playedAt || c.intent.confirmedAt || Date.now() - c.intent.playedAt > CONFIRM_MS) return { blocked: false };
+      if (c.intent?.kind !== 'message' || c.intent?.id !== intentId || !c.intent.playedAt || c.intent.confirmedAt || Date.now() - c.intent.playedAt > CONFIRM_MS) return { blocked: false };
       const next = { ...c.intent, confirmedAt: Date.now(), transcript: turn.text, turnId: turn.id };
-      s.put('call', { ...c, intent: next, lastCallerTurn: { id: turn.id, decision, at: next.confirmedAt }, ...(next.kind === 'appointment' ? { bookingIntent: next } : {}) });
+      s.put('call', { ...c, intent: next, lastCallerTurn: { id: turn.id, decision, at: next.confirmedAt } });
       return { blocked: false, intent: next };
     });
     if (this.closed || !intent || intent.blocked) return;
-    if (!intent.intent) {
-      this.intent = null;
-      const current = await this.liveIntake();
-      if (!current) return;
-      if (!(await this.saveSchedule({ ...(current.schedule || {}), awaiting: 'correction', asked: CHANGE_QUESTION, offer: null, alternatives: [] }))) return;
-      if (!(await this.liveIntake())) return;
-      this.force(CHANGE_QUESTION, 'result');
-      return;
-    }
+    if (!intent.intent) return this.recoverNow('Message confirmation expired');
     if (!(await this.liveIntake())) return;
     this.stage = 'committing';
-    try {
-      if (intent.intent.kind === 'message') await this.persistMessage(intent.intent);
-      else await this.persistAppointment(intent.intent);
-    } catch {
-      if (this.closed) return;
-      const noted = await this.commitBounded((_e, s) => {
-        const c = s.get('call', this.call.id);
-        if (!intakeActive(c)) return false;
-        s.put('call', { ...c, bookingAttention: 'Confirmation outcome requires verification before another booking.', schedule: callbackSchedule(c.schedule || initialSchedule(c.from, this.config.number), SAVE_FAIL) });
-        return true;
-      });
-      if (this.closed || noted !== true || !(await this.liveIntake())) return;
+    try { await this.persistMessage(intent.intent); }
+    catch {
+      if (this.closed || !(await this.liveIntake())) return;
+      this.endAfterPlayback = true;
       this.force(SAVE_FAIL, 'result');
     }
     this.intent = null;
   }
   async verifyCrm(message) {
-    if (!this.saveCrm) return true;
     let row = null;
-    try { row = await this.saveCrm(message); } catch { row = null; }
-    if (this.closed) return false;
-    if (!row?.verified || !row.id || row.call_sid !== this.call.sid) {
-      await this.recoverNow('CRM callback was not saved');
-      return false;
+    for (let attempt = 0; attempt < 2 && !this.closed; attempt++) {
+      const result = await this.boundRead(() => this.saveCrm?.(message));
+      row = result?.value || null;
+      if (row?.verified && row.id && row.call_sid === this.call.sid) break;
     }
-    await this.commitBounded((_e, s) => { const saved = s.get('message', message.id); if (saved) s.put('message', { ...saved, crmId: row.id, crmVerified: true }); });
-    return !this.closed;
-  }
-  async captureAppointmentRequest(state) {
-    if (this.closed || !(await this.commitIntake())) return;
-    const name = String(state?.name || '').trim();
-    const phone = state?.phone;
-    const when = speakWhen(state);
-    const text = `They want an appointment. ${[when, state?.address, state?.kind].filter(Boolean).join('. ')}`.replace(/\s+/g, ' ').trim().slice(0, 2000);
-    if (!name || !phone) return this.offerCallback(state, PREPARE_FAIL);
-    const message = await this.commitBounded(e => e.saveMessage(this.call.id, { name, callback: phone, message: text, confirmed: true }, `appointment-request:${this.call.id}`));
-    if (this.closed || !message?.confirmed) return this.recoverNow('CRM callback was not saved');
-    if (!(await this.verifyCrm(message))) return;
-    const current = await this.liveIntake();
-    if (!current) return;
-    const say = 'I saved that you want an appointment. Someone from the team will call you back. Is there anything else I can help with?';
-    if (!(await this.saveSchedule({ ...(current.schedule || {}), purpose: 'appointment', awaiting: 'help', asked: say })) || !(await this.liveIntake())) return;
-    this.force(say, 'result');
+    if (this.closed) return false;
+    if (!row?.verified || !row.id || row.call_sid !== this.call.sid) throw Error('CRM message was not verified');
+    const verified = await this.commitBounded((_e, s) => {
+      const saved = s.get('message', message.id);
+      if (!saved) return false;
+      s.put('message', { ...saved, crmId: row.id, crmVerified: true });
+      return true;
+    });
+    return verified === true && !this.closed;
   }
   async persistMessage(intent) {
     if (this.closed || !(await this.commitIntake())) return;
@@ -852,88 +790,23 @@ export class GrokMediaSession {
     if (!(await this.verifyCrm(message))) return;
     const current = await this.liveIntake();
     if (!current || current.messageId !== message.id) return;
-    const say = 'Your message has been saved for our team to review. Is there anything else I can help with?';
-    if (!(await this.saveSchedule({ ...(current.schedule || {}), awaiting: 'help', asked: say })) || !(await this.liveIntake())) return;
+    const say = MESSAGE_SAVED;
+    this.endAfterPlayback = true;
+    if (!(await this.saveSchedule({ ...(current.schedule || {}), awaiting: 'done', asked: say })) || !(await this.liveIntake())) return;
     this.force(say, 'result');
   }
-  async persistAppointment(intent) {
-    if (this.closed || !(await this.commitIntake())) return;
-    const result = await this.schedule(this.config, this.call.id, 'commit', {});
-    if (this.closed) return;
-    const current = await this.liveIntake();
-    if (!current) return;
-    if (result?.bookingAuthorized === false) return this.captureAppointmentRequest(current.schedule || initialSchedule(current.from, this.config.number));
-    if (result?.replan === true) {
-      const schedule = { ...(current.schedule || {}), awaiting: 'replan', asked: REPLAN_QUESTION, offer: null, alternatives: [] };
-      const saved = await this.commitBounded((_e, s) => {
-        const c = s.get('call', this.call.id);
-        if (!intakeActive(c) || c.bookingIntent?.id !== intent.id || c.booking?.verified) return false;
-        s.put('call', { ...c, bookingIntent: null, intent: null, schedule });
-        return true;
-      });
-      if (this.closed || saved !== true || !(await this.liveIntake())) return;
-      this.force(REPLAN_QUESTION, 'result');
-      return;
-    }
-    if (!result?.verified) throw Error('Booking not verified');
-    const saved = await this.liveIntake();
-    if (!saved) return;
-    const schedule = bookedSchedule(saved.schedule || current.schedule, result.date, result.time);
-    if (!(await this.saveSchedule(schedule)) || !(await this.liveIntake())) return;
-    this.force(schedule.asked, 'result');
-  }
   async tool(event) {
-    try {
-      const data = JSON.parse(event.arguments || '{}');
-      if (!RECEPTIONIST_TOOLS.some(t => t.name === event.name) || !data || Array.isArray(data) || data.confirmed === true) throw Error('Unsupported action');
-      const current = await this.commitIntake();
-      if (!current) return this.finish();
-      if (current.bookingAttention || current.booking?.verified) throw Error('Verify the existing booking outcome first.');
-      if (event.name === 'prepare_message' && current.messageId) throw Error('A message is already saved for this call.');
-      const trusted = callerPhone(current.from, this.config.number);
-      const spoken = current.schedule?.phoneSource === 'spoken' && current.schedule.phone ? current.schedule.phone : null;
-      const messageData = { ...data, callback: spoken || trusted || data.callback };
-      let result;
-      if (event.name === 'draft_message') result = await this.commitBounded(e => ({ retained: true, confirmed: false, draft: e.updateDraft(this.call.id, messageData) }));
-      else if (event.name === 'prepare_message') {
-        if (!(await this.liveIntake())) return;
-        this.intent = messageIntent(messageData);
-        await this.commitBounded(e => e.updateDraft(this.call.id, this.intent.payload));
-      } else {
-        if (!(await this.liveIntake())) return;
-        result = await this.schedule(this.config, this.call.id, event.name, data);
-        if (this.closed) return;
-        if (event.name === 'prepare_appointment') {
-          if (!result.intent?.id || result.intent.kind !== 'appointment' || !result.intent.readback) throw Error('No verified proposal');
-          if (!(await this.liveIntake())) return;
-          this.intent = result.intent;
-          await this.commitBounded(e => e.updateDraft(this.call.id, { name: this.intent.payload.name, callback: this.intent.payload.phone, message: `Consultation requested for ${this.intent.payload.date} at ${this.intent.payload.time} Pacific, ${this.intent.payload.address}. Booking not verified; check calendar before following up.` }));
-        }
-      }
-      if (this.closed) return;
-      if (['prepare_message', 'prepare_appointment'].includes(event.name)) {
-        const saved = await this.commitBounded((_e, s) => {
-          const c = s.get('call', this.call.id);
-          if (!intakeActive(c) || (this.intent.kind === 'appointment' && (c.booking?.verified || c.bookingIntent?.confirmedAt || c.bookingAttention))) return false;
-          s.put('call', { ...c, intent: this.intent });
-          return true;
-        });
-        if (this.closed || saved !== true || !(await this.liveIntake())) return;
-        this.output(event.call_id, { prepared: true, saved: false, awaiting: 'spoken yes after the readback plays' });
-        this.force(this.intent.readback, 'readback');
-        return;
-      }
-      if (this.closed) return;
-      const fit = result?.fit;
-      this.output(event.call_id, fit === false ? { ...result, saved: false, next: 'No open CRM time fits. Take a callback message so staff can see whether they can accommodate.' } : result);
-      this.assist();
-      this.sendAI({ type: 'response.create' });
-    } catch {
-      if (this.closed) return;
-      this.output(event.call_id, { saved: false, error: 'Could not verify this request. Collect missing details, try another time, or offer a callback message.' });
-      this.assist();
-      this.sendAI({ type: 'response.create' });
-    }
+    // No model tools can create, search, prepare or commit an appointment.
+    this.output(event.call_id, { saved: false, error: 'Only the server-directed message conversation is available.' });
+  }
+  async endConversation() {
+    await this.commitBounded((e, s) => {
+      const c = s.get('call', this.call.id);
+      if (intakeActive(c)) e.ended(c.id, c.sid, `message-end:${c.id}`);
+    });
+    await this.writeSummary();
+    this.finish();
+    await this.worker?.drain?.();
   }
   fail(reason) {
     return this.recoverNow(reason);
@@ -944,7 +817,7 @@ export class GrokMediaSession {
     this.clock.clearTimeout(this.startTimer);
     this.clock.clearTimeout(this.limitTimer);
     if (this.inputFinalTimer) this.clock.clearTimeout(this.inputFinalTimer);
-    this.pendingCallerEvent = null;
+    this.pendingCallerEvents.clear();
     this.buffers.clear();
     this.bufferBytes.clear();
     this.promptTranscripts.clear();

@@ -1,14 +1,16 @@
-export const TRANSCRIPT_SMS_CAMPAIGN_SID = "BU542a67b844388f5192a84c79d6a86cb9";
-export const TRANSCRIPT_SMS_CAMPAIGN_STATUS = "draft";
+export const TRANSCRIPT_SMS_CAMPAIGN_SID = "CMaba6c0b6723563c5a514181126ab706c";
+export const TRANSCRIPT_SMS_CAMPAIGN_STATUS = "in-review";
+export const TRANSCRIPT_SMS_SENDER_REGISTERED = false;
 export const DEDICATED_805_MESSAGING_SERVICE_SID = "MG60d4038bf54bffa0690cce85a6e49147";
 export const DEDICATED_805_SMS_FROM = "+18055908050";
 export const TRANSCRIPT_SMS_LIMIT = 1600;
 export const TRANSCRIPT_SMS_FOOTER = "Reply STOP to unsubscribe; HELP for help.";
 export const TRANSCRIPT_SHORTENED_NOTICE = "Message shortened; full transcript in CRM Message Center";
 
-// Draft campaign status keeps this false. A live secret cannot turn sending on.
+// Both carrier approval and this campaign's sender registration need verified
+// readback before release. A live secret cannot bypass either gate.
 export function transcriptSmsSendingEnabled() {
-  return TRANSCRIPT_SMS_CAMPAIGN_STATUS === "approved";
+  return TRANSCRIPT_SMS_CAMPAIGN_STATUS === "approved" && TRANSCRIPT_SMS_SENDER_REGISTERED;
 }
 
 export function transcriptNoticeBody(message) {

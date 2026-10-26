@@ -16,7 +16,7 @@ export const PROMPTS = Object.freeze({
   greeting: COMMON_GREETING,
   unavailable: "This test line is not available.",
   voicemail:
-    `${STAFF_STATUS_SENTENCE} We could not continue this call, and no recording was made. Please call back to leave a message or schedule an appointment.`,
+    `${STAFF_STATUS_SENTENCE} We could not continue this call, and no recording was made. Please call back to leave a message.`,
 });
 
 const NAMES = Object.keys(PROMPTS);

@@ -2,7 +2,7 @@ import { twiml, xml } from "./security.mjs";
 import { PROMPTS, promptVerb } from "./prompts.mjs";
 import { STAFF_STATUS_SENTENCE } from "./receptionist.mjs";
 
-export const KEPT_MESSAGE_FALLBACK = `${STAFF_STATUS_SENTENCE} Your written message is saved. No recording was made. Please call back if you need to add anything or schedule an appointment.`;
+export const KEPT_MESSAGE_FALLBACK = `${STAFF_STATUS_SENTENCE} Your written message is saved. No recording was made. Please call back if you need to add anything.`;
 
 export function voicemailXml(origin, _recordingPath, _transcriptionPath, config = null, options = {}) {
   const kept = options.kept === true;
@@ -13,7 +13,7 @@ export function voicemailXml(origin, _recordingPath, _transcriptionPath, config 
 
 function writtenMessage(engine, call) {
   const messages = engine?.store?.list?.("message") || [];
-  return messages.some((item) => item.callId === call?.id && String(item.text || "").trim());
+  return messages.some((item) => item.callId === call?.id && item.crmVerified === true && String(item.text || "").trim());
 }
 
 // North American ringback: 440 Hz + 480 Hz for two seconds, then four seconds

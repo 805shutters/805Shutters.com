@@ -1,54 +1,71 @@
-import { afterAll, beforeAll, beforeEach, expect, it, vi } from 'vitest';
+// @vitest-environment happy-dom
+// Real call-state CAS and callback SQL in isolated PostgreSQL, followed by the
+// authenticated Next proxy, signed Edge control read, and actual React desk.
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
-import { bookingDatabaseFixture } from '@/lib/booking/database-fixture';
-import { prepareVoiceVisit, commitVoiceVisit } from './scheduling';
-// Only the external geocoder is replaced. Availability, route validation,
-// confirmation, atomic SQL writes and calendar read-back use production code.
-vi.mock('@/lib/booking/geo', () => ({ geocodeBookingAddress: async () => ({
-  configured: true, point: { lat: 34.2164, lng: -119.0376 },
-  formattedAddress: '123 Test Street, Camarillo',
-}) }));
-// @ts-expect-error The deployed Edge service is native JavaScript.
+import { act, createElement } from 'react';
+import { createRoot } from 'react-dom/client';
+import { NextRequest } from 'next/server';
+vi.mock('@/lib/crm/auth', () => ({ requireCrmUser: async () => ({ email: 'test@local.invalid', supabase: {} }), crmAuthErrorResponse: () => new Response('', { status: 401 }) }));
+vi.mock('@/lib/supabase-browser', () => ({ getSupabaseBrowserClient: () => ({ auth: { getSession: async () => ({ data: { session: { access_token: 'isolated-session' } } }) } }) }));
+import { GET } from '@/app/api/crm/phone/[...path]/route';
+import { PhoneDesk } from '@/app/crm/phone/phone-desk';
+// @ts-expect-error Native Edge JavaScript.
 import { GrokMediaSession } from '../../../services/voice-805/grok-media.mjs';
-// @ts-expect-error The deployed Edge service is native JavaScript.
+// @ts-expect-error Native Edge JavaScript.
 import { SupabaseState } from '../../../services/voice-805/supabase-store.mjs';
-// @ts-expect-error The deployed Edge service is native JavaScript.
+// @ts-expect-error Native Edge JavaScript.
+import { SupabaseWorker } from '../../../services/voice-805/supabase-worker.mjs';
+// @ts-expect-error Native Edge JavaScript.
+import { savePhoneMessage } from '../../../services/voice-805/callbacks.mjs';
+// @ts-expect-error Native Edge JavaScript.
+import { createSupabaseHandler } from '../../../services/voice-805/supabase-handler.mjs';
+// @ts-expect-error Native Edge JavaScript.
 import { loadSupabaseConfig } from '../../../services/voice-805/supabase-config.mjs';
-
 const db = new PGlite();
-const now = new Date('2035-09-30T18:00:00Z');
+const config = { ...loadSupabaseConfig({}), transport: 'media', mode: 'live', dataset: 'production', xaiKey: 'isolated',
+  liveAuthorized: true, agentReviewed: true, agentContractVerified: true, workerVerified: true,
+  number: '+18055550100', accountSid: 'AC' + 'a'.repeat(32), authToken: 'x', origin: 'https://phone.example',
+  controlKey: 'c'.repeat(32), toolsKey: 't'.repeat(32), workerKey: 'w'.repeat(32),
+  hours: Object.fromEntries(Array.from({ length: 7 }, (_, i) => [i, [[0, 1440]]])), holidays: {},
+  staff: { mike: { kind: 'cell', destination: '+18055550101' }, jessica: { kind: 'cell', destination: '+18055550102' } },
+};
+let failWrites = 0, failReads = 0;
 beforeAll(async () => {
-  const phone = readFileSync('supabase/migrations/20261011014441_voice_805_supabase_call_center.sql', 'utf8').split('create function public.voice_805_normalize_phone')[0];
-  await db.exec(bookingDatabaseFixture() + phone + readFileSync('supabase/migrations/20261019230000_voice_805_confirmed_booking.sql', 'utf8') + readFileSync('supabase/migrations/20261020035500_voice_805_agent_staff_notice.sql', 'utf8'));
+  const read = (file: string) => readFileSync('supabase/migrations/' + file, 'utf8');
+  await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;
+    create table crm_customers(id uuid primary key);
+    create table crm_calendar_events(id uuid primary key);
+    create table crm_activity_events(id uuid primary key default gen_random_uuid(), actor_email text,entity_type text,entity_id uuid,action text,after_data jsonb);`);
+  await db.exec(read('20261011014441_voice_805_supabase_call_center.sql').split('create function public.voice_805_normalize_phone')[0]);
+  await db.exec(read('20261019231000_voice_805_callbacks.sql'));
 }, 30000);
 afterAll(() => db.close());
 beforeEach(async () => {
-  await db.exec(`truncate booking_travel_buffer_exceptions,booking_outbox,booking_requests,booking_route_protections,crm_quotes,crm_calendar_events,crm_jobs,leads,sales_805_appointments,crm_availability_slots cascade;
-    update voice_805_state set body='{"entities":{"call":{}},"events":{},"inbound":{}}',revision=0;`);
-  const snap = await db.query<{ s: { revision: string } }>("select booking_schedule_snapshot('2035-10') s");
-  await db.query('select booking_publish_ranges($1,$2,$3,$4)', ['2035-10', snap.rows[0].s.revision, JSON.stringify([{ start_at: '2035-10-01T15:00:00Z', end_at: '2035-10-02T00:00:00Z' }]), 'test@local.invalid']);
+  failWrites = failReads = 0;
+  await db.exec(`truncate crm_callback_items; update voice_805_state set body='{"entities":{},"events":{},"inbound":{}}',revision=0;`);
 });
-
-// Supabase wire adapter to an isolated PostgreSQL engine. It calls the actual
-// migrations, including voice_805_commit CAS and voice_805_book_confirmed.
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 const client: any = {
   async rpc(name: string, args: Record<string, unknown>) {
+    if (name === 'voice_805_save_callback' && failWrites-- > 0) return { error: { message: 'simulated database outage' } };
     const fields: Record<string, string[]> = {
-      booking_schedule_snapshot: ['p_month'], voice_805_commit: ['p_id', 'p_revision', 'p_body'],
-      voice_805_book_confirmed: ['p_call_id', 'p_intent_id', 'p_payload', 'p_hash', 'p_revision', 'p_lead', 'p_job', 'p_event', 'p_proofs'],
+      voice_805_commit: ['p_id', 'p_revision', 'p_body'],
+      voice_805_save_callback: ['p_call_sid','p_caller_name','p_callback_number','p_reason','p_transcript','p_recording_url','p_call_time','p_phone','p_status','p_appointment_id','p_customer_id'],
     };
     if (!fields[name]) throw new Error('Unexpected RPC');
     try {
-      const values = fields[name].map(key => typeof args[key] === 'object' ? JSON.stringify(args[key]) : args[key]);
+      const values = fields[name].map(key => args[key] !== null && typeof args[key] === 'object' ? JSON.stringify(args[key]) : args[key]);
       const result = await db.query<{ data: unknown }>(`select ${name}(${values.map((_, i) => '$' + (i + 1)).join(',')}) data`, values);
       return { data: result.rows[0].data, error: null };
     } catch (error) { return { data: null, error: { message: String(error) } }; }
   },
   from(table: string) {
-    if (!['voice_805_state', 'booking_requests', 'crm_calendar_events', 'booking_outbox'].includes(table)) throw new Error('Unexpected table');
+    if (!['voice_805_state', 'crm_callback_items'].includes(table)) throw new Error('Unexpected table');
     let columns = '*', key = '', value: unknown;
     const read = async (single = false) => {
+      if (table === 'crm_callback_items' && failReads-- > 0) return { error: { message: 'simulated read outage' } };
       const result = await db.query(`select ${columns} from ${table} where "${key}"=$1`, [value]);
       return { data: single ? result.rows[0] || null : result.rows, error: null };
     };
@@ -56,42 +73,26 @@ const client: any = {
       select(next: string) { if (!/^[a-z_,]+$/.test(next)) throw new Error('Invalid columns'); columns = next; return this; },
       eq(next: string, val: unknown) { if (!/^[a-z_]+$/.test(next)) throw new Error('Invalid key'); key = next; value = val; return this; },
       single: () => read(true), maybeSingle: () => read(true),
-      then: (resolve: (value: unknown) => unknown, reject: (error: unknown) => unknown) => read().then(resolve, reject),
     };
   },
 };
-
-it.each([false, true])('full conversation verifies a durable CRM booking; withdrawn slot=%s', async withdrawn => {
-  const config = { ...loadSupabaseConfig({}), transport: 'media', mode: 'live', dataset: 'production', xaiKey: 'isolated',
-    liveAuthorized: true, agentReviewed: true, agentContractVerified: true, workerVerified: true,
-    number: '+18055550100', accountSid: 'AC' + 'a'.repeat(32),
-    hours: Object.fromEntries(Array.from({ length: 7 }, (_, i) => [i, [[0, 1440]]])), holidays: {},
-  };
+async function fixture(from = '+18055550199') {
   const state = new SupabaseState(client, config);
   const call = await state.transact((engine: any, store: any) => {
-    const inbound = engine.inbound('CA' + '1'.repeat(32), '+18055550199');
+    const inbound = engine.inbound('CA' + '1'.repeat(32), from);
+    // Isolate message intake from carrier dialing effects; no provider exists.
+    for (const effect of store.list('effect')) store.put('effect', { ...effect, status: 'done' });
     return store.put('call', { ...inbound, phase: 'message', deadline: Date.now() + 300000 });
   });
   const carrier: any = { readyState: 1, sent: [] as any[], send(raw: string) { this.sent.push(JSON.parse(raw)); }, close() { this.readyState = 3; } };
   const ai: any = { ...carrier, sent: [], close() {} };
-  const actions: string[] = [];
   const session = new GrokMediaSession({ socket: carrier, call, state, worker: { drain: async () => {} }, connect: () => ai,
-    clock: { setTimeout, clearTimeout, now: () => now },
-    schedule: async (_config: unknown, id: string, action: string, input: unknown) => {
-      actions.push(action);
-      if (action === 'commit') return commitVoiceVisit(client, id, await state.readCall(id));
-      return prepareVoiceVisit(client, id, input, action === 'prepare_appointment', { now });
-    },
+    saveCrm: async (message: any) => savePhoneMessage(client, await state.readCall(call.id), message),
   });
   const grok = (event: unknown) => session.enqueue(() => session.grok(event));
   let sequence = 0;
   const play = async () => {
     const id = 'question-' + ++sequence, expected = session.prompt.text;
-    await grok({ type: 'response.created', response: { id: 'stray-' + id } });
-    await grok({ type: 'response.output_audio.delta', response_id: 'stray-' + id, delta: 'YmFk' });
-    await grok({ type: 'response.output_audio_transcript.done', response_id: 'stray-' + id, transcript: 'silent' });
-    await grok({ type: 'response.done', response: { id: 'stray-' + id, status: 'completed' } });
-    expect(carrier.sent.some((item: any) => item.media?.payload === 'YmFk')).toBe(false);
     await grok({ type: 'response.created', response: { id } });
     await grok({ type: 'response.output_audio.delta', response_id: id, delta: 'YWJj' });
     await grok({ type: 'response.output_audio_transcript.done', response_id: id, transcript: expected });
@@ -100,34 +101,115 @@ it.each([false, true])('full conversation verifies a durable CRM booking; withdr
     return expected;
   };
   const say = (text: string, id = 'caller-' + ++sequence) => grok({ type: 'conversation.item.input_audio_transcription.completed', item_id: id, transcript: text });
+  await session.carrier({ event: 'start', start: { accountSid: config.accountSid, callSid: call.sid, streamSid: 'MZ' + '2'.repeat(32), mediaFormat: { encoding: 'audio/x-mulaw', sampleRate: 8000, channels: 1 } } });
+  ai.onopen(); await session.chain; await grok({ type: 'session.updated' }); await play();
+  return { state, call, session, say, play };
+}
+async function renderSavedDesk(state: any, expected: string, transcript: string) {
+  vi.stubEnv('VOICE_805_STAFF_EMAILS_JSON', JSON.stringify({ 'test@local.invalid': 'mike' }));
+  vi.stubEnv('VOICE_805_SERVICE_ORIGIN', config.origin); vi.stubEnv('VOICE_805_CONTROL_KEY', config.controlKey);
+  const handler = createSupabaseHandler({ state, client, worker: { drain: async () => {} } });
+  const paths: string[] = [];
+  vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+    paths.push(url);
+    if (url === '/api/crm/phone/state') return GET(new NextRequest('https://isolated.invalid' + url, { ...init, signal: init.signal || undefined }), { params: Promise.resolve({ path: ['state'] }) });
+    if (url === config.origin + '/control') return handler(new Request(url, init));
+    throw new Error('Unexpected network request');
+  });
+  (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
+  const host = document.createElement('div'); document.body.append(host); const root = createRoot(host);
   try {
-    await session.carrier({ event: 'start', start: { accountSid: config.accountSid, callSid: call.sid, streamSid: 'MZ' + '2'.repeat(32), mediaFormat: { encoding: 'audio/x-mulaw', sampleRate: 8000, channels: 1 } } });
-    ai.onopen(); await session.chain; await grok({ type: 'session.updated' }); await play();
-    for (const text of ['schedule an appointment', 'Monday', '10 a.m.', '123 Test Street, Camarillo', 'yes', 'my home', 'Pat Example']) {
-      await say(text); expect(session.prompt.text.match(/\?/g)?.length || 0).toBeLessThanOrEqual(1); await play();
-    }
-    expect(actions).toEqual(['find_appointments']);
-    expect((await state.readCall(call.id)).schedule.offer).toMatchObject({ date: '2035-10-01', time: '10:00' });
-    await say('yes'); expect(session.stage).toBe('readback');
-    expect(session.prompt.text).toContain('60 minutes');
-    await say('yes', 'early-yes');
+    await act(async () => { root.render(createElement(PhoneDesk)); await new Promise(resolve => setTimeout(resolve, 150)); });
+    expect(paths).toEqual(['/api/crm/phone/state', config.origin + '/control']);
+    expect(host.textContent).toContain(expected);
+    expect(host.textContent).toContain('Call summary');
+    expect(host.textContent).toContain(transcript);
+    expect(host.querySelectorAll('article[id^="phone-message-"]')).toHaveLength(1);
+    const details = host.querySelector('details'); expect(details?.textContent).toContain(transcript);
+  } finally { await act(async () => root.unmount()); host.remove(); }
+}
+it.each(['short', 'long', 'corrected', 'blocked'])('message %s: complete SQL save, restart, signed CRM fetch and Message Center display', async scenario => {
+  const f = await fixture(scenario === 'blocked' ? 'anonymous' : undefined);
+  const original = scenario === 'long' ? 'My living room shade sticks halfway down. '.repeat(25) + 'Please call me after lunch.' : 'Please call me about my shutters.';
+  let expected = original;
+  try {
+    await f.say('yes'); await f.play(); await f.say(original); await f.play(); await f.say('Pat Example');
+    if (scenario === 'blocked') { expect(f.session.prompt.text).toMatch(/phone number/); await f.play(); await f.say('eight zero five five five five zero one two three'); }
+    expect(f.session.stage).toBe('readback');
+    await f.say('yes', 'early-yes'); expect((await db.query('select * from crm_callback_items')).rows).toHaveLength(0); await f.play();
+    if (scenario === 'corrected') { expected = 'The bedroom blind is broken.'; await f.say('Change the message to ' + expected); await f.play(); }
+    await f.say('yes', 'confirmed'); expect(f.session.prompt.text).toMatch(/has been saved/); await f.play();
+    await f.say('yes', 'confirmed');
+    const saved = (await db.query<any>('select * from crm_callback_items')).rows;
+    expect(saved).toHaveLength(1); expect(saved[0].reason).toBe('Confirmed message: ' + expected);
+    expect(saved[0].transcript).toContain(original); expect(saved[0].recording_url).toBe(''); expect(saved[0].appointment_id).toBeNull();
+    expect(saved[0].callback_number).toBe(scenario === 'blocked' ? '+18055550123' : '+18055550199');
     expect((await db.query('select * from crm_calendar_events')).rows).toHaveLength(0);
-    await play(); expect(session.stage).toBe('confirm');
-    if (withdrawn) await db.exec('delete from crm_availability_slots');
-    await say('yes', 'confirmed-yes');
-    const rows = (await db.query<{ meta: any; start_at: string }>('select meta,start_at from crm_calendar_events')).rows;
-    if (withdrawn) {
-      expect(rows).toHaveLength(0); expect(session.prompt.text).not.toMatch(/is booked|we.re confirmed/i);
-      expect((await db.query('select * from leads')).rows).toHaveLength(0);
-    } else {
-      expect(rows).toHaveLength(1); expect(rows[0].meta).toMatchObject({ bookedVia: 'agent', bookingSource: '805_phone', voiceCallId: call.id });
-      expect(new Date(rows[0].start_at).toISOString()).toBe('2035-10-01T17:00:00.000Z');
-      expect((await state.readCall(call.id)).booking.verified).toBe(true);
-      expect(session.prompt.text).toMatch(/booked|confirmed/i);
-      expect((await db.query('select * from booking_outbox')).rows).toHaveLength(2);
-      await say('yes', 'confirmed-yes');
-      expect((await db.query('select * from crm_calendar_events')).rows).toHaveLength(1);
-      await play();
-    }
-  } finally { session.finish(); }
+    const restarted = new SupabaseState(client, config);
+    expect((await restarted.readCall(f.call.id)).summary.text).toContain(expected);
+    await renderSavedDesk(restarted, expected, original);
+  } finally { f.session.finish(); }
+}, 30000);
+it.each(['write', 'read'])('a failed %s is retried idempotently; exhausted failure remains recoverable after disconnect', async failure => {
+  const f = await fixture();
+  try {
+    await f.say('This is Pat Example. Please call about repairs.'); await f.play();
+    if (failure === 'write') failWrites = 2; else failReads = 2;
+    await f.say('yes'); expect(f.session.prompt.text).not.toMatch(/has been saved/); await f.play();
+    const restarted = new SupabaseState(client, config);
+    let writes = 0;
+    const worker = new SupabaseWorker(restarted, {}, { syncMessage: async (call: any, message: any) => { writes++; return savePhoneMessage(client, call, message); } });
+    // Emulate process interruption after durable claim. Expired CRM claims may
+    // retry safely; carrier effects remain at-most-once.
+    await restarted.transact((_e: any, s: any) => { for (const e of s.list('effect')) s.put('effect', e.type === 'sync-message' ? { ...e, status: 'sending', leaseUntil: 0 } : { ...e, status: 'done' }); });
+    await worker.drain(); await worker.drain();
+    expect(writes).toBe(1); expect((await db.query('select * from crm_callback_items')).rows).toHaveLength(1);
+    const snapshot = await restarted.transact((e: any) => e.snapshot());
+    expect(snapshot.messages[0].crmVerified).toBe(true); expect(snapshot.notifications).toHaveLength(2);
+    expect(snapshot.notifications.every((n: any) => n.status === 'pending' && !n.sid)).toBe(true);
+    await renderSavedDesk(restarted, 'Please call about repairs.', 'This is Pat Example. Please call about repairs.');
+  } finally { f.session.finish(); }
+}, 30000);
+it('hangup saves an explicitly unconfirmed draft, retries the CRM write, and displays its full text', async () => {
+  const f = await fixture();
+  try {
+    await f.say('Please call me about my kitchen shutters.'); await f.play();
+    await f.session.carrier({ event: 'stop', streamSid: 'MZ' + '2'.repeat(32) });
+    const worker = new SupabaseWorker(f.state, {}, { syncMessage: (call: any, message: any) => savePhoneMessage(client, call, message) });
+    await f.state.transact((_e: any, s: any) => { for (const e of s.list('effect')) if (e.type !== 'sync-message') s.put('effect', { ...e, status: 'done' }); });
+    failWrites = 1; await worker.drain();
+    let effects = await f.state.transact((_e: any, s: any) => s.list('effect').filter((e: any) => e.type === 'sync-message'));
+    expect(effects[0]).toMatchObject({ status: 'pending', attempts: 1 });
+    await f.state.transact((_e: any, s: any) => s.put('effect', { ...effects[0], nextAt: 0 })); await worker.drain();
+    const rows = (await db.query<any>('select * from crm_callback_items')).rows;
+    expect(rows).toHaveLength(1); expect(rows[0].reason).toMatch(/^Unconfirmed message:/); expect(rows[0].recording_url).toBe('');
+    await renderSavedDesk(new SupabaseState(client, config), 'Incomplete message', 'Please call me about my kitchen shutters.');
+  } finally { f.session.finish(); }
+}, 30000);
+
+// Replay the actual synthetic provider captures, not hand-written transcript
+// expectations, through production SQL, a fresh reader and the CRM UI.
+const providerReport = JSON.parse(readFileSync('docs/phone-system/message-provider-verification-20261025.json', 'utf8'));
+it.each(providerReport.cases as any[])('provider audio $caseName survives SQL and CRM retrieval unchanged', async captured => {
+  expect(captured.pass).toBe(true);
+  const state = new SupabaseState(client, config);
+  await state.transact((_e: any, store: any) => {
+    store.put('call', { ...captured.call, phase: 'ended', schedule: captured.schedule, offers: [] });
+    for (const message of captured.messages) store.put('message', message);
+  });
+  for (const message of captured.messages) {
+    const saved = await savePhoneMessage(client, captured.call, message);
+    expect(saved.verified).toBe(true);
+    // Duplicate delivery/restart uses the same callback row.
+    await savePhoneMessage(client, captured.call, message);
+    const rows = (await db.query<any>('select * from crm_callback_items')).rows;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].reason).toBe(`${message.confirmed ? 'Confirmed' : 'Unconfirmed'} message: ${message.text}`);
+    expect(rows[0].transcript).toBe(captured.call.callerTranscript.map((turn: any) => `Caller: ${turn.text}`).join('\n'));
+    expect(rows[0].callback_number).toBe(message.callback);
+    expect(rows[0].recording_url).toBe('');
+    await renderSavedDesk(new SupabaseState(client, config), message.text, captured.call.callerTranscript[0].text);
+  }
+  expect((await db.query('select * from crm_calendar_events')).rows).toHaveLength(0);
+  if (!captured.messages.length) expect((await db.query('select * from crm_callback_items')).rows).toHaveLength(0);
 }, 30000);

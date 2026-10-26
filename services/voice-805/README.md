@@ -1,42 +1,42 @@
 # 805 Shutters phone service
 
-Production target: the existing dedicated 805 Supabase project, Twilio Media Streams, and the Grok Voice API. No Render deployment is required. **Activation stays off until the flags below are set. This change does not configure the phone number.**
-
-## Runtime
-
-`supabase/functions/voice-805/index.ts` serves short signed webhooks. Twilio connects the caller to the Grok media stream at answer and rings the incoming list at the same time. There is no customer ring tone. Unset, that list is Mike and Jessica. On 2026-10-25 the live secret was restored to both, and `/health` reported `ringStaff` as mike and jessica. Do not change that secret from this branch. A nonempty subset still rings only the named people. A human answer interrupts the welcome and connects. If neither person answers, Grok speaks the no-answer close once on that same stream. Cached `ara` audio is still used for the unavailable and voicemail lines. PostgreSQL stores call state, messages, and the provider outbox. The CRM Call Center proxies authenticated staff actions with an explicit Mike/Jessica role mapping and a signed, replay-protected request.
-
-`supabase-store.mjs` uses optimistic compare-and-swap transactions. No carrier request occurs inside a retried database transaction. Outbox claims commit before network submission. Unknown carrier outcomes stay uncertain for reconciliation; they are never blindly redialed or resent. Both initial staff dial requests start in the same parallel batch. Answering-machine detection chooses one human owner atomically; a machine or recorded greeting is not an answer. Answered status requires a signed caller conference join after staff connection and AI removal.
-
-The pilot stores each dataset in a single JSON document with a 16 MiB ceiling. This is a bounded pilot implementation, not an unlimited archive. Inspect database size before and during the pilot; normalize/archive records with a reviewed retention policy before general production cutover. No automatic data deletion is enabled. PostgreSQL backups apply; the old SQLite backup tool does not back up Supabase.
+The active implementation uses the dedicated 805 Supabase project, Twilio Media Streams, and Grok Voice. The phone agent takes callback messages only. The phone scheduling POST returns 410; no availability, appointment preparation, or booking tool is exposed. Historical bookings and the separate manual/web CRM scheduling system are unchanged.
 
 ## Call behavior
 
-Every caller hears exactly: **Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. I can also help you schedule an appointment. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style.** Grok speaks that welcome on the media stream while the incoming ring list rings. Unset, that is Mike and Jessica together. The caller can choose scheduling before the welcome finishes. A human answer interrupts it and connects; the customer does not hear a ring tone. A single no-answer leg returns to Grok without waiting for someone who was not rung and without repeating the welcome. Staff legs use Twilio answering-machine detection. A human bridges and cancels the other leg. A machine, beep, silence, fax, or unknown result is not an answer. Nobody presses a key.
+The welcome thanks callers for supporting local business, offers to take a message if staff miss the call, and describes free in-home consultations for shutters, blinds, and shades. Incoming staff phones ring while the caller hears this spoken welcome, without customer ringback. Human pickup interrupts the agent. The configured incoming list remains Mike and Jessica; this release changes no routing secret.
 
-If both legs are no-answer, or the offer window (default 20 seconds) expires, Grok says exactly once: "Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?" It does not repeat the thank-you greeting, does not improvise an apology, and does not say the team is with other customers. A message collects the name, confirms a valid caller ID instead of asking for it again, then the reason. That reason is the transcript. No new call or voicemail audio is recorded. The transcript is stored on the CRM callback item, and a pending text is queued for both Mike and Jessica. Those texts are not sent while campaign `BU542a67b844388f5192a84c79d6a86cb9` is draft. A caller reply during opening or question playback is kept before the Twilio mark. A yes before the played readback does not book. An appointment asks for the city and when the caller can meet. A weekday, anytime, morning, afternoon, a window, or a specific time is enough. The receptionist asks one scheduling question, stores that answer on the call, and then asks the next missing detail. A valid caller ID is reused as the callback number. It says it will check a time until the address, travel, and calendar save are verified, and it says "Absolutely, we're confirmed" only after that save. The checker recommends one verified time from route and calendar constraints and does not require an exact clock time. It books only a currently open published CRM slot. If booking is not authorized, the request is saved as a callback noting they want an appointment. If none fits, it offers a callback so staff can see whether they can accommodate it. A failed voice session or CRM write says the call could not continue and that no recording was made. If a written message was already saved, it says that text is saved and that no recording was made. Messages and appointments are read back and saved only after a spoken yes. If the media stream does not attach, the Edge fallback says that no recording was made and hangs up. It does not offer a choice. The dedicated number's live backup is still `https://voice-805-fallback-9089-prod.twil.io/fallback`, which returns a Record verb. The reviewed replacement in `twilio-fallback/fallback.js` is not deployed.
+When staff do not answer, the agent says exactly:
 
-Caller ID is not identity verification. The agent receives no balances, addresses, appointments or private notes. It routes sensitive requests to staff. A failed lookup also routes to staff instead of inventing customer context. Outside configured hours, or on no-answer/provider failure, Twilio collects a callback message. Partial messages survive hangup and remain explicitly unconfirmed.
+> I'm sorry, our team members are tied up at the moment. May I please take a message and we'll get back to you as soon as possible.
 
-The red Call Center badge counts unresolved saved voice messages, including partial messages; missed calls without messages and text messages are separate. Reading does not resolve a message. Resolve/reopen updates both the Call Center and linked customer file.
+It takes one answer at a time: message, missing name, and missing callback number. Valid caller ID is reused; blocked/anonymous caller IDs require a number. Volunteered facts are retained. Appointment requests are message content for staff to call back about; they never create a calendar entry. A consultation-duration question receives the established one-hour answer.
 
-## Deployment and provider contract
+The complete message and callback details are read back. Corrections invalidate the previous confirmation. Only a clear yes after the readback plays confirms a message. The agent announces success only after an idempotent CRM write and an independent database read verify the saved content. Database timeouts are bounded. Failed/interrupted writes remain recoverable through the durable worker. Partial messages survive disconnects and are clearly marked unconfirmed.
 
-Follow [the Supabase deployment runbook](../../docs/phone-system/supabase-deployment.md). The HTTP tool adapter exists, but the hosted xAI agent's per-call SIP-header binding and audible greeting completion have **not** been verified. Keep `VOICE_805_AGENT_CONTRACT_VERIFIED=false` until actual provider evidence proves both. Media-stream welcome carrier playback is a separate observation: call `5a39f34c-7053-499a-afb0-b0f80c84eb55` confirmed it on v24 (`94444563`) and does not set that flag. Scheduling, a CRM booking, and both staff SMS acceptances remain pending. A stored `greetingPlayed=false` on the listening-welcome path is not evidence that the welcome did not play. Audited live Edge is v25 (`dd55b405`). This later commit is not deployed. Caller-message transcript notices stay pending. Booking-alert SMS stays off. Production `/terms/` still returns 404 on a Twilio check that did not submit the campaign. Website `dpl_4rokTPDj9GV14nhjdCsRw9kyYvPQ` is exact `cc356b1a` with phone map `{"805shutters@gmail.com":"mike"}` only. Do not change that secret. If the hosted builder cannot supply that contract, adapt to a supported provider interface before activation; do not pretend that simulated tools prove it.
+Audio captions wait through a 1.6-second quiet period and merge adjacent speech segments before the next question, preventing a short sentence pause from dropping later details. Captions and message content are stored as text; no new caller audio recording is made. Messages over 2,000 characters prompt the caller for a shorter readback; their received captions remain available without silently shortening the transcript.
 
-All provider work remains guarded by `supabaseReadiness`, including work triggered by CRM reads. `/worker` supports an authenticated standby heartbeat without dialing. Configure the durable watchdog before enabling calls. SMS has an additional independent approval gate.
+The CRM Messages view shows the saved message, caller transcript and factual call summary. Unknown or ambiguous caller IDs do not establish a customer identity or write customer/job activity. Reading does not resolve a message. Resolve/reopen retains the shared follow-up state.
 
-## Local checks
+## Delivery and recovery
+
+The PostgreSQL call-state document uses compare-and-swap transactions. Carrier submissions are claimed before network IO; uncertain carrier outcomes are never blindly retried. CRM message and summary writes are idempotent and can retry after interrupted claims. The watchdog handles recovery.
+
+Staff transcript notices are prepared for Mike and Jessica but remain disabled pending carrier approval and verification that the sender is registered. Dedicated campaign `CMaba6c0b6723563c5a514181126ab706c` was submitted and still showed **In review** on October 25. Service `MG60d4038bf54bffa0690cce85a6e49147` contains +18055908050. This is not SMS-delivery proof. No booking-alert SMS is enabled.
+
+The dedicated number's emergency backup is non-recording TwiML Bin `EH99ed28ca457fca8ced72259f99ec6973`. It says the call could not continue and asks the caller to call back to leave a message. It makes no saved-message claim and has no scheduling offer. The old recording Function remains unselected. Carrier execution of the emergency bin is not proven by a Console readback.
+
+The call-state document has a 16 MiB ceiling. No automatic deletion is enabled. A separately reviewed retention/archive policy is needed before treating it as an unlimited archive.
+
+## Verification and deployment
+
+See [message verification](../../docs/phone-system/message-verification.md) for test layers and remaining handset limits. Earlier scheduling reports are historical and do not describe the current agent.
 
 ```sh
-npm ci --ignore-scripts
 npm run typecheck
 npm test
 npm run build
 node --test services/voice-805/test/*.test.mjs
-npx deno check --no-config supabase/functions/voice-805/index.ts
 ```
 
-Browser fixtures use a local Next server with `NEXT_PUBLIC_SUPABASE_URL=https://phone-test.invalid` and `NEXT_PUBLIC_SUPABASE_ANON_KEY=fixture-anon-key` on port 3095, then `npx playwright test --config playwright.phone.config.ts`.
-
-The retained Node/SQLite simulator (`server.mjs`, `media.mjs`, `store.mjs`, `maintenance.mjs`) is a local regression harness for the original engine, not the selected deployment path. It needs Node 24 and `npm ci --ignore-scripts` inside this directory. Its media tests do not prove hosted SIP behavior. Use the Supabase adapter's readiness and runbook for deployment.
+Use the repository main-release procedure for the website and deploy the bundled `supabase/functions/voice-805/index.ts` to the dedicated 805 Edge function. Preserve Twilio signature checks, staff authentication, secret values, and the independent SMS gate. Verify exact deployed source and website commit; a passing simulation is not handset or SMS delivery evidence. Temporary provider test functions must be retired after testing.

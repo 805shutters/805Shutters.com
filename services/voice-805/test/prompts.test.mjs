@@ -42,13 +42,13 @@ test("realtime and tts contracts match the current xAI voice API", () => {
   assert.equal(promptPublicPath("voicemail").includes("?"), false);
   assert.equal(PROMPTS.voicemail.includes("Thank you for calling"), false);
   assert.equal(PROMPTS.voicemail.includes("Would you like"), false);
-  assert.match(PROMPTS.voicemail, /^Our team members are tied up at the moment\. We could not continue this call, and no recording was made\. Please call back to leave a message or schedule an appointment\./);
+  assert.match(PROMPTS.voicemail, /^Our team members are tied up at the moment\. We could not continue this call, and no recording was made\. Please call back to leave a message\./);
   assert.equal((PROMPTS.voicemail.match(/\?/g) || []).length, 0);
   assert.equal(PROMPTS.voicemail.includes("other customers"), false);
   assert.equal(TTS_URL, "https://api.x.ai/v1/tts");
   assert.equal(REALTIME_MODEL, "grok-voice-3.0");
   assert.equal(REALTIME_URL, "wss://api.x.ai/v1/realtime?model=grok-voice-3.0");
-  assert.equal(PROMPTS.greeting, "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. I can also help you schedule an appointment. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style.");
+  assert.equal(PROMPTS.greeting, "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. If we miss you, I can take a message for our team. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style.");
   const entry = readFileSync(new URL("../../../supabase/functions/voice-805/index.ts", import.meta.url), "utf8");
   assert.match(entry, /new WebSocket\(REALTIME_URL/);
   assert.doesNotMatch(entry, /grok-voice-latest/);

@@ -1,7 +1,7 @@
 // Opt-in provider integration harness. No Twilio provider, database client, or
 // durable storage is constructed. All phone/CRM state is isolated in memory.
 import { Buffer } from 'node:buffer';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { GrokMediaSession } from '../grok-media.mjs';
 import { SnapshotStore } from '../supabase-store.mjs';
 import { Engine } from '../engine.mjs';
@@ -52,22 +52,22 @@ export async function syntheticSpeech(key, text, voice = 'rex') {
   return bytes;
 }
 
-// These are fictional callers. No customer names, addresses or contacts enter
-// this harness. The local SQL suite separately executes the real booking RPC.
+// Fictional callers only. Captured results are subsequently exercised against
+// the real callback SQL and CRM display in an isolated database suite.
 export const PROVIDER_CASES = Object.freeze({
-  thursday: { utterances: ['I want to schedule an appointment', 'Thursday', '10 a.m.'], awaiting: 'address' },
-  booked: { utterances: ['I want to schedule an appointment', 'Thursday', '10 a.m.', '123 Test Street, Camarillo', 'yes', 'my home', 'Pat Example', 'yes', 'yes'], booked: true },
-  flexible: { utterances: ['schedule an appointment', 'Friday', 'anytime', '123 Test Street, Camarillo', 'yes', 'my home', 'Pat Example', 'yes', 'yes'], booked: true },
-  unavailable: { utterances: ['schedule an appointment', 'Sunday', '10 p.m.', '123 Test Street, Camarillo', 'yes', 'my home', 'Pat Example', 'yes', 'yes', 'Please call me about another opening', 'yes'], availability: 'none', message: true },
-  alternative: { utterances: ['book an appointment', 'Friday', '10 a.m.', '123 Test Street, Camarillo', 'yes', 'my home', 'Pat Example', 'yes', 'yes'], availability: 'alternative', booked: true },
-  correction: { utterances: ['schedule an appointment', 'Thursday', '10 a.m.', 'Actually Friday at 3 p.m.', '123 Test Street, Camarillo', 'No, 125 Test Street, Camarillo', 'yes', 'my home', 'Pat Example', 'yes', 'yes'], booked: true },
-  unclear: { utterances: ['perhaps', 'maybe'], awaiting: 'callback' },
-  past: { utterances: ['schedule an appointment', 'October first 2020', 'Thursday', '10 a.m.'], awaiting: 'address' },
-  duration: { utterances: ['schedule an appointment', 'Thursday', 'How long is the consultation?', '10 a.m.'], awaiting: 'address' },
-  decline: { utterances: ['schedule an appointment', 'Thursday', '10 a.m.', '123 Test Street, Camarillo', 'yes', 'my home', 'Pat Example', 'yes', 'no'], awaiting: 'correction' },
+  short: { utterances: ['yes', 'Please call me about my shutters.', 'Pat Example', 'yes'], message: true },
+  volunteered: { utterances: ["I'm Pat Example. Please call me about my broken bedroom shade.", 'yes'], message: true },
+  long: { utterances: ['yes', 'The shade in our living room sticks halfway down. We first noticed it on Saturday morning. The cord looks twisted, and the bottom rail is not level. The kitchen shade still works normally. Please call me after lunch so we can discuss a repair. I would also like to know whether a replacement part is available.', 'Pat Example', 'yes'], message: true },
+  correction: { utterances: ['This is Pat Example. Please call me about the kitchen shade.', 'Change the message to The bedroom blind is broken.', 'My callback number is 8055550123.', 'yes'], message: true },
+  blocked: { from: 'anonymous', utterances: ['yes', 'Please call about repairs.', 'Pat Example', 'eight zero five five five five zero one two three', 'yes'], message: true },
+  appointment: { utterances: ['Please schedule an appointment Friday at ten.', 'Pat Example', 'yes'], message: true },
+  duration: { utterances: ['How long is a consultation?', 'yes', 'Please call about a free consultation.', 'Pat Example', 'yes'], message: true },
+  decline: { utterances: ['no thank you'], message: false },
+  unclear: { utterances: ['perhaps', 'maybe'], message: false },
+  hangup: { utterances: ['Please call about my broken shade.'], hangup: true, message: false },
 });
 
-export async function runProviderConversation({ key, WebSocket, caseName = 'thursday', delayMs = 500, stateDelayMs = 250, voice = 'rex' }) {
+export async function runProviderConversation({ key, WebSocket, caseName = 'short', delayMs = 500, stateDelayMs = 250, voice = 'rex' }) {
   const scenario = PROVIDER_CASES[caseName];
   if (!scenario) throw new Error('Unknown synthetic case');
   const { utterances } = scenario;
@@ -79,11 +79,11 @@ export async function runProviderConversation({ key, WebSocket, caseName = 'thur
     staff: { mike: { kind: 'cell', destination: '+18055550101' }, jessica: { kind: 'cell', destination: '+18055550102' } },
   };
   const store = new SnapshotStore(), engine = new Engine(store, config);
-  const call = engine.inbound('CA' + '1'.repeat(32), '+18055550199');
+  const call = engine.inbound('CA' + '1'.repeat(32), scenario.from || '+18055550199');
   store.put('call', { ...call, phase: 'message', deadline: Date.now() + 300000, context: callerContext({ match: 'unmatched' }) });
   const state = { config, transact: async fn => { await pause(stateDelayMs); return fn(engine, store); }, readCall: async id => { await pause(stateDelayMs); return store.get('call', id); } };
   const started = Date.now(), trace = [], outputs = [], transcripts = new Map(), frameResponses = new Map(), audioChecks = [];
-  let session, media = [], marks = 0, lastResponse = null, booking = null;
+  let session, media = [], marks = 0, lastResponse = null;
   const actions = [];
   const socket = {
     readyState: 1,
@@ -130,32 +130,9 @@ export async function runProviderConversation({ key, WebSocket, caseName = 'thur
     return ws;
   };
   session = new GrokMediaSession({ socket, call, state, worker: { drain: async () => {} }, connect,
-    schedule: async (_config, id, action, input) => {
-      actions.push(action);
-      if (id !== call.id) throw new Error('Unexpected isolated call');
-      const current = store.get('call', id), schedule = current.schedule;
-      if (action === 'find_appointments') {
-        if (scenario.availability === 'none') return { exact: false, fit: false, slots: [], alternatives: [], saved: false };
-        const time = scenario.availability === 'alternative' ? '11:00' : schedule.time || '10:00';
-        return { exact: scenario.availability !== 'alternative' && !!schedule.time, date: schedule.date, requested: schedule.time,
-          slots: [time], alternatives: [{ date: schedule.date, time }], fit: true, saved: false, searchComplete: true };
-      }
-      if (action === 'prepare_appointment') return { intent: { id: randomUUID(), kind: 'appointment', payload: input,
-        // Match the full production prepareVoiceVisit readback, including the
-        // name, duration and callback number, to exercise its longer playback.
-        readback: `Consultation for ${input.name}, at ${input.address}, on ${input.date} at ${input.time} Pacific time, for 60 minutes. Callback number ${input.phone.split('').join(' ')}. Please say yes to book this appointment, or say what you want changed.` } };
-      if (action === 'commit') {
-        const intent = current.bookingIntent;
-        if (!intent?.playedAt || !intent?.confirmedAt || !intent.turnId || current.phase !== 'message') throw new Error('Unconfirmed isolated save');
-        booking ||= { verified: true, calendarEventId: randomUUID(), date: intent.payload.date, time: intent.payload.time };
-        store.put('call', { ...current, booking });
-        return booking;
-      }
-      throw new Error('Unknown isolated scheduling action');
-    },
     saveCrm: async () => ({ verified: true, id: 'isolated-callback', call_sid: call.sid }),
   });
-  const waitFor = async (condition, timeout = 35000) => {
+  const waitFor = async (condition, timeout = 120000) => {
     const until = Date.now() + timeout;
     while (!condition()) {
       if (session.closed) throw new Error('Session closed before expected progress');
@@ -179,6 +156,7 @@ export async function runProviderConversation({ key, WebSocket, caseName = 'thur
       }
       await waitFor(() => marks > before);
     }
+    if (scenario.hangup) await session.carrier({ event: 'stop', streamSid: 'MZ' + '2'.repeat(32) });
   } catch (error) { failure = error.message; }
   finally { session.finish(); }
   await Promise.all(audioChecks);
@@ -186,10 +164,13 @@ export async function runProviderConversation({ key, WebSocket, caseName = 'thur
   const mismatches = outputs.filter(row => row.expected !== row.transcript);
   const assertions = { allAudioMatchesPreparedLine: mismatches.length === 0 && outputs.length > 0,
     generatedSpeechVerified: outputs.length > 0 && outputs.every(row => !row.audioError && row.wordAgreement >= 0.75 && !/^(?:stay )?silent[.!]?$/i.test(String(row.audioTranscript || '').trim())),
-    progressedEveryTurn: outputs.length === utterances.length + 1, booking: Boolean(booking) === Boolean(scenario.booked),
+    progressedEveryTurn: outputs.length === utterances.length + 1, bookingDisabled: !final?.booking && actions.length === 0,
     message: store.list('message').some(row => row.confirmed) === Boolean(scenario.message),
+    completeLongMessage: caseName !== 'long' || ['Saturday', 'cord', 'kitchen', 'after lunch', 'replacement part'].every(phrase => String(final?.schedule?.messageText).toLowerCase().includes(phrase.toLowerCase())),
+    noRepeatedLongPrefixes: caseName !== 'long' || (String(final?.schedule?.messageText).match(/living room/gi) || []).length === 1,
+    correctionsSaved: caseName !== 'correction' || store.list('message').some(row => row.confirmed && row.callback === '+18055550123' && row.text === 'The bedroom blind is broken.'),
     awaiting: !scenario.awaiting || final?.schedule?.awaiting === scenario.awaiting };
-  return { caseName, delayMs, stateDelayMs, voice, failure, assertions, pass: !failure && Object.values(assertions).every(Boolean), durationMs: Date.now() - started, outputs, trace, actions, booking,
+  return { caseName, delayMs, stateDelayMs, voice, failure, assertions, pass: !failure && Object.values(assertions).every(Boolean), durationMs: Date.now() - started, outputs, trace, actions,
     responses: [...frameResponses].map(([id, row]) => ({ id, bytes: row.bytes, hash: row.hash.digest('hex').slice(0, 16), transcript: transcripts.get(id) || null })),
-    schedule: final?.schedule, messages: store.list('message').length, lastResponse };
+    schedule: final?.schedule, call: { id: final.id, sid: final.sid, from: final.from, createdAt: final.createdAt, callerTranscript: final.callerTranscript, summary: final.summary }, messages: store.list('message'), lastResponse };
 }
