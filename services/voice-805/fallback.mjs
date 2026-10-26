@@ -1,20 +1,19 @@
 import { twiml, xml } from "./security.mjs";
 import { PROMPTS, promptVerb } from "./prompts.mjs";
+import { STAFF_STATUS_SENTENCE } from "./receptionist.mjs";
 
-export function voicemailXml(
-  origin,
-  recordingPath = "/twilio/fallback-recording",
-  transcriptionPath = "/twilio/fallback-transcription",
-  config = null,
-) {
-  const spoken = promptVerb(
-    { origin, ...(config || {}) },
-    "voicemail",
-    PROMPTS.voicemail,
-  );
-  return twiml(
-    `${spoken}<Record maxLength="120" playBeep="true" timeout="5" transcribe="true" transcribeCallback="${xml(origin + transcriptionPath)}" recordingStatusCallback="${xml(origin + recordingPath)}" recordingStatusCallbackEvent="completed"/><Hangup/>`,
-  );
+export const KEPT_MESSAGE_FALLBACK = `${STAFF_STATUS_SENTENCE} Your written message is saved. No recording was made. Please call back if you need to add anything or schedule an appointment.`;
+
+export function voicemailXml(origin, _recordingPath, _transcriptionPath, config = null, options = {}) {
+  const kept = options.kept === true;
+  const text = kept ? KEPT_MESSAGE_FALLBACK : PROMPTS.voicemail;
+  const spoken = kept ? `<Say>${xml(text)}</Say>` : promptVerb({ origin, ...(config || {}) }, "voicemail", text);
+  return twiml(`${spoken}<Hangup/>`);
+}
+
+function writtenMessage(engine, call) {
+  const messages = engine?.store?.list?.("message") || [];
+  return messages.some((item) => item.callId === call?.id && String(item.text || "").trim());
 }
 
 // North American ringback: 440 Hz + 480 Hz for two seconds, then four seconds
@@ -55,6 +54,9 @@ export function ringbackWav() {
 export function ringbackTwiml(origin) {
   return twiml(`<Play loop="0">${xml(origin + "/twilio/ringback.wav")}</Play>`);
 }
+export function silentWaitTwiml() {
+  return twiml('<Pause length="40"/>');
+}
 export function mediaStreamTwiml(origin, callId) {
   const base = String(origin || "").replace(/\/$/, "");
   const url = `${base.replace(/^https:/, "wss:")}/twilio/media/${callId}`;
@@ -63,12 +65,7 @@ export function mediaStreamTwiml(origin, callId) {
   );
 }
 
-export function fallback(_engine, call, _step, _params, config) {
-  if (call.phase === "ended") return twiml("<Hangup/>");
-  return voicemailXml(
-    config.origin,
-    `/twilio/recording/${call.id}`,
-    `/twilio/transcription/${call.id}`,
-    config,
-  );
+export function fallback(engine, call, _step, _params, config) {
+  if (call?.phase === "ended") return twiml("<Hangup/>");
+  return voicemailXml(config?.origin, "", "", config, { kept: writtenMessage(engine, call) });
 }

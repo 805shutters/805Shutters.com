@@ -270,9 +270,12 @@ test('a message keeps the caller ID and one volunteered answer at a time', () =>
   const body = turn(named.state, 'Pat Example');
   assert.equal(body.state.name, 'Pat Example');
   assert.equal(body.state.phone, caller);
-  assert.match(body.say, /What would you like the message to say/);
-  assert.doesNotMatch(body.say, /number|phone/i);
-  const ready = turn(body.state, 'Please call me about shutters');
+  assert.match(body.say, /I can call you back at/);
+  assert.match(body.say, /right number/);
+  assert.doesNotMatch(body.say, /best callback number/i);
+  const confirmed = turn(body.state, 'yes');
+  assert.match(confirmed.say, /reason for your call/);
+  const ready = turn(confirmed.state, 'Please call me about shutters');
   assert.equal(ready.readback, true);
   assert.equal(ready.state.phone, caller);
   assert.equal(ready.state.messageText, 'Please call me about shutters');

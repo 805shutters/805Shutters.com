@@ -1,4 +1,4 @@
-import { loadConfig, e164, validHours } from './config.mjs';
+import { loadConfig, e164, validHours, incomingRingStaff } from './config.mjs';
 import { COMMON_GREETING } from './caller-context.mjs';
 export function loadSupabaseConfig(env) {
   const c=loadConfig(env);
@@ -28,12 +28,13 @@ export function supabaseReadiness(c) {
   if(!Number.isInteger(c.offerSeconds)||c.offerSeconds<10||c.offerSeconds>60)missing.push('Valid ringing timeout');
   for(const staff of ['mike','jessica'])if(c.staff[staff]?.kind!=='cell'||!e164.test(c.staff[staff]?.destination)||c.staff[staff]?.destination===c.number)missing.push(staff+' cellular destination');
   if(c.staff.mike?.destination===c.staff.jessica?.destination)missing.push('Distinct staff destinations');
+  if(!incomingRingStaff(c).length)missing.push('Incoming ring staff');
   const pilotMissing=missing.filter(item=>!['Production calling not activated','Temporary-number activation','Verified Grok audio, playback and call binding'].includes(item));
   if(c.mode==='pilot'){
     if(!c.pilotAuthorized)pilotMissing.push('Authorized handset pilot');
     if(c.dataset!=='pilot'||c.transport!=='media'||c.notificationsApproved)pilotMissing.push('Isolated incoming-only media pilot');
     if(!Array.isArray(c.pilotCallers)||!c.pilotCallers.length||c.pilotCallers.length>2||!c.pilotCallers.every(n=>e164.test(n)&&n!==c.number))pilotMissing.push('Explicit pilot caller allowlist');
   }
-  return {mode:c.mode,ready:missing.length===0,pilotReady:c.mode==='pilot'&&pilotMissing.length===0,missing,...(c.mode==='pilot'?{pilotMissing}:{})};
+  return {mode:c.mode,ready:missing.length===0,pilotReady:c.mode==='pilot'&&pilotMissing.length===0,missing,...(c.mode==='pilot'?{pilotMissing}:{}),ringStaff:incomingRingStaff(c)};
 }
 export function canOperate(c){const readiness=supabaseReadiness(c);return readiness.ready||readiness.pilotReady;}

@@ -6,7 +6,11 @@ vi.mock("@/lib/crm/calendar-notifications", async (importOriginal) => ({
   sendCalendarAssignmentSms: mocks.assignment,
 }));
 vi.mock("@/lib/notify/meta-booking-sms", () => ({ sendMetaBookingSms: mocks.metaBooking }));
-import { deliverBookingEffect, processBookingOutbox, settleAgentStaffSms } from "./delivery";
+import { dedicatedAccountMatches } from "@/lib/notify/agent-staff-sms";
+import { AGENT_STAFF_SMS_FOOTER } from "@/lib/sms/staff-booking-notice";
+import { agentStaffBookingText, deliverBookingEffect, processBookingOutbox, settleAgentStaffSms, staffSmsNoticePhase } from "./delivery";
+const pinnedAccount = process.env.VOICE_805_STAFF_SMS_ACCOUNT_SID_FIXTURE || "";
+const hasPinnedAccount = Boolean(pinnedAccount) && dedicatedAccountMatches(pinnedAccount);
 const client = {} as SupabaseClient;
 const details = {
   leadId: "test",
@@ -290,13 +294,27 @@ function memoryOutbox(rows: { id: string; kind: string; status: string; payload:
   return { supabase: { from, rpc } as unknown as SupabaseClient, state };
 }
 
-it("texts Jessica and Mike separately and does not resend the recipient that already succeeded", async () => {
+it("ends the staff alert with the STOP and HELP footer and does not treat acceptance as delivery", () => {
+  const text = agentStaffBookingText({ name: "Local Test", startAt: details.startAt, address: details.address, phone: details.phone });
+  expect(text).toContain("booked VIA AGENT");
+  expect(text.endsWith(`\n${AGENT_STAFF_SMS_FOOTER}`)).toBe(true);
+  expect(staffSmsNoticePhase("queued")).toBe("accepted");
+  expect(staffSmsNoticePhase(undefined)).toBe("accepted");
+  expect(staffSmsNoticePhase("delivered")).toBe("delivered");
+});
+
+it.skipIf(!hasPinnedAccount)("texts Jessica and Mike separately and does not resend the recipient that already succeeded", async () => {
   vi.stubEnv("BOOKING_DELIVERY_ENABLED", "true");
   vi.stubEnv("JESSICA_805_SALES_SMS_NUMBER", "+18055551111");
   vi.stubEnv("MIKE_805_SALES_SMS_NUMBER", "+18055552222");
-  vi.stubEnv("TWILIO_ACCOUNT_SID", "test-account");
-  vi.stubEnv("TWILIO_AUTH_TOKEN", "test-token");
-  vi.stubEnv("TWILIO_FROM_PHONE", "+18055550101");
+  vi.stubEnv("VOICE_805_STAFF_SMS_ACCOUNT_SID", pinnedAccount);
+  vi.stubEnv("VOICE_805_STAFF_SMS_AUTH_TOKEN", "dedicated-token");
+  vi.stubEnv("VOICE_805_STAFF_SMS_MESSAGING_SERVICE_SID", "MG60d4038bf54bffa0690cce85a6e49147");
+  vi.stubEnv("VOICE_805_STAFF_SMS_FROM", "+18055908050");
+  vi.stubEnv("TWILIO_ACCOUNT_SID", `AC${"2".repeat(32)}`);
+  vi.stubEnv("TWILIO_AUTH_TOKEN", "shared-token");
+  vi.stubEnv("TWILIO_MESSAGING_SERVICE_SID", `MG${"3".repeat(32)}`);
+  vi.stubEnv("TWILIO_FROM_PHONE", "+18057931853");
   const fetch = vi.fn(async (_url: string, init: { body: string }) => {
     const form = new URLSearchParams(init.body);
     if (form.get("To") === "+18055552222") throw new Error("Provider timeout");
@@ -311,11 +329,15 @@ it("texts Jessica and Mike separately and does not resend the recipient that alr
   const jessica = state.find((row) => row.kind === "agent_staff_sms_jessica");
   const mike = state.find((row) => row.kind === "agent_staff_sms_mike");
   expect(jessica).toMatchObject({ status: "sent", payload: { smsProvider: { sid: "SMjessica", status: "queued" }, noticePhase: "accepted" } });
+  expect(jessica).not.toMatchObject({ payload: { noticePhase: "delivered" } });
   expect(mike).toMatchObject({ status: "uncertain", last_error: expect.stringContaining("unknown") });
-  const bodies = fetch.mock.calls.map((call) => new URLSearchParams(call[1].body));
-  expect(bodies.map((form) => form.get("To"))).toEqual(["+18055551111", "+18055552222"]);
-  expect(bodies.map((form) => form.get("From"))).toEqual(["+18055550101", "+18057931853"]);
-  expect(bodies.every((form) => form.get("Body")?.includes("booked VIA AGENT"))).toBe(true);
+  const bodies = fetch.mock.calls.map((call) => ({ url: String(call[0]), form: new URLSearchParams(call[1].body) }));
+  expect(bodies.map((call) => call.form.get("To"))).toEqual(["+18055551111", "+18055552222"]);
+  expect(bodies.map((call) => call.form.get("From"))).toEqual(["+18055908050", "+18055908050"]);
+  expect(bodies.every((call) => call.form.get("MessagingServiceSid") === "MG60d4038bf54bffa0690cce85a6e49147")).toBe(true);
+  expect(bodies.every((call) => call.url.includes(pinnedAccount) && !call.url.includes(`AC${"2".repeat(32)}`))).toBe(true);
+  expect(bodies.every((call) => call.form.get("Body")?.includes("booked VIA AGENT"))).toBe(true);
+  expect(bodies.every((call) => call.form.get("Body")?.endsWith(`\n${AGENT_STAFF_SMS_FOOTER}`))).toBe(true);
   await processBookingOutbox(supabase);
   expect(fetch).toHaveBeenCalledTimes(2);
   expect(state.find((row) => row.kind === "agent_staff_sms_jessica")?.status).toBe("sent");
@@ -342,11 +364,34 @@ it("leaves agent staff notices queued while booking delivery is paused", async (
   expect(fetch).not.toHaveBeenCalled();
 });
 
-it("records provider delivery only when the carrier status is delivered", async () => {
+it("fails a staff booking text when dedicated 805 SMS config is missing and does not use the shared sender", async () => {
+  vi.stubEnv("BOOKING_DELIVERY_ENABLED", "true");
   vi.stubEnv("JESSICA_805_SALES_SMS_NUMBER", "+18055551111");
-  vi.stubEnv("TWILIO_ACCOUNT_SID", "test-account");
-  vi.stubEnv("TWILIO_AUTH_TOKEN", "test-token");
-  vi.stubEnv("TWILIO_FROM_PHONE", "+18055550101");
+  vi.stubEnv("MIKE_805_SALES_SMS_NUMBER", "+18055552222");
+  vi.stubEnv("TWILIO_ACCOUNT_SID", `AC${"2".repeat(32)}`);
+  vi.stubEnv("TWILIO_AUTH_TOKEN", "shared-token");
+  vi.stubEnv("TWILIO_MESSAGING_SERVICE_SID", `MG${"3".repeat(32)}`);
+  vi.stubEnv("TWILIO_FROM_PHONE", "+18057931853");
+  const fetch = vi.fn();
+  vi.stubGlobal("fetch", fetch);
+  const { supabase, state } = memoryOutbox([
+    { id: "1", kind: "agent_staff_sms_jessica", status: "pending", payload: agentPayload("Jessica") },
+    { id: "2", kind: "agent_staff_sms_mike", status: "pending", payload: agentPayload("Mike") },
+  ]);
+  await processBookingOutbox(supabase);
+  expect(fetch).not.toHaveBeenCalled();
+  expect(state).toEqual([
+    expect.objectContaining({ kind: "agent_staff_sms_jessica", status: "failed", last_error: expect.stringContaining("not configured") }),
+    expect.objectContaining({ kind: "agent_staff_sms_mike", status: "failed", last_error: expect.stringContaining("not configured") }),
+  ]);
+});
+
+it.skipIf(!hasPinnedAccount)("records provider delivery only when the carrier status is delivered", async () => {
+  vi.stubEnv("JESSICA_805_SALES_SMS_NUMBER", "+18055551111");
+  vi.stubEnv("VOICE_805_STAFF_SMS_ACCOUNT_SID", pinnedAccount);
+  vi.stubEnv("VOICE_805_STAFF_SMS_AUTH_TOKEN", "dedicated-token");
+  vi.stubEnv("VOICE_805_STAFF_SMS_MESSAGING_SERVICE_SID", "MG60d4038bf54bffa0690cce85a6e49147");
+  vi.stubEnv("VOICE_805_STAFF_SMS_FROM", "+18055908050");
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ sid: "SMdelivered", status: "delivered" }), { status: 201 })));
   const outcome = await settleAgentStaffSms({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: agentCalendar, error: null }) }) }) }) } as unknown as SupabaseClient, "agent_staff_sms_jessica", agentPayload("Jessica"));
   expect(outcome).toMatchObject({ status: "sent", payload: { noticePhase: "delivered", smsProvider: { sid: "SMdelivered", status: "delivered" } } });

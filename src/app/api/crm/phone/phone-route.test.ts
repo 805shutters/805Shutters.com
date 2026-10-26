@@ -78,6 +78,54 @@ describe("Call Center server authorization and CRM linking", () => {
       email: null,
     });
   });
+  it("does not infer a phone role from the CRM allow-list", async () => {
+    vi.stubEnv("VOICE_805_STAFF_EMAILS_JSON", "{}");
+    mocked.auth.mockResolvedValue({
+      email: "805shutters@gmail.com",
+      supabase: {},
+    });
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    const denied = await GET(
+      new NextRequest("http://localhost/api/crm/phone/state"),
+      context("state"),
+    );
+    expect(denied.status).toBe(403);
+    expect(await denied.json()).toEqual({
+      error: "Your account has no 805 phone role configured.",
+    });
+    expect(fetcher).not.toHaveBeenCalled();
+    vi.stubEnv(
+      "VOICE_805_STAFF_EMAILS_JSON",
+      JSON.stringify({ "805shutters@gmail.com": "mike" }),
+    );
+    mocked.auth.mockResolvedValue({
+      email: "jessica@805shutters.com",
+      supabase: {},
+    });
+    const jessica = await GET(
+      new NextRequest("http://localhost/api/crm/phone/state"),
+      context("state"),
+    );
+    expect(jessica.status).toBe(403);
+    expect(fetcher).not.toHaveBeenCalled();
+    mocked.auth.mockResolvedValue({
+      email: "805shutters@gmail.com",
+      supabase: {},
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ calls: [], messages: [] })),
+    );
+    expect(
+      (
+        await GET(
+          new NextRequest("http://localhost/api/crm/phone/state"),
+          context("state"),
+        )
+      ).status,
+    ).toBe(200);
+  });
   it("denies Ken even if a phone mapping is accidentally supplied", async () => {
     mocked.auth.mockResolvedValue({ email: "khill31@msn.com" });
     const fetcher = vi.fn();

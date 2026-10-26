@@ -73,7 +73,7 @@ export function initialSchedule(from, businessNumber = '') {
   return {
     callerId: phone, purpose: null, weekday: null, date: null, time: null, requestedTime: null, window: null, pendingHour: null,
     address: null, addressConfirmed: false, city: null, kind: null, windowCount: null, name: null, messageText: null,
-    phone, phoneSource: phone ? 'caller-id' : null, offer: null, alternatives: [], booked: null,
+    phone, phoneSource: phone ? 'caller-id' : null, phoneConfirmed: false, offer: null, alternatives: [], booked: null,
     awaiting: 'choice', asked: CHOICE_QUESTION, clarifyCount: 0, lastAnswer: null,
     pendingMinute: null, pendingEndHour: null, pendingEndMinute: null,
   };
@@ -105,6 +105,7 @@ export function sanitizeSchedule(input, from = '', businessNumber = '') {
   if (source.phoneSource === 'spoken' && e164.test(source.phone || '')) { next.phone = source.phone; next.phoneSource = 'spoken'; }
   else if (source.phoneSource === null && (source.callerId || source.purpose || source.awaiting)) { next.phone = null; next.phoneSource = null; }
   else if (callerId) { next.phone = callerId; next.phoneSource = 'caller-id'; }
+  next.phoneConfirmed = source.phoneConfirmed === true && Boolean(next.phone);
   next.offer = slot(source.offer);
   next.alternatives = Array.isArray(source.alternatives) ? source.alternatives.map(slot).filter(Boolean).slice(0, 3) : [];
   next.booked = slot(source.booked);
@@ -242,8 +243,9 @@ function ask(state) {
   if (state.awaiting === 'done') return state;
   if (state.purpose === 'message') {
     if (!state.name) return { ...state, awaiting: 'message-name', asked: 'May I have your name?' };
-    if (!state.messageText) return { ...state, awaiting: 'message-body', asked: 'What would you like the message to say?' };
+    if (state.phone && state.phoneSource === 'caller-id' && state.phoneConfirmed !== true) return { ...state, awaiting: 'message-phone-confirm', asked: `I can call you back at ${state.phone.split('').join(' ')}. Is that the right number?` };
     if (!state.phone) return { ...state, awaiting: 'message-phone', asked: 'What is the best callback number?' };
+    if (!state.messageText) return { ...state, awaiting: 'message-body', asked: 'What is the reason for your call?' };
     return { ...state, awaiting: 'message-ready', asked: state.asked };
   }
   if (state.purpose !== 'appointment') return { ...state, awaiting: 'choice', asked: CHOICE_QUESTION };
@@ -316,6 +318,13 @@ export function applyScheduleTurn(input, transcript, from = '', businessNumber =
       if (start?.requestedTime) return remember(finish(state, start, { invalidate: true }), text);
     }
     return remember(finish(state, start || {}, { invalidate: true }), text);
+  }
+  if (state.awaiting === 'message-phone-confirm') {
+    if (spokenDecision(raw) === 'affirmative') return remember(finish(state, { phoneConfirmed: true }), text);
+    const replacement = spokenNumber(text);
+    if (replacement) return remember(finish(state, { phone: replacement, phoneSource: 'spoken', phoneConfirmed: true }), text);
+    if (spokenDecision(raw) === 'negative' || /\b(different number|another number)\b/.test(text)) return remember(finish({ ...state, phone: null, phoneSource: null, phoneConfirmed: false }, {}), text);
+    return clarify(state);
   }
   if (state.awaiting === 'callback' && spokenDecision(raw) === 'affirmative') return remember(finish(state, { purpose: 'message', offer: null }), text);
   if (state.awaiting === 'help' && spokenDecision(raw) === 'affirmative') return resultOf(state, { say: 'What else can I help with?' });

@@ -3,6 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { brandIdentity, officialContactLine } from "@/lib/brand-identity";
 import { sendMetaBookingSms } from "@/lib/notify/meta-booking-sms";
 import type { MetaSource } from "@/lib/meta-booking-alert";
+import { sendAgentStaffBookingSms } from "@/lib/notify/agent-staff-sms";
+import { AGENT_STAFF_SMS_FOOTER } from "@/lib/sms/staff-booking-notice";
 import { sendSms } from "@/lib/notify/twilio";
 import { sendAppointmentConfirmation } from "./confirmation-message";
 import { salesRepSmsNumberForName, sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
@@ -519,6 +521,20 @@ export async function deliverBookingEffect(
   return "sent";
 }
 
+export function agentStaffBookingText(payload: { name?: string; startAt: string; address?: string; phone?: string }) {
+  return [
+    "805 Shutters: booked VIA AGENT.",
+    `${payload.name || "Customer"}, ${formatAppointmentForSms(payload.startAt)}.`,
+    payload.address ? `Address: ${payload.address}.` : null,
+    payload.phone ? `Phone: ${payload.phone}.` : null,
+    "Assigned to Jessica.",
+  ].filter(Boolean).join(" ") + `\n${AGENT_STAFF_SMS_FOOTER}`;
+}
+
+export function staffSmsNoticePhase(providerStatus?: string) {
+  return (providerStatus || "accepted") === "delivered" ? "delivered" as const : "accepted" as const;
+}
+
 const agentStaffKinds = {
   agent_staff_sms_jessica: "Jessica",
   agent_staff_sms_mike: "Mike",
@@ -551,14 +567,8 @@ export async function settleAgentStaffSms(
   }
   const to = salesRepSmsNumberForName(recipient);
   if (!to) return { status: "failed" as const, lastError: `${recipient} SMS number is not configured`, completed: true };
-  const body = [
-    "805 Shutters: booked VIA AGENT.",
-    `${payload.name || "Customer"}, ${formatAppointmentForSms(payload.startAt)}.`,
-    payload.address ? `Address: ${payload.address}.` : null,
-    payload.phone ? `Phone: ${payload.phone}.` : null,
-    "Assigned to Jessica.",
-  ].filter(Boolean).join(" ");
-  const result = await sendSms({ to, body, ownerAlert: recipient === "Mike", timeoutMs: 15_000 });
+  const body = agentStaffBookingText(payload);
+  const result = await sendAgentStaffBookingSms({ to, body });
   if (result.sent && result.sid) {
     const providerStatus = result.providerStatus || "accepted";
     return {
@@ -568,7 +578,7 @@ export async function settleAgentStaffSms(
       payload: {
         ...payload,
         smsProvider: { sid: result.sid, status: providerStatus },
-        noticePhase: providerStatus === "delivered" ? "delivered" : "accepted",
+        noticePhase: staffSmsNoticePhase(providerStatus),
       },
     };
   }

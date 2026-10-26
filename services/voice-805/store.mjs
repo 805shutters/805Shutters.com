@@ -84,11 +84,11 @@ export class Store {
   }
   // Claim before making a non-idempotent provider request. A crash leaves uncertain,
   // never "pending"; callbacks or explicit reconciliation resolve it.
-  claim(kind, now = Date.now()) {
+  claim(kind, now = Date.now(), allow = () => true) {
     return this.tx(() => {
       const item = this.list(kind)
         .reverse()
-        .find((x) => x.status === "pending" && x.nextAt <= now);
+        .find((x) => x.status === "pending" && x.nextAt <= now && allow(x));
       return item
         ? this.put(kind, {
             ...item,
@@ -103,12 +103,13 @@ export class Store {
     for (const kind of ["effect", "notification"])
       for (const item of this.list(kind))
         if (item.status === "sending" && item.leaseUntil < now)
-          this.put(kind, {
-            ...item,
-            status: "uncertain",
-            error:
-              "Worker interrupted; reconcile provider evidence before retry.",
-          });
+          this.put(kind, item.type === "sync-summary"
+            ? { ...item, status: "pending", nextAt: now, error: "Summary write interrupted; the watchdog will retry." }
+            : {
+                ...item,
+                status: "uncertain",
+                error: "Worker interrupted; reconcile provider evidence before retry.",
+              });
   }
   close() {
     this.db.close();

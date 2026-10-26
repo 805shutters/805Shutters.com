@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { COMMON_GREETING } from "./caller-context.mjs";
+import { STAFF_STATUS_SENTENCE } from "./receptionist.mjs";
 import { reportFailure, xml } from "./security.mjs";
 
 // Same built-in voice the realtime receptionist uses. ara is a documented xAI
@@ -15,7 +16,7 @@ export const PROMPTS = Object.freeze({
   greeting: COMMON_GREETING,
   unavailable: "This test line is not available.",
   voicemail:
-    "Apologies, but team members are tied up at the moment. After the tone, please leave your name, your phone number, and the reason for your call.",
+    `${STAFF_STATUS_SENTENCE} We could not continue this call, and no recording was made. Please call back to leave a message or schedule an appointment.`,
 });
 
 const NAMES = Object.keys(PROMPTS);

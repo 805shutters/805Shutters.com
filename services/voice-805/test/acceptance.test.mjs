@@ -15,6 +15,7 @@ import {
 } from "../provider.mjs";
 import { hmac, twilioSignature, authorizeControl } from "../security.mjs";
 import { createService } from "../server.mjs";
+import { TRANSCRIPT_SHORTENED_NOTICE, transcriptNoticeBody } from "../transcript-sms.mjs";
 import { randomUUID } from "node:crypto";
 const id = () => randomUUID();
 const config = () => ({
@@ -147,22 +148,31 @@ test("duplicate inbound and duplicate acceptance do not create extra calls or di
   s.engine.accept(c.id, o.id, o.sid, "human");
   assert.equal(s.store.list("effect").length, count);
 });
-test("caller is not routed to human conference before staff join and AI disconnect", async (t) => {
+test("a human answer pulls the caller before staff join and does not mark the call answered", async (t) => {
   const s = setup(t),
     c = await ringing(s),
     o = c.offers[0];
+  assert.equal(c.greetingPlayed, false);
   s.engine.accept(c.id, o.id, o.sid, "human");
   await s.worker.drain();
+  assert.equal(s.store.get("call", c.id).phase, "handoff");
+  assert.equal(s.store.get("call", c.id).answeredAt, undefined);
   assert.equal(
-    s.provider.operations.some((x) => x.type === "route" && x.sid === c.sid),
-    false,
+    s.provider.operations.filter((x) => x.type === "route" && x.sid === c.sid).length,
+    1,
   );
   s.engine.joined(c.id, o.sid, "main", "CFmain", id());
   await s.worker.drain();
+  assert.equal(s.store.get("call", c.id).phase, "handoff");
   assert.equal(s.store.get("call", c.id).ai, false);
-  assert.ok(
-    s.provider.operations.some((x) => x.type === "route" && x.sid === c.sid),
+  assert.equal(
+    s.provider.operations.filter((x) => x.type === "route" && x.sid === c.sid).length,
+    1,
   );
+  s.engine.joined(c.id, c.sid, "main", "CFmain", id());
+  await s.worker.drain();
+  assert.equal(s.store.get("call", c.id).phase, "human");
+  assert.ok(s.store.get("call", c.id).answeredAt);
 });
 test("hold precedes private consultation; transfer waits for target join before unhold and owner removal", async (t) => {
   const s = setup(t);
@@ -242,17 +252,26 @@ test("message and exactly two durable notification intents are atomic, deduped, 
     id(),
   );
   assert.equal(again.id, m.id);
-  assert.equal(s.store.list("notification").length, 2);
+  const notices = s.store.list("notification");
+  assert.equal(notices.length, 2);
+  assert.deepEqual(notices.map((n) => n.recipient).sort(), ["jessica", "mike"]);
+  assert.ok(notices.every((n) => n.purpose === "transcript" && n.status === "pending" && n.sid === null));
+  assert.ok(notices.every((n) => n.body.includes("Please call back.") && !n.body.includes("UNCONFIRMED") && !n.body.includes(TRANSCRIPT_SHORTENED_NOTICE) && n.body.endsWith("Reply STOP to unsubscribe; HELP for help.")));
   await s.worker.drain();
-  assert.ok(s.store.list("notification").every((n) => n.status === "accepted"));
-  const n = s.store.list("notification")[0];
-  applyDelivery(s.store, n.id, n.sid, "delivered");
-  applyDelivery(s.store, n.id, n.sid, "sent");
-  assert.equal(s.store.get("notification", n.id).status, "delivered");
+  assert.ok(s.store.list("notification").every((n) => n.purpose === "transcript" && n.status === "pending" && n.sid === null));
+  assert.equal(s.provider.operations.filter((o) => o.type === "sms").length, 0);
+  const reply = s.engine.sendText(m.id, "mike", "Hello", true, id());
+  await s.worker.drain();
+  const sent = s.store.get("notification", reply.id);
+  assert.equal(sent.status, "accepted");
+  applyDelivery(s.store, reply.id, sent.sid, "delivered");
+  applyDelivery(s.store, reply.id, sent.sid, "sent");
+  assert.equal(s.store.get("notification", reply.id).status, "delivered");
   assert.throws(
-    () => applyDelivery(s.store, n.id, "SM" + "0".repeat(32), "delivered"),
+    () => applyDelivery(s.store, reply.id, "SM" + "0".repeat(32), "delivered"),
     /mismatch/,
   );
+  assert.ok(s.store.list("notification").filter((n) => n.purpose === "transcript").every((n) => n.status === "pending" && n.sid === null));
 });
 test("database error rolls back both saved message and recipient intents", async (t) => {
   const s = setup(t);
@@ -289,18 +308,17 @@ test("database error rolls back both saved message and recipient intents", async
 });
 test("uncertain SMS outcome is not blindly retried and can reconcile from signed delivery evidence", async (t) => {
   const s = setup(t);
-  await message(s);
+  const m = await message(s);
+  const reply = s.engine.sendText(m.id, "mike", "Following up", true, id());
   s.provider.failNext = new ProviderError("timeout", true);
   await s.worker.drain();
-  const uncertain = s.store
-    .list("notification")
-    .find((n) => n.status === "uncertain");
-  assert.ok(uncertain);
+  assert.equal(s.store.get("notification", reply.id).status, "uncertain");
+  assert.ok(s.store.list("notification").filter((n) => n.purpose === "transcript").every((n) => n.status === "pending" && n.sid === null));
   const sent = s.provider.operations.length;
   await s.worker.drain();
   assert.equal(s.provider.operations.length, sent);
-  applyDelivery(s.store, uncertain.id, "SM" + "3".repeat(32), "sent");
-  assert.equal(s.store.get("notification", uncertain.id).status, "sent");
+  applyDelivery(s.store, reply.id, "SM" + "3".repeat(32), "sent");
+  assert.equal(s.store.get("notification", reply.id).status, "sent");
 });
 test("durable store survives restart with message, badge count, customer link and shared resolved status", async () => {
   const dir = mkdtempSync(join(tmpdir(), "805-phone-test-")),
@@ -462,23 +480,56 @@ test("partial message survives caller hangup but cannot initiate an unconfirmed 
   const m = s.store.list("message")[0];
   assert.equal(m.confirmed, false);
   assert.equal(s.store.list("notification").length, 2);
+  assert.ok(s.store.list("notification").every((n) => n.body.includes("UNCONFIRMED") && !n.body.includes(TRANSCRIPT_SHORTENED_NOTICE) && n.body.endsWith("Reply STOP to unsubscribe; HELP for help.")));
   assert.equal(s.engine.snapshot().unresolvedCount, 1);
   assert.throws(
     () => s.engine.callback(m.id, "mike", id()),
     /confirmed callback/,
   );
 });
+test("an unconfirmed transcript keeps its warning and STOP footer when the text is long", async (t) => {
+  const s = setup(t),
+    c = s.engine.inbound(
+      "CAlong",
+      "+15555550100",
+      Date.parse("2026-10-07T05:00:00Z"),
+    );
+  s.engine.greeted(c.id, id());
+  s.engine.tick(Date.now() + 30000);
+  s.engine.beginMessage(c.id, id());
+  s.engine.updateDraft(c.id, {
+    name: "Caller",
+    callback: "+15555550100",
+    message: "shutters ".repeat(400),
+  });
+  s.engine.ended(c.id, c.sid, id());
+  const notices = s.store.list("notification");
+  const stored = s.store.list("message")[0];
+  const captured = "shutters ".repeat(400).slice(0, 2000);
+  assert.equal(stored.text, captured);
+  assert.equal(stored.text.includes(TRANSCRIPT_SHORTENED_NOTICE), false);
+  assert.equal(notices.length, 2);
+  assert.ok(notices.every((n) => {
+    const marker = n.body.indexOf(TRANSCRIPT_SHORTENED_NOTICE);
+    const footer = n.body.lastIndexOf("Reply STOP to unsubscribe; HELP for help.");
+    return n.body.length <= 1600 && n.body.includes("UNCONFIRMED") && marker > 0 && marker < footer && n.body.endsWith("Reply STOP to unsubscribe; HELP for help.") && !n.body.includes(captured);
+  }));
+  const fitted = transcriptNoticeBody({ name: "Caller", callback: "+15555550100", confirmed: true, text: "short" });
+  assert.equal(fitted.includes(TRANSCRIPT_SHORTENED_NOTICE), false);
+  assert.equal(fitted.includes("UNCONFIRMED"), false);
+  assert.equal(fitted.endsWith("Reply STOP to unsubscribe; HELP for help."), true);
+});
 test("delivered callback arriving before a send timeout remains authoritative", async (t) => {
   const s = setup(t);
-  await message(s);
+  const m = await message(s);
+  const reply = s.engine.sendText(m.id, "mike", "Following up", true, id());
   s.provider.send = async (item) => {
     applyDelivery(s.store, item.id, "SM" + "7".repeat(32), "delivered");
     throw new ProviderError("timeout", true);
   };
   await s.worker.drain();
-  assert.ok(
-    s.store.list("notification").every((n) => n.status === "delivered"),
-  );
+  assert.equal(s.store.get("notification", reply.id).status, "delivered");
+  assert.ok(s.store.list("notification").filter((n) => n.purpose === "transcript").every((n) => n.status === "pending" && n.sid === null));
 });
 test("failed transfer cancellation never unholds a caller with an uncertain extra staff leg", async (t) => {
   const s = setup(t);
