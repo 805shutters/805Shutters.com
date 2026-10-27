@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { ItemsPerPage } from "./ContractPrintItems";
 
-export function PrintButton({ itemsPerPage = 2, onItemsPerPageChange, showLayout = true }: {
+export function PrintButton({ itemsPerPage = 1, onItemsPerPageChange, showLayout = true }: {
   itemsPerPage?: ItemsPerPage;
   onItemsPerPageChange?: (value: ItemsPerPage) => void;
   showLayout?: boolean;

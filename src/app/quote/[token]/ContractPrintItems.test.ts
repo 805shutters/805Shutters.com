@@ -25,19 +25,23 @@ describe("customer contract pagination", () => {
       expect(slots[0].textContent).toContain("Preserve the existing trim.");
       expect(slots[0].textContent).toContain("$402.90");
       expect(pages.every(page => page.textContent?.includes(quote.customerName))).toBe(true);
+      for (const page of pages) {
+        expect(page.querySelector('header img[alt="805 Shutters"]')?.getAttribute("src")).toBe("/brand/805-shutters-logo-header.png");
+      }
       expect(pages.at(-1)?.textContent).toContain("Items 3 of 3");
       expect(window.document.body.textContent).toContain("Payment at Installation");
       expect(window.document.querySelectorAll("[data-quote-line-card]")).toHaveLength(4);
     } finally { window.close(); }
   });
 
-  it("defaults to two items, offers both choices, and leaves commercial schedules intact", () => {
+  it("defaults to one item, offers both choices, and leaves commercial schedules intact", () => {
     const window = new Window();
     try {
       const quote = manufacturerBrandingFixture();
       window.document.body.innerHTML = renderToStaticMarkup(createElement(CustomerContractDocument, { quote, previewOnly: true }));
       const select = window.document.querySelector("select");
-      expect(select?.value).toBe("2");
+      expect(select?.value).toBe("1");
+      expect(window.document.querySelectorAll("[data-print-page]")).toHaveLength(quote.lines.length);
       expect([...select!.options].map(option => option.textContent)).toEqual(["1 item per page", "2 items per page"]);
       window.document.body.innerHTML = renderToStaticMarkup(createElement(CustomerContractDocument, { quote: { ...quote, quoteType: "commercial" }, previewOnly: true }));
       expect(window.document.querySelector("select")).toBeNull();

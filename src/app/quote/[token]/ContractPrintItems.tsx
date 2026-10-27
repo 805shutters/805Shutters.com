@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
+import Image from "next/image";
 import type { PublicQuote } from "@/lib/crm/public-quote";
 import styles from "./ContractPrintItems.module.css";
 
@@ -52,8 +53,15 @@ export function ContractPrintItems({ items, count, quote }: { items: ReactNode[]
   return <div className={styles.pages} ref={root} data-contract-print-pages>
     {contractPrintPages(items, count).map((page, index) => <section className={styles.page} key={index} data-print-page data-items-per-page={count}>
       <header className={styles.header}>
-        <div><strong>{quote.business.name}</strong><span>Contract {quote.quoteNumber}{quote.quoteLabel ? ` · Quote ${quote.quoteLabel}` : ""} · {quote.signed ? "Signed" : "For review"} · Items {index * count + 1}{page.length > 1 ? `–${index * count + page.length}` : ""} of {items.length}</span></div>
-        <div><strong>{quote.customerName}</strong><span>{[quote.customerAddress, quote.customerPhone, quote.customerEmail].filter(Boolean).join(" · ")}</span></div>
+        <div className={styles.identity}>
+          <Image className={styles.logo} src="/brand/805-shutters-logo-header.png" alt="805 Shutters" width={227} height={148} unoptimized loading="eager" />
+          <div className={styles.details}>
+            <strong>Contract {quote.quoteNumber}{quote.quoteLabel ? ` · Quote ${quote.quoteLabel}` : ""} · {quote.signed ? "Signed" : "For review"}</strong>
+            <strong>{quote.customerName}</strong>
+            <span>{[quote.customerAddress, quote.customerPhone, quote.customerEmail].filter(Boolean).join(" · ")}</span>
+            <span>Items {index * count + 1}{page.length > 1 ? `–${index * count + page.length}` : ""} of {items.length}</span>
+          </div>
+        </div>
         <small>Left and right are viewed from inside the room.</small>
       </header>
       <div className={styles.items}>

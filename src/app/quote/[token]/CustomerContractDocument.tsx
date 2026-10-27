@@ -54,7 +54,7 @@ export function CustomerContractDocument({
   previewLabel?: string;
   contractTerms?: CustomerContractTerms;
 }) {
-  const [printItemsPerPage, setPrintItemsPerPage] = useState<ItemsPerPage>(2);
+  const [printItemsPerPage, setPrintItemsPerPage] = useState<ItemsPerPage>(1);
   const preparedFor = customerDetails(quote);
   const multipleQuotes = !previewOnly && (Boolean(quote.quoteLabel) || quote.versions.length > 1);
   const currentLabel = quote.quoteLabel ?? quote.versions.find((version) => version.current)?.label ?? "A";

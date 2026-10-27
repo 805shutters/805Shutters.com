@@ -51,7 +51,7 @@ type LiveMoney = {
 /** Interactive line-item table + totals + sign block. Supports the "Purchase all
  *  / Purchase some" flow: the customer can check a subset of windows and the total
  *  recomputes (via the server engine) for only the chosen items. */
-export function QuoteSelection({ printItemsPerPage = 2, quote, paymentOptions, walletConfig, previewOnly = false, contractTerms }: { printItemsPerPage?: ItemsPerPage; contractTerms?: CustomerContractTerms; quote: PublicQuote; paymentOptions?: PaymentOptions | null; walletConfig?: QuoteWalletConfig | null; previewOnly?: boolean }) {
+export function QuoteSelection({ printItemsPerPage = 1, quote, paymentOptions, walletConfig, previewOnly = false, contractTerms }: { printItemsPerPage?: ItemsPerPage; contractTerms?: CustomerContractTerms; quote: PublicQuote; paymentOptions?: PaymentOptions | null; walletConfig?: QuoteWalletConfig | null; previewOnly?: boolean }) {
   const isInHouse = quote.paymentSchedule === IN_HOUSE_SCHEDULE;
   const warrantySections = contractTerms?.sections.filter(section => section.heading !== "Payment at Installation" && section.heading !== IN_HOUSE_TERMS.heading) || SHUTTER_MANUFACTURER_WARRANTY_SECTIONS;
   const paymentSection = isInHouse ? contractTerms?.sections.find(section => section.heading === IN_HOUSE_TERMS.heading) || IN_HOUSE_TERMS : contractTerms?.sections.find(section => section.heading === "Payment at Installation") || PAYMENT_AT_INSTALLATION_SECTION;
