@@ -123,3 +123,17 @@
   .card .savings { grid-column: 1 / -1; }
 }
 @media print { .card .savings { color: #25371c; } }
+
+@media print {
+  :global([data-print-item]) .contractToolbar { margin: 0 12px; padding: 8px 0; gap: 12px; }
+  :global([data-print-item]) .contractToolbar .room { font-size: 20px; margin-bottom: 3px; }
+  :global([data-print-item]) .contractToolbar .meta { margin-bottom: 4px; }
+  :global([data-print-item]) .number { padding: 3px 5px; }
+  :global([data-print-item]) .contractToolbar .cost { padding-left: 12px; }
+  :global([data-print-item]) .contractToolbar .price { font-size: 19px; }
+  :global([data-print-item]) .originalPrice s { display: inline; margin-left: 5px; }
+  :global([data-print-item]) .card .originalPrice, :global([data-print-item]) .card .savings { margin: 3px 0; }
+  :global([data-print-item]) .anatomy > article { padding: 6px 12px; }
+  :global([data-print-item]) .included { padding: 5px 12px; gap: 8px; }
+  :global([data-print-item]) .included > img { height: 30px; width: 18px; }
+}

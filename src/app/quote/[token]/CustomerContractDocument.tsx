@@ -10,7 +10,9 @@ import { QuoteSelection } from "./QuoteSelection";
 import type { QuoteWalletConfig } from "./QuoteWalletButtons";
 import { PrintButton } from "./PrintButton";
 import type { CustomerContractTerms } from "@/lib/crm/customer-contract-terms";
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
+import type { ItemsPerPage } from "./ContractPrintItems";
+import "./contract-print.css";
 import identityStyles from "./QuoteIdentity.module.css";
 import { quoteColor } from "./quoteColors";
 
@@ -52,6 +54,7 @@ export function CustomerContractDocument({
   previewLabel?: string;
   contractTerms?: CustomerContractTerms;
 }) {
+  const [printItemsPerPage, setPrintItemsPerPage] = useState<ItemsPerPage>(2);
   const preparedFor = customerDetails(quote);
   const multipleQuotes = !previewOnly && (Boolean(quote.quoteLabel) || quote.versions.length > 1);
   const currentLabel = quote.quoteLabel ?? quote.versions.find((version) => version.current)?.label ?? "A";
@@ -64,12 +67,12 @@ export function CustomerContractDocument({
     ((!quote.signed && quote.allPriced) || Boolean(paymentOptions));
 
   return (
-    <main className={`customer-contract-print-root${embedded ? " public-quote-contract-embed" : ""}`} style={embedded ? contractPreviewWrap : wrap}>
+    <main data-print-layout={quote.quoteType === "commercial" ? "commercial" : "items"} className={`customer-contract-print-root${embedded ? " public-quote-contract-embed" : ""}`} style={embedded ? contractPreviewWrap : wrap}>
       <style>{`.customer-contract-print-only { display: none !important; }
       .customer-contract-screen-brand { display: grid; justify-items: center; margin: 0 0 18px; }
-      .customer-contract-print-action { position: fixed; top: 16px; left: 16px; z-index: 20; }
+      .customer-contract-print-action { position: relative; margin-bottom: 16px; z-index: 20; }
       @media (max-width: 640px) {
-        .customer-contract-print-action { top: 10px; left: 10px; }
+        .customer-contract-print-action { max-width: 100%; }
         body:has(.customer-contract-print-root) { padding-bottom: 0 !important; }
         body:has(.customer-contract-print-root) .mobile-action-bar,
         body:has(.customer-contract-print-root) .assistant-widget { display: none !important; }
@@ -111,9 +114,10 @@ export function CustomerContractDocument({
         />
       </div>}
       <div className="no-print customer-contract-print-action">
-        {previewOnly ? <strong style={{ fontSize: 12 }}>{previewLabel}</strong> : <PrintButton />}
+        {previewOnly ? <strong style={{ fontSize: 12 }}>{previewLabel}</strong> : null}
+        <PrintButton itemsPerPage={printItemsPerPage} onItemsPerPageChange={setPrintItemsPerPage} showLayout={quote.quoteType !== "commercial"} />
       </div>
-      {quote.quoteType !== "commercial" && <div className="customer-contract-print-only">
+      {quote.quoteType !== "commercial" && <div className="customer-contract-print-only customer-contract-print-introduction">
         <div style={officialContractBar}>
           <strong>Official 805 Shutters contract</strong>
           <a href={brandIdentity.website}>{quote.business.website}</a>
@@ -180,11 +184,11 @@ export function CustomerContractDocument({
             <div className={identityStyles.standardIdentity}><span className={identityStyles.letter}>A</span>Quote A</div>
           ) : null}
           <div className={alternative ? identityStyles.content : undefined}>
-            <QuoteSelection key={quote.token || quote.id} quote={quote} paymentOptions={paymentOptions} walletConfig={walletConfig} previewOnly={previewOnly} contractTerms={contractTerms} />
+            <QuoteSelection printItemsPerPage={printItemsPerPage} key={quote.token || quote.id} quote={quote} paymentOptions={paymentOptions} walletConfig={walletConfig} previewOnly={previewOnly} contractTerms={contractTerms} />
           </div>
         </div>
       </div>
-      <footer className="customer-contract-print-only" style={contractFooter}>
+      <footer className="customer-contract-print-only customer-contract-print-footer" style={contractFooter}>
         <strong>{quote.business.name}</strong>
         <span>
           Official contact: <a href={brandIdentity.website}>{quote.business.website}</a> ·{" "}

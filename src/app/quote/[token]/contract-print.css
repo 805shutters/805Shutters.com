@@ -1,0 +1,21 @@
+@media print {
+  /* Hidden siblings must leave the flow, otherwise they create blank pages. */
+  body:has(.customer-contract-print-root) *:not(:has(.customer-contract-print-root)):not(.customer-contract-print-root):not(.customer-contract-print-root *) { display: none !important; }
+  .customer-contract-print-root[data-print-layout="items"] {
+    position: static !important;
+    width: 100% !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .customer-contract-print-root[data-print-layout="items"] .customer-contract-screen-brand,
+  .customer-contract-print-root[data-print-layout="items"] .customer-contract-print-introduction { display: none !important; }
+  .customer-contract-print-root[data-print-layout="items"] .customer-contract-main-content { padding: 0 !important; }
+  .customer-contract-print-root [data-print-item] [data-quote-line-card] { width: 100%; margin: 0; }
+  .customer-contract-print-root [data-print-item] [data-contract-anatomy] { width: 100%; max-width: none; }
+  .customer-contract-print-root .customer-contract-print-footer {
+    margin-top: 12px !important;
+    padding-top: 8px !important;
+    font-size: 10px !important;
+    break-inside: avoid;
+  }
+}

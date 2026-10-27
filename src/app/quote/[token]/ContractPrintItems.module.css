@@ -1,0 +1,27 @@
+.pages, .page, .items, .slot, .content { display: contents; }
+.header { display: none; }
+
+@media print {
+  @page { size: letter portrait; margin: 0.4in; }
+  .pages { display: block; }
+  .page {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    height: 9.95in;
+    width: 7.7in;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .page + .page { break-before: page; page-break-before: always; }
+  .header { display: block; flex: 0 0 0.7in; font: 10px/1.3 Arial, sans-serif; color: #252821; }
+  .header > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; }
+  .header > div + div { margin-top: 5px; }
+  .header > div > span { overflow-wrap: anywhere; }
+  .header small { display: block; margin-top: 5px; padding-bottom: 5px; border-bottom: 1px solid #b8b6ae; font-size: 9px; }
+  .items { display: grid; flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); gap: 0.15in; }
+  .page[data-items-per-page="2"] .items { grid-template-rows: repeat(2, minmax(0, 1fr)); }
+  .slot { display: block; position: relative; min-height: 0; overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
+  /* The unscaled box must not participate in page fragmentation. */
+  .content { display: flow-root; position: absolute; top: 0; left: 0; width: 100%; }
+}

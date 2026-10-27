@@ -170,7 +170,7 @@ describe("QuoteSelection", () => {
 
   it("shows the customer's full contact information on the contract line with dot separators", () => {
     const html = renderToStaticMarkup(createElement(QuoteSelection, { quote: quoteWithLegacyDetails() }));
-    const contractLine = html.slice(html.indexOf(">Contract</h2>"), html.indexOf("Kitchen"));
+    const contractLine = html.slice(html.indexOf(">Contract</h2>"), html.indexOf("data-contract-print-pages"));
 
     expect(contractLine).toContain('aria-label="Customer information"');
     expect(contractLine).not.toContain(">Customer Information<");
@@ -186,7 +186,7 @@ describe("QuoteSelection", () => {
     const quote = quoteWithLegacyDetails();
     quote.customerEmail = null;
     const html = renderToStaticMarkup(createElement(QuoteSelection, { quote }));
-    const contractLine = html.slice(html.indexOf(">Contract</h2>"), html.indexOf("Kitchen"));
+    const contractLine = html.slice(html.indexOf(">Contract</h2>"), html.indexOf("data-contract-print-pages"));
 
     expect(html).not.toContain("test@example.com");
     expect(contractLine.match(/·/g)).toHaveLength(3);
@@ -381,7 +381,7 @@ describe("QuoteSelection", () => {
     expect(html).toContain("805-shutters-logo-header.png");
     expect(html).toContain("customer-contract-screen-brand");
     expect(html).toContain(".customer-contract-print-only { display: none !important; }");
-    expect(html).toContain("class=\"customer-contract-print-only\"");
+    expect(html).toContain("class=\"customer-contract-print-only customer-contract-print-introduction\"");
     expect(html).toContain("body * { visibility: hidden !important; }");
     expect(html).toContain(".site-header-shell,");
     expect(html).toContain(".site-footer { display: none !important; }");

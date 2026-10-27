@@ -1,5 +1,7 @@
 "use client";
 
+import { ContractPrintItems, type ItemsPerPage } from "./ContractPrintItems";
+
 import { CommercialQuoteSchedule } from "./CommercialQuoteSchedule";
 
 import { contractTotalSavings, contractLinePrices, type ContractLinePrice } from "@/lib/quote/contract-line-pricing";
@@ -49,7 +51,7 @@ type LiveMoney = {
 /** Interactive line-item table + totals + sign block. Supports the "Purchase all
  *  / Purchase some" flow: the customer can check a subset of windows and the total
  *  recomputes (via the server engine) for only the chosen items. */
-export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnly = false, contractTerms }: { contractTerms?: CustomerContractTerms; quote: PublicQuote; paymentOptions?: PaymentOptions | null; walletConfig?: QuoteWalletConfig | null; previewOnly?: boolean }) {
+export function QuoteSelection({ printItemsPerPage = 2, quote, paymentOptions, walletConfig, previewOnly = false, contractTerms }: { printItemsPerPage?: ItemsPerPage; contractTerms?: CustomerContractTerms; quote: PublicQuote; paymentOptions?: PaymentOptions | null; walletConfig?: QuoteWalletConfig | null; previewOnly?: boolean }) {
   const isInHouse = quote.paymentSchedule === IN_HOUSE_SCHEDULE;
   const warrantySections = contractTerms?.sections.filter(section => section.heading !== "Payment at Installation" && section.heading !== IN_HOUSE_TERMS.heading) || SHUTTER_MANUFACTURER_WARRANTY_SECTIONS;
   const paymentSection = isInHouse ? contractTerms?.sections.find(section => section.heading === IN_HOUSE_TERMS.heading) || IN_HOUSE_TERMS : contractTerms?.sections.find(section => section.heading === "Payment at Installation") || PAYMENT_AT_INSTALLATION_SECTION;
@@ -255,7 +257,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
           <div className={styles.orderLines}>
             {quote.quoteType === "commercial" ? (
               <CommercialQuoteSchedule lines={quote.lines} selected={selected} selectionEnabled={allowSelection && mode === "some"} disabled={signingBusy} onToggle={toggle} />
-            ) : quote.lines.map((line, lineIndex) => {
+            ) : <ContractPrintItems count={printItemsPerPage} quote={quote} items={quote.lines.map((line, lineIndex) => {
               const isChecked = selected.has(line.id);
               const dimmed = mode === "some" && !isChecked;
               const configurations = line.priceReady && line.showDesignOptions && line.designOptions.length
@@ -294,7 +296,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
                   </div> : null}
                 </div>
               );
-            })}
+            })} />}
             {quote.lines.length === 0 ? <p className={styles.emptyDetails}><em>This contract is still being prepared.</em></p> : null}
           </div>
 

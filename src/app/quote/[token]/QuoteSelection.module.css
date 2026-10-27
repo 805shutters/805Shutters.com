@@ -796,3 +796,20 @@
   .illustratedConfiguration .productConfiguration { flex-basis: 0; }
   .productName { font-size: 13px; }
 }
+
+@media print {
+  .contractLayout, .contractLayoutSingle, .contractLayoutWithMobileActions { display: block; padding: 0; }
+  .orderSummary:has([data-contract-print-pages]) { padding: 0; border: 0; border-radius: 0; }
+  .orderSummary:has([data-print-page]) > .orderSummaryHeader,
+  .orderSummary:has([data-print-page]) > p { display: none; }
+  .orderLines:has([data-contract-print-pages]) { display: block; }
+  .orderSummary:has([data-print-page]) .orderTotals { break-before: page; page-break-before: always; }
+  .orderTotals { break-inside: avoid; page-break-inside: avoid; }
+  .contractContent { margin-top: 12px; }
+  .contractContent > :not(.no-print) {
+    margin-top: 12px !important;
+    padding: 10px !important;
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+  }
+}
