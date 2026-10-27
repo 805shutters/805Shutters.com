@@ -233,13 +233,16 @@ export function createService(config = loadConfig(), options = {}) {
         ].join(":");
         if (parts[1] === "offer") {
           const offer = call.offers.find((o) => o.id === parts[3]);
+          const isAmd = parts[4] === "amd";
           if (
             !offer ||
-            params.get("To") !== config.staff[offer.staff].destination ||
-            params.get("From") !== config.number
+            (isAmd
+              ? !sid || offer.sid !== sid
+              : params.get("To") !== config.staff[offer.staff].destination ||
+                params.get("From") !== config.number)
           )
             return reply(res, 403, { error: "Wrong staff leg" });
-          engine.bind(call.id, offer.id, sid);
+          if (!isAmd) engine.bind(call.id, offer.id, sid);
           if (parts[4] === "status") {
             if (
               ["completed", "busy", "failed", "no-answer", "canceled"].includes(

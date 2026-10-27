@@ -187,10 +187,17 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
     const call=s.get('call',parts[2]);if(!call)throw new Conflict('Unknown call');
     const eventId=[parts[1],call.id,sid,p.get('SequenceNumber'),p.get('StatusCallbackEvent'),p.get('CallStatus'),p.get('ConferenceSid')].join(':');
     if(parts[1]==='offer') {
-     const offer=call.offers.find(o=>o.id===parts[3]);if(!offer||p.get('To')!==c.staff[offer.staff].destination||p.get('From')!==c.number)throw new Conflict('Wrong staff leg');
+     const offer=call.offers.find(o=>o.id===parts[3]);
+     // Async AMD sends no To/From. The signed account callback must match the
+     // staff CallSid already bound by Create/status before it can accept.
+     if(parts[4]==='amd') {
+      if(!offer||!sid||offer.sid!==sid)throw new Conflict('Wrong staff leg');
+      const next=e.accept(call.id,offer.id,sid,p.get('AnsweredBy')||'unknown');
+      return next.offers.find(o=>o.id===offer.id)?.status==='accepted'?twiml('<Pause length="60"/>'):twiml('<Hangup/>');
+     }
+     if(!offer||p.get('To')!==c.staff[offer.staff].destination||p.get('From')!==c.number)throw new Conflict('Wrong staff leg');
      e.bind(call.id,offer.id,sid);
      if(parts[4]==='status') {if(terminal.includes(p.get('CallStatus')))e.ended(call.id,sid,eventId);return twiml('');}
-     if(parts[4]==='amd') {const next=e.accept(call.id,offer.id,sid,p.get('AnsweredBy')||'unknown');return next.offers.find(o=>o.id===offer.id)?.status==='accepted'?twiml('<Pause length="60"/>'):twiml('<Hangup/>');}
      return ['pending','ringing'].includes(s.get('call',call.id).offers.find(o=>o.id===offer.id).status)?twiml(`<Pause length="${c.offerSeconds}"/><Hangup/>`):twiml('<Hangup/>');
     }
     if(parts[1]==='conference') {

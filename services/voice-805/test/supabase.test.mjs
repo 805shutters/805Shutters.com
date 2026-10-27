@@ -362,7 +362,9 @@ test('a staff answer during the welcome redirects the caller immediately',async(
  let call=await f.state.transact((_e,s)=>s.list('call').find(item=>item.sid===sid));
  assert.equal(call.greetingPlayed,false);assert.equal(call.listeningWelcome,true);
  const mike=call.offers.find(o=>o.staff==='mike');
- assert.match(await (await f.handler(carrierRequest(f,`/twilio/offer/${call.id}/${mike.id}/amd`,{CallSid:mike.sid,To:f.c.staff.mike.destination,From:f.c.number,AnsweredBy:'human'}))).text(),/<Pause/);
+ const answered=await f.handler(carrierRequest(f,`/twilio/offer/${call.id}/${mike.id}/amd`,{CallSid:mike.sid,AnsweredBy:'human',MachineDetectionDuration:'3800'}));
+ assert.equal(answered.status,200);
+ assert.match(await answered.text(),/<Pause/);
  await Promise.all(f.tasks.splice(0));
  assert.equal(f.provider.operations.some(o=>o.type==='route'&&o.sid===mike.sid),true);
  assert.equal(f.provider.operations.filter(o=>o.type==='route'&&o.sid===call.sid).length,1);
@@ -479,4 +481,96 @@ test('signed staff STOP blocks the exact staff destination without notifying ano
  await worker.drain();await worker.drain();
  assert.equal(sent.length,1);assert.equal(sent[0].recipient,'mike');assert.equal(sent[0].destination,f.c.staff.mike.sms);
  const notes=await f.state.transact((_e,s)=>s.list('notification'));assert.equal(notes.find(n=>n.recipient==='jessica').status,'failed');assert.match(notes.find(n=>n.recipient==='jessica').error,/opted out/);
+});
+
+// Twilio AsyncAmdStatusCallback has exactly these four fields, unlike ordinary
+// Voice URL/status callbacks. Never add To/From to this regression fixture.
+async function amdFixture() {
+ const f=fixture();
+ await f.handler(carrierRequest(f,'/twilio/inbound',{CallSid:'CA'+'8'.repeat(32),To:f.c.number,From:'+18055550199'}));
+ await Promise.all(f.tasks.splice(0));
+ const call=await f.state.transact((_e,s)=>s.list('call')[0]);
+ const offer=call.offers.find(o=>o.staff==='mike');
+ const path=`/twilio/offer/${call.id}/${offer.id}/amd`;
+ const fields={CallSid:offer.sid,AnsweredBy:'human',MachineDetectionDuration:'3800'};
+ return {...f,call,offer,path,fields};
+}
+test('real AMD payload routes both legs through Twilio REST to the same unmuted conference exactly once',async()=>{
+ const f=await amdFixture(),requests=[];
+ // Exercise the actual provider adapter without contacting a real handset.
+ f.worker.provider=new TwilioProvider(f.c,async(url,init)=>{
+  requests.push({url,method:init.method,params:new URLSearchParams(init.body)});
+  return new Response('{}',{status:200});
+ });
+ for(let i=0;i<2;i++) {
+  assert.equal((await f.handler(carrierRequest(f,f.path,f.fields))).status,200);
+  await Promise.all(f.tasks.splice(0));
+ }
+ const routes=requests.filter(r=>r.params.has('Twiml'));
+ assert.equal(routes.length,2);
+ assert.deepEqual(routes.map(r=>r.url.split('/Calls/')[1]).sort(),[`${f.call.sid}.json`,`${f.offer.sid}.json`].sort());
+ for(const route of routes) {
+  assert.equal(route.method,'POST');
+  assert.match(route.params.get('Twiml'),new RegExp(`>805-${f.call.id}-main</Conference>`));
+  assert.doesNotMatch(route.params.get('Twiml'),/muted="true"|<Pause|<Stream|<Record/);
+ }
+ const other=f.call.offers.find(o=>o.staff==='jessica');
+ assert.equal(requests.filter(r=>r.url.endsWith(`/Calls/${other.sid}.json`)&&r.params.get('Status')==='completed').length,1);
+ const current=await f.state.transact((_e,s)=>s.get('call',f.call.id));
+ assert.equal(current.owner,'mike');assert.equal(current.ownerSid,f.offer.sid);assert.equal(current.phase,'handoff');
+});
+test('AMD retains signed account and bound staff CallSid validation',async()=>{
+ const f=await amdFixture();
+ const request=carrierRequest(f,f.path,f.fields);request.headers.set('x-twilio-signature','invalid');
+ assert.equal((await f.handler(request)).status,401);
+ assert.equal((await f.handler(carrierRequest(f,f.path,{...f.fields,AccountSid:'AC'+'b'.repeat(32)}))).status,401);
+ for(const sid of ['',f.call.sid,'CA'+'9'.repeat(32)]) {
+  assert.equal((await f.handler(carrierRequest(f,f.path,{...f.fields,CallSid:sid}))).status,409);
+ }
+ assert.equal((await f.handler(carrierRequest(f,`/twilio/offer/${f.call.id}/${randomUUID()}/amd`,f.fields))).status,409);
+ await f.state.transact((_e,s)=>{const c=s.get('call',f.call.id);c.offers.find(o=>o.id===f.offer.id).sid=null;s.put('call',c);});
+ assert.equal((await f.handler(carrierRequest(f,f.path,f.fields))).status,409);
+ const current=await f.state.transact((_e,s)=>s.get('call',f.call.id));
+ assert.equal(current.owner,null);assert.equal(current.offers.find(o=>o.id===f.offer.id).sid,null);
+ assert.equal(f.provider.operations.some(o=>o.type==='route'),false);
+});
+test('ordinary staff URL and status callbacks still require matching To and From',async()=>{
+ const f=await amdFixture(),base=f.path.slice(0,-4);
+ for(const suffix of ['', '/status']) {
+  for(const fields of [{CallSid:f.offer.sid},{CallSid:f.offer.sid,To:'+18055550999',From:f.c.number},{CallSid:f.offer.sid,To:f.c.staff.mike.destination,From:'+18055550999'}]) {
+   assert.equal((await f.handler(carrierRequest(f,base+suffix,fields))).status,409);
+  }
+  assert.equal((await f.handler(carrierRequest(f,base+suffix,{CallSid:f.offer.sid,To:f.c.staff.mike.destination,From:f.c.number,CallStatus:'in-progress'}))).status,200);
+ }
+ await Promise.all(f.tasks.splice(0));
+});
+test('machine and unknown AMD verdicts never pull the customer away from the AI',async()=>{
+ for(const verdict of ['machine_start','machine_end_beep','fax','unknown']) {
+  const f=await amdFixture();
+  const response=await f.handler(carrierRequest(f,f.path,{...f.fields,AnsweredBy:verdict}));
+  assert.equal(response.status,200);assert.match(await response.text(),/<Hangup/);
+  await Promise.all(f.tasks.splice(0));
+  const current=await f.state.transact((_e,s)=>s.get('call',f.call.id));
+  assert.equal(current.owner,null);assert.equal(current.ai,true);
+  assert.equal(f.provider.operations.some(o=>o.type==='route'),false);
+  assert.equal(f.provider.operations.some(o=>o.type==='hangup'&&o.sid===f.offer.sid),true);
+ }
+});
+test('expired, canceled and ended AMD callbacks cannot steal or revive a call',async()=>{
+ for(const condition of ['expired','canceled','ended']) {
+  const f=await amdFixture();
+  await f.state.transact((_e,s)=>{
+   const c=s.get('call',f.call.id),o=c.offers.find(o=>o.id===f.offer.id);
+   if(condition==='expired')o.expiresAt=Date.now()-1;
+   if(condition==='canceled')o.status='canceled';
+   if(condition==='ended')c.phase='ended';
+   s.put('call',c);
+  });
+  const response=await f.handler(carrierRequest(f,f.path,f.fields));
+  assert.equal(response.status,200);assert.match(await response.text(),/<Hangup/);
+  await Promise.all(f.tasks.splice(0));
+  const current=await f.state.transact((_e,s)=>s.get('call',f.call.id));
+  assert.equal(current.owner,null);assert.equal(f.provider.operations.some(o=>o.type==='route'),false);
+  if(condition==='ended')assert.equal(current.phase,'ended');
+ }
 });
