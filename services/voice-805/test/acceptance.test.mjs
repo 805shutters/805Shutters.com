@@ -20,6 +20,7 @@ import { randomUUID } from "node:crypto";
 const id = () => randomUUID();
 const config = () => ({
   ...loadConfig({}),
+  staffAcceptance: "amd", // Legacy in-flight offer coverage.
   offerSeconds: 25,
   hours: Object.fromEntries(
     [0, 1, 2, 3, 4, 5, 6].map((i) => [i, [[540, 1020]]]),

@@ -40,7 +40,7 @@ export function staffDialParams(config, call, offer) {
   // Enable returns human or machine_start within a few seconds. DetectMessageEnd
   // waits for a beep and can outlast the 20s offer, so machine_end_* is accepted
   // if the carrier sends it but is not what we ask Twilio to wait for.
-  return [
+  const params = [
     ["To", config.staff[offer.staff].destination],
     ["From", config.number],
     ["Url", base],
@@ -49,12 +49,15 @@ export function staffDialParams(config, call, offer) {
     ["StatusCallbackEvent", "ringing"],
     ["StatusCallbackEvent", "answered"],
     ["StatusCallbackEvent", "completed"],
+    ["Timeout", String(offer.ringSeconds || config.offerSeconds)],
+  ];
+  if (offer.acceptance === "dtmf") return params;
+  return [...params,
     ["MachineDetection", "Enable"],
     ["AsyncAmd", "true"],
     ["AsyncAmdStatusCallback", base + "/amd"],
     ["AsyncAmdStatusCallbackMethod", "POST"],
     ["MachineDetectionTimeout", "8"],
-    ["Timeout", String(config.offerSeconds)],
   ];
 }
 export function conferenceXml(config, call, room) {

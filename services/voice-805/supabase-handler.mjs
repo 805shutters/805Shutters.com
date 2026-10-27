@@ -8,6 +8,7 @@ import { fallback, mediaStreamTwiml, ringbackTwiml, ringbackWav, silentWaitTwiml
 import { PROMPTS, ensureSpoken, promptDigest, promptSource, promptVerb } from './prompts.mjs';
 import { logFailure, saveCallback } from './callbacks.mjs';
 import { DEDICATED_805_SMS_FROM } from './transcript-sms.mjs';
+import { staffPickup } from './staff-pickup.mjs';
 const terminal = ['completed','failed','canceled','busy','no-answer'];
 // The hosted Supabase gateway records 502 for an Upgrade request that does not
 // return 101 on the first turn (plain GET /health is 200; the same path with
@@ -48,7 +49,7 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
    const prefix=prefixes.find(p=>u.pathname===p||u.pathname.startsWith(p+'/'));
    if(prefix===undefined||u.search)return json({error:'Invalid route'},400);
    const path=u.pathname.slice(prefix.length)||'/';
-   if(path==='/health'&&request.method==='GET')return json({service:'805-phone',...supabaseReadiness(c)});
+   if(path==='/health'&&request.method==='GET')return json({service:'805-phone',staffAcceptance:c.staffAcceptance,...supabaseReadiness(c)});
    if(path==='/twilio/ringback.wav'){
     if(request.method!=='GET')return json({error:'Method rejected'},405);
     return new Response(ringbackWav(),{headers:{'content-type':'audio/wav','cache-control':'public, max-age=86400'}});
@@ -196,8 +197,10 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
       return next.offers.find(o=>o.id===offer.id)?.status==='accepted'?twiml('<Pause length="60"/>'):twiml('<Hangup/>');
      }
      if(!offer||p.get('To')!==c.staff[offer.staff].destination||p.get('From')!==c.number)throw new Conflict('Wrong staff leg');
+     if(parts[4]==='accept'&&(!sid||offer.sid!==sid))throw new Conflict('Unbound staff confirmation');
      e.bind(call.id,offer.id,sid);
      if(parts[4]==='status') {if(terminal.includes(p.get('CallStatus')))e.ended(call.id,sid,eventId);return twiml('');}
+     if(offer.acceptance==='dtmf')return staffPickup(e,c,call.id,offer.id,sid,parts[4],p);
      return ['pending','ringing'].includes(s.get('call',call.id).offers.find(o=>o.id===offer.id).status)?twiml(`<Pause length="${c.offerSeconds}"/><Hangup/>`):twiml('<Hangup/>');
     }
     if(parts[1]==='conference') {

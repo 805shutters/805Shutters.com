@@ -44,6 +44,7 @@ export function loadConfig(env = process.env) {
     controlKey: env.VOICE_805_CONTROL_KEY || "",
     staff: json("VOICE_805_STAFF_JSON", {}),
     ringStaff: loadRingStaff(env),
+    staffAcceptance: "dtmf",
     hours: json("VOICE_805_HOURS_JSON", null),
     holidays: json("VOICE_805_HOLIDAYS_JSON", null),
     offerSeconds: Number(env.VOICE_805_OFFER_SECONDS || 0),

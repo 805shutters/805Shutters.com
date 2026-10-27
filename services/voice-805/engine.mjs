@@ -97,9 +97,12 @@ export class Engine {
       purpose,
       sid: null,
       status: "pending",
-      expiresAt: Date.now() + this.config.offerSeconds * 1000,
+      acceptance: this.config.staffAcceptance,
+      ringSeconds: this.config.staffAcceptance === "dtmf" ? Math.max(40, this.config.offerSeconds) : this.config.offerSeconds,
+      expiresAt: Date.now() + (this.config.staffAcceptance === "dtmf" ? Math.max(40, this.config.offerSeconds) + 15 : this.config.offerSeconds) * 1000,
     };
     c.offers.push(offer);
+    if (offer.acceptance === "dtmf") c.deadline = Math.max(c.deadline || 0, offer.expiresAt);
     this.effect(c, "dial", { offerId: offer.id });
     return offer;
   }
@@ -387,13 +390,32 @@ export class Engine {
       c.streamError = String(error || "").slice(0, 300);
     });
   }
+  staffAnswered(id, offerId, sid, now = Date.now()) {
+    return this.change(id, `staff-answer:${offerId}:${sid}`, c => {
+      const o = c.offers.find(o => o.id === offerId);
+      if (!o || o.sid !== sid) throw new Conflict("Unbound staff callback");
+      if (o.acceptance !== "dtmf" || o.status !== "ringing" || now >= o.expiresAt || c.phase === "ended") return;
+      o.answeredAt = now;
+      // Start the confirmation window at pickup, not at incoming-call creation.
+      o.expiresAt = now + 20000;
+      c.deadline = Math.max(c.deadline || 0, o.expiresAt);
+    });
+  }
+  confirmStaff(id, offerId, sid, digits, now = Date.now()) {
+    const c = this.store.get("call", id), o = c?.offers.find(o => o.id === offerId);
+    if (!o || o.sid !== sid || o.acceptance !== "dtmf") throw new Conflict("Unbound staff confirmation");
+    if (digits !== "1" || !o.answeredAt) return c;
+    return this.accept(id, offerId, sid, "staff-confirmed", now);
+  }
   accept(id, offerId, sid, answeredBy, now = Date.now()) {
     const result = String(answeredBy || "unknown").trim().toLowerCase();
     return this.change(id, `amd:${offerId}:${sid}:${result}`, (c) => {
       const o = c.offers.find((o) => o.id === offerId);
       if (!o || o.sid !== sid) throw new Conflict("Unbound staff callback");
       if (o.status === "accepted") return;
-      const human = result === "human";
+      // Late AMD callbacks cannot accept or cancel keypad-confirmed offers.
+      if (o.acceptance === "dtmf" && result !== "staff-confirmed") return;
+      const human = o.acceptance === "dtmf" ? result === "staff-confirmed" && !!o.answeredAt : result === "human";
       const eligible =
         human &&
         now < o.expiresAt &&
@@ -422,7 +444,7 @@ export class Engine {
             other.status = "canceled";
             if (other.sid) this.effect(c, "hangup", { sid: other.sid });
           }
-        this.effect(c, "route", { sid, room: "main" });
+        if (o.acceptance !== "dtmf") this.effect(c, "route", { sid, room: "main" });
         // Pull the caller as soon as a person answers. Do not wait for the
         // welcome audio to finish or for this staff leg to join.
         c.callerPulled = true;
@@ -432,11 +454,11 @@ export class Engine {
         c.ownerSid = sid;
         c.phase = "callback-connecting";
         c.deadline = now + 20000;
-        this.effect(c, "route", { sid, room: "main" });
+        if (o.acceptance !== "dtmf") this.effect(c, "route", { sid, room: "main" });
       } else {
         c.target = o.staff;
         c.targetSid = sid;
-        this.effect(c, "route", { sid, room: "consult" });
+        if (o.acceptance !== "dtmf") this.effect(c, "route", { sid, room: "consult" });
       }
     });
   }

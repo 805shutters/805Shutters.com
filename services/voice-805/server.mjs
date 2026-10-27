@@ -17,6 +17,7 @@ import {
 import { MediaBridge } from "./media.mjs";
 import { authorizeControl, twilioSignature, xml, twiml, reportFailure } from "./security.mjs";
 import { fallback } from "./fallback.mjs";
+import { staffPickup } from "./staff-pickup.mjs";
 
 async function body(req) {
   let raw = "";
@@ -242,6 +243,8 @@ export function createService(config = loadConfig(), options = {}) {
                 params.get("From") !== config.number)
           )
             return reply(res, 403, { error: "Wrong staff leg" });
+          if (parts[4] === 'accept' && (!sid || offer.sid !== sid))
+            return reply(res, 403, { error: 'Unbound staff confirmation' });
           if (!isAmd) engine.bind(call.id, offer.id, sid);
           if (parts[4] === "status") {
             if (
@@ -262,6 +265,8 @@ export function createService(config = loadConfig(), options = {}) {
             response = accepted
               ? twiml('<Pause length="60"/>')
               : twiml("<Hangup/>");
+          } else if (offer.acceptance === 'dtmf') {
+            response = staffPickup(engine, config, call.id, offer.id, sid, parts[4], params);
           } else {
             const current = store
               .get("call", call.id)

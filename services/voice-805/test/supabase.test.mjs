@@ -14,7 +14,7 @@ import { STAFF_TAKEOVER_SENTENCE, callSummary, persistEndedSummary, saveCallSumm
 import { transcriptSmsSendingEnabled } from '../transcript-sms.mjs';
 import { readFileSync } from 'node:fs';
 
-const config=()=>({...loadSupabaseConfig({}), mode:'live', liveAuthorized:true, agentReviewed:true,agentContractVerified:true, workerVerified:true,
+const config=()=>({...loadSupabaseConfig({}),staffAcceptance:"amd", mode:'live', liveAuthorized:true, agentReviewed:true,agentContractVerified:true, workerVerified:true,
  origin:'https://example.supabase.co/functions/v1/voice-805',accountSid:'AC'+'a'.repeat(32),authToken:'t'.repeat(32),
  number:'+18055550100',sipUri:'sip:+18055550100@sip.voice.x.ai;transport=tls',xaiKey:'x'.repeat(20),transport:'media', toolsKey:'t'.repeat(32),controlKey:'c'.repeat(32),workerKey:'w'.repeat(32),
  hours:Object.fromEntries(Array.from({length:7},(_,i)=>[i,[[0,1440]]])),holidays:{},offerSeconds:25,

@@ -8,7 +8,7 @@ import { hmac } from '../security.mjs';
 import { promptDigest, promptPublicPath } from '../prompts.mjs';
 import { loadSupabaseConfig } from '../supabase-config.mjs';
 
-const config=()=>({...loadSupabaseConfig({}),mode:'live',liveAuthorized:true,agentReviewed:true,agentContractVerified:true,workerVerified:true,transport:'media',xaiKey:'x'.repeat(20),
+const config=()=>({...loadSupabaseConfig({}),staffAcceptance:"amd",mode:'live',liveAuthorized:true,agentReviewed:true,agentContractVerified:true,workerVerified:true,transport:'media',xaiKey:'x'.repeat(20),
  origin:'https://example.supabase.co/functions/v1/voice-805',accountSid:'AC'+'a'.repeat(32),authToken:'t'.repeat(32),number:'+18055550100',
  toolsKey:'t'.repeat(32),controlKey:'c'.repeat(32),workerKey:'w'.repeat(32),offerSeconds:20,
  hours:Object.fromEntries(Array.from({length:7},(_,i)=>[i,[[0,1440]]])),holidays:{},

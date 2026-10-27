@@ -72,9 +72,10 @@ class FakeClient {
     return { data: true };
   }
 }
-function fixture(ring) {
+function fixture(ring, legacy = false) {
   const env = ring === undefined ? {} : { VOICE_805_RING_STAFF_JSON: ring };
   const c = liveConfig(env);
+  if (legacy) c.staffAcceptance = "amd"; // Existing in-flight offers retain their original acceptance policy.
   const client = new FakeClient();
   const state = new SupabaseState(client, c);
   const provider = new SimulationProvider();
@@ -179,7 +180,7 @@ test('the default inbound greeting rings Mike and Jessica', async () => {
 });
 
 test('Mike-only ringing does not dial Jessica and one no-answer returns to Grok', async () => {
-  const during = fixture('["mike"]');
+  const during = fixture('["mike"]', true);
   const early = await inbound(during, 'CA' + '2'.repeat(32));
   assert.deepEqual(dials(during), ['mike']);
   assert.equal(early.call.offers.length, 1);
@@ -203,7 +204,7 @@ test('Mike-only ringing does not dial Jessica and one no-answer returns to Grok'
   assert.doesNotMatch(xml, /Conference/);
   assert.deepEqual(dials(during), ['mike']);
 
-  const after = fixture('["mike"]');
+  const after = fixture('["mike"]', true);
   const sid = 'CA' + '3'.repeat(32);
   const first = await inbound(after, sid);
   const played = await after.handler(carrier(after, `/twilio/greeted/${first.call.id}`, { CallSid: sid, To: after.c.number, From: '+18055550199' }));
@@ -235,7 +236,7 @@ test('requestStaff uses the same ring list, while consult and callback still rea
   assert.deepEqual(offered.offers.map((offer) => offer.staff), ['mike']);
   assert.deepEqual(dials(f), ['mike']);
 
-  const live = fixture('["mike"]');
+  const live = fixture('["mike"]', true);
   const sid = 'CA' + '5'.repeat(32);
   const first = await inbound(live, sid);
   await live.state.transact((e) => e.joined(first.call.id, first.call.sid, 'main', 'CFmain', `caller:${first.call.id}`));
