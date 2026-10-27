@@ -35,7 +35,7 @@ function database(quotes: Row[] = []) {
     };
     return query;
   } } as unknown as SupabaseClient;
-  return { client, events, fail: (table: string) => { failTable = table; } };
+  return { client, events, tables, fail: (table: string) => { failTable = table; } };
 }
 
 const now = new Date("2026-09-21T00:00:00Z");
@@ -80,7 +80,7 @@ describe("weekly sales SMS", () => {
     expect(report.week.startDate).toBe("2026-09-14");
     expect(report.week.endDate).toBe("2026-09-20");
     expect(report.week.totalCents).toBe(15035);
-    expect(report.body).toBe("805 Shutters weekly sales — Mon, Sep 14–Sun, Sep 20, 2026. Gross signed sales as of Sunday 5:00 PM Pacific: $150.35.");
+    expect(report.body).toBe("805 Shutters weekly sales — Mon, Sep 14–Sun, Sep 20, 2026. Gross sales as of Sunday 5:00 PM Pacific: $150.35.");
   });
 
   it("sends a verified empty week as zero and marks evidence gaps", async () => {
@@ -136,4 +136,14 @@ describe("weekly sales SMS", () => {
     expect((await GET(new NextRequest("https://example.test/api/cron/weekly-sales"))).status).toBe(401);
     expect(getSupabaseServiceClient).not.toHaveBeenCalled();
   });
+});
+
+it("uses the same payment-backed sale ledger as the dashboard", async () => {
+  const db = database([quote("deposit-sale", null, 331.20)]);
+  db.tables.crm_quote_bookkeeping_payments = [{ id: "receipt", quote_id: "deposit-sale", job_id: "job-deposit-sale", amount: 165.60, paid_at: "2026-09-20" }];
+  const report = await loadWeeklySalesSmsReport(db.client, now);
+  expect(report.week.totalCents).toBe(33120);
+  expect(report.week.sales[0].dateBasis).toBe("payment");
+  db.fail("crm_quote_bookkeeping_payments");
+  await expect(loadWeeklySalesSmsReport(db.client, now)).rejects.toThrow("Weekly sales unavailable");
 });

@@ -918,12 +918,15 @@ export type CrmActivitySnapshot = {
 };
 
 export type CrmClosedSale = {
+  /** Reporting date source; a payment never proves a customer signature. */
+  dateBasis?: "signature" | "payment";
   id: string;
   jobId: string | null;
   quoteId: string | null;
   customerId: string | null;
   customerName: string;
   reference: string;
+  /** Historical API name for the reporting date; inspect dateBasis before labeling it signed. */
   signedAt: string;
   amountCents: number;
 };
@@ -947,7 +950,7 @@ export type CrmClosedSalesReport = {
 
 export type CrmDashboardData = {
   technicalMeasureSubmissions?: Array<{ formId: string; jobId: string; quoteId: string | null; submittedAt: string }>;
-  /** Signed-sale history, calculated before display/status projections. */
+  /** Dated sale history, calculated before display/status projections. */
   closedSales?: CrmClosedSalesReport;
   installerOutcomes?: InstallerOutcomeEvidence[];
   sourceHealth?: ProgressSourceHealth[];

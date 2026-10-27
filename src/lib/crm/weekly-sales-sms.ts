@@ -4,7 +4,7 @@ import { losAngelesDateString, losAngelesTimeString, zonedTimeToUtc } from "@/li
 import { buildClosedSalesReport } from "@/lib/crm/dashboard-metrics";
 import { loadCompleteCrmTable } from "@/lib/crm/pagination";
 import { isTwilioConfigured, sendSms, toE164 } from "@/lib/notify/twilio";
-import type { CrmBookkeepingEntry, CrmClosedSalesWeek, CrmCustomer, CrmCustomerContract, CrmJob, CrmQuote } from "@/lib/crm/types";
+import type { CrmBookkeepingEntry, CrmBookkeepingPayment, CrmClosedSalesWeek, CrmCustomer, CrmCustomerContract, CrmJob, CrmQuote } from "@/lib/crm/types";
 
 /** The two UTC cron slots cover PST/PDT; only Sunday 17:00 Pacific may send. */
 export function weeklySalesCutoff(now: Date): Date | null {
@@ -15,7 +15,7 @@ export function weeklySalesCutoff(now: Date): Date | null {
 
 export function weeklySalesSmsBody(week: CrmClosedSalesWeek, reviewCount: number) {
   const amount = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(week.totalCents / 100);
-  return `805 Shutters weekly sales — ${week.label}. Gross signed sales as of Sunday 5:00 PM Pacific: ${amount}.`
+  return `805 Shutters weekly sales — ${week.label}. Gross sales as of Sunday 5:00 PM Pacific: ${amount}.`
     + (reviewCount ? ` ${reviewCount} signing record${reviewCount === 1 ? " needs" : "s need"} review; total includes verified sales only. See Closed Sales in CRM.` : "");
 }
 
@@ -33,12 +33,13 @@ export async function loadWeeklySalesSmsReport(supabase: SupabaseClient, cutoff:
     loadCompleteCrmTable(supabase, "crm_customer_contracts"),
     loadCompleteCrmTable(supabase, "crm_quote_bookkeeping_entries", "sold_date"),
     loadCompleteCrmTable(supabase, "crm_customers", "latest_sold_date"),
+    loadCompleteCrmTable(supabase, "crm_quote_bookkeeping_payments", "paid_at"),
   ]);
   for (const result of results) if (result.error) throw new Error(`Weekly sales unavailable: ${result.error.message}`);
-  const [jobs, quotes, contracts, entries, customers] = results.map(result => result.data || []);
+  const [jobs, quotes, contracts, entries, customers, payments] = results.map(result => result.data || []);
   const report = buildClosedSalesReport({ jobs: jobs as CrmJob[], quotes: quotes as CrmQuote[],
     contracts: contracts as CrmCustomerContract[], entries: entries as CrmBookkeepingEntry[], customers: customers as CrmCustomer[],
-    now: cutoff, includeCurrentWeek: true });
+    payments: payments as CrmBookkeepingPayment[], now: cutoff, includeCurrentWeek: true });
   const week = report.weeks[0];
   const reviewCount = report.review.filter(item => !item.signedAt || (item.signedAt >= week.startAt && item.signedAt <= cutoff.toISOString())).length;
   return { week, reviewCount, body: weeklySalesSmsBody(week, reviewCount), cutoff: cutoff.toISOString() };

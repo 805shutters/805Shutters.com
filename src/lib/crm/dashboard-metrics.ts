@@ -1,5 +1,5 @@
 import { losAngelesDateString, zonedTimeToUtc } from "@/lib/booking/availability";
-import type { CrmClosedSale, CrmClosedSalesReport, CrmClosedSalesWeek, CrmCustomerContract, CrmBookkeepingEntry, CrmCustomer } from "@/lib/crm/types";
+import type { CrmClosedSale, CrmClosedSalesReport, CrmClosedSalesWeek, CrmCustomerContract, CrmBookkeepingEntry, CrmBookkeepingPayment, CrmCustomer } from "@/lib/crm/types";
 import { currentOfferedQuotes } from "./quote-opportunities";
 import { businessDate } from "./business-date";
 import { buildJobTrackingView } from "./job-tracking-view";
@@ -229,9 +229,9 @@ function salesTimestamp(value: unknown): string | null {
 }
 
 /** Derive the ledger from original records, never from projected sold/created dates. */
-export function buildClosedSalesReport({ jobs, quotes, contracts, entries = [], customers = [], now = new Date(), includeCurrentWeek = false }: {
+export function buildClosedSalesReport({ jobs, quotes, contracts, entries = [], customers = [], payments = [], now = new Date(), includeCurrentWeek = false }: {
   jobs: CrmJob[]; quotes: CrmQuote[]; contracts: CrmCustomerContract[];
-  entries?: CrmBookkeepingEntry[]; customers?: CrmCustomer[]; now?: Date | string; includeCurrentWeek?: boolean;
+  entries?: CrmBookkeepingEntry[]; customers?: CrmCustomer[]; payments?: CrmBookkeepingPayment[]; now?: Date | string; includeCurrentWeek?: boolean;
 }): CrmClosedSalesReport {
   const latestWeekStart = shiftSalesDate(previousClosedSalesMonday(now), includeCurrentWeek ? 7 : 0);
   const currentMonday = shiftSalesDate(latestWeekStart, 7);
@@ -243,6 +243,21 @@ export function buildClosedSalesReport({ jobs, quotes, contracts, entries = [], 
   const entryById = new Map(entries.map(entry => [entry.id, entry]));
   const quotesByJob = new Map<string, CrmQuote[]>();
   for (const quote of quotes) quotesByJob.set(quote.job_id, [...(quotesByJob.get(quote.job_id) || []), quote]);
+  // Exact quote links only: a job-level receipt cannot identify which alternative sold.
+  // Never write a payment-derived date into a contract's signature fields.
+  const receiptsByQuote = new Map<string, { firstPaidAt: string | null; netCents: number }>();
+  for (const payment of new Map(payments.map(payment => [payment.id, payment])).values()) {
+    const paidAt = salesTimestamp(payment.paid_at);
+    const amount = Number(payment.amount);
+    const quote = payment.quote_id ? quoteById.get(payment.quote_id) : undefined;
+    if (!quote || (payment.job_id && payment.job_id !== quote.job_id) || !paidAt
+      || new Date(paidAt).getTime() > new Date(now).getTime() || !Number.isFinite(amount)
+      || salesRecord(payment.meta).deleted_at) continue;
+    const receipt = receiptsByQuote.get(quote.id) || { firstPaidAt: null, netCents: 0 };
+    receipt.netCents += Math.round(amount * 100);
+    if (amount > 0 && (!receipt.firstPaidAt || paidAt < receipt.firstPaidAt)) receipt.firstPaidAt = paidAt;
+    receiptsByQuote.set(quote.id, receipt);
+  }
   const contractsBySale = new Map<string, CrmCustomerContract[]>();
   for (const contract of contracts) {
     const entry = contract.bookkeeping_entry_id ? entryById.get(contract.bookkeeping_entry_id) : undefined;
@@ -280,12 +295,20 @@ export function buildClosedSalesReport({ jobs, quotes, contracts, entries = [], 
     const linked = (contractsBySale.get(key) || []).slice().sort((a, b) => a.id.localeCompare(b.id));
     const signedContracts = linked.filter(contract => contract.signed_at || salesRecord(salesRecord(contract.meta).contract_snapshot).signedAt);
     const quoteDate = quote && Object.prototype.hasOwnProperty.call(quote, "source_signed_at") ? quote.source_signed_at : quote?.signed_at;
-    const hasSignal = Boolean(quoteDate || quote?.customer_signature || signedContracts.length);
+    const receipt = quote && receiptsByQuote.get(quote.id);
+    const paymentDate = receipt && receipt.netCents > 0 && quote?.status !== "lost"
+      && !salesRecord(quote?.meta).deleted_at && !salesRecord(quote?.meta).bookkeeping_deleted_at
+      ? receipt.firstPaidAt : null;
+    const hasSignal = Boolean(quoteDate || quote?.customer_signature || signedContracts.length || paymentDate);
     if (!hasSignal) continue;
     const contract = signedContracts.find(item => salesRecord(salesRecord(item.meta).contract_snapshot).schema === "805_signed_quote_contract_v1")
       || signedContracts.find(item => Number(item.total_amount) > 0) || signedContracts[0];
     const snapshot = salesRecord(salesRecord(contract?.meta).contract_snapshot);
-    const signedAt = salesTimestamp(snapshot.signedAt ?? contract?.signed_at ?? quoteDate);
+    const signingEvidence = snapshot.signedAt ?? contract?.signed_at ?? quoteDate;
+    // Preserve established signed-sale history. Only missing signing dates use
+    // the first dated receipt; an invalid recorded signature still needs review.
+    const signedAt = salesTimestamp(signingEvidence ?? paymentDate);
+    const dateBasis = signingEvidence ? "signature" as const : "payment" as const;
     const entry = contract?.bookkeeping_entry_id ? entryById.get(contract.bookkeeping_entry_id) : undefined;
     const jobId = quote?.job_id || contract?.job_id || entry?.job_id || null;
     const customerId = contract?.customer_id || null;
@@ -301,7 +324,7 @@ export function buildClosedSalesReport({ jobs, quotes, contracts, entries = [], 
     if (reason) { report.review.push({ id: key, customerName, reason, signedAt }); continue; }
     const sale: CrmClosedSale = { id: key, jobId, quoteId: quote?.id || contract?.quote_id || null,
       customerId, customerName, reference: quote?.quote_number || contract?.title || quote?.id || key,
-      signedAt: signedAt!, amountCents };
+      signedAt: signedAt!, amountCents, dateBasis };
     // Deduplicate contract shells by quote identity, not by customer/option group.
     // Two separately signed contracts in one group are two purchases.
     const saleKey = key;

@@ -71,7 +71,7 @@ it("browses calendar months, shows the monthly average, and opens monthly detail
   await click(host.querySelector<HTMLButtonElement>('[aria-label="Previous sales month"]')!);
   expect(monthlyCard().textContent).toContain("Aug 1 – Aug 31, 2026");
   expect(monthlyCard().textContent).toContain("$0.00");
-  expect(host.textContent).toContain("No signed sales in this month.");
+  expect(host.textContent).toContain("No recorded sales in this month.");
   await click(host.querySelector<HTMLButtonElement>('[aria-label="Previous sales month"]')!);
   expect(monthlyCard().textContent).toContain("Jul 1 – Jul 31, 2026");
   expect(host.querySelector<HTMLButtonElement>('[aria-label="Previous sales month"]')!.disabled).toBe(true);
@@ -105,7 +105,7 @@ it("browses consecutive weeks including zero-sales weeks, updates details, and s
   expect(card().textContent).toContain("$0.00");
   expect(card().textContent).toContain("Sep 7 – Sep 13, 2026");
   expect(card().dataset.salesStatus).toBe("below");
-  expect(host.textContent).toContain("No signed sales in this week.");
+  expect(host.textContent).toContain("No recorded sales in this week.");
   await click(previous());
   expect(card().textContent).toContain("Aug 31 – Sep 6, 2026");
   expect(card().dataset.salesStatus).toBe("met");

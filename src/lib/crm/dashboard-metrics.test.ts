@@ -10,7 +10,7 @@ import {
   soldLifecycleJobs,
   trackingRowNeedsDeposit
 } from "@/lib/crm/dashboard-metrics";
-import { CrmCustomerContract, CrmBookkeepingRow, CrmJob, CrmQuote } from "@/lib/crm/types";
+import { CrmCustomerContract, CrmBookkeepingPayment, CrmBookkeepingRow, CrmJob, CrmQuote } from "@/lib/crm/types";
 
 function job(overrides: Partial<CrmJob> = {}): CrmJob {
   return {
@@ -598,5 +598,58 @@ describe("weekly closed sales", () => {
 
   it("treats a recorded date-only signature as a Los Angeles calendar date", () => {
     expect(calculate([], [contract({ signed_at: "2026-09-07" })]).weeks[0].totalCents).toBe(150000);
+  });
+});
+
+describe("payment-backed closed sales", () => {
+  const now = "2026-10-27T13:00:00Z";
+  const receipt = (overrides: Partial<CrmBookkeepingPayment> = {}): CrmBookkeepingPayment => ({
+    id: "receipt-1", quote_id: "quote-1", job_id: "job-1", amount: 165.60, paid_at: "2026-10-26", ...overrides
+  } as CrmBookkeepingPayment);
+  const report = (payments: CrmBookkeepingPayment[], overrides: Partial<CrmQuote> = {}) => buildClosedSalesReport({
+    jobs: [job()], quotes: [quote({ quote_total: 331.20, ...overrides }), quote({ id: "alternative", quote_total: 9000 })],
+    contracts: [], payments, now, includeCurrentWeek: true
+  });
+
+  it("counts the full quote once on the Pacific payment date without inventing a signature", () => {
+    const original = quote({ quote_total: 331.20 });
+    const result = buildClosedSalesReport({ jobs: [job()], quotes: [original], contracts: [],
+      payments: [receipt(), receipt(), receipt({ id: "balance", amount: 165.60, paid_at: "2026-10-27" })], now, includeCurrentWeek: true });
+    expect(result.weeks[0]).toMatchObject({ startDate: "2026-10-26", totalCents: 33120 });
+    expect(result.weeks[0].sales).toEqual([expect.objectContaining({ quoteId: "quote-1", signedAt: "2026-10-26T07:00:00.000Z", dateBasis: "payment", amountCents: 33120 })]);
+    expect(original).toMatchObject({ status: "sent", signed_at: null, customer_signature: null, sold_at: null });
+  });
+
+  it("does not move an already signed sale into the payment week", () => {
+    const result = report([receipt()], { signed_at: "2026-10-23T22:00:00Z" });
+    expect(result.weeks[0].totalCents).toBe(0);
+    expect(result.weeks[1].sales[0]).toMatchObject({ signedAt: "2026-10-23T22:00:00.000Z", dateBasis: "signature" });
+  });
+
+  it("requires exact quote identity, valid dates and positive net receipts", () => {
+    const invalid = [receipt({ quote_id: null }), receipt({ quote_id: "unknown" }), receipt({ job_id: "other-job" }),
+      receipt({ amount: 0 }), receipt({ amount: -165.60 }), receipt({ amount: NaN }), receipt({ paid_at: null }),
+      receipt({ paid_at: "2026-02-30" }), receipt({ paid_at: "2026-10-28" }), receipt({ meta: { deleted_at: now } })];
+    for (const payment of invalid) expect(report([payment]).weeks[0].sales).toEqual([]);
+    expect(report([receipt(), receipt({ id: "refund", amount: -165.60 })]).weeks[0].sales).toEqual([]);
+    expect(report([receipt(), receipt(), receipt({ id: "refund", amount: -165.60 })]).weeks[0].sales).toEqual([]);
+  });
+
+  it("keeps unsigned alternatives out and does not count deleted or lost quote receipts", () => {
+    expect(report([receipt()]).weeks[0].sales).toHaveLength(1);
+    for (const overrides of [{ status: "lost" }, { meta: { deleted_at: now } }, { meta: { bookkeeping_deleted_at: now } }] as Partial<CrmQuote>[])
+      expect(report([receipt()], overrides).weeks[0].sales).toEqual([]);
+  });
+
+  it("keeps invalid signature dates in review instead of masking them with payment dates", () => {
+    const result = report([receipt()], { signed_at: "invalid" });
+    expect(result.weeks[0].sales).toEqual([]);
+    expect(result.review).toHaveLength(1);
+  });
+
+  it.each([
+    ["2026-10-26T06:59:59Z", 0], ["2026-10-26T07:00:00Z", 33120], ["2026-10-26", 33120]
+  ])("uses Pacific week boundaries for receipt %s", (paid_at, totalCents) => {
+    expect(report([receipt({ paid_at })]).weeks[0].totalCents).toBe(totalCents);
   });
 });

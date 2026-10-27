@@ -3412,7 +3412,7 @@ export function CrmApp({
           {globalDrill.metric === "closedSales" && data?.closedSales && closedWeek ? <>
             <ClosedSalesWeekSelector report={data.closedSales} week={closedWeek} onChange={setClosedSalesStart} />
             {data.closedSales.review.length ? <details className="crm-closed-sales-evidence"><summary>Signing records needing review ({data.closedSales.review.length})</summary>
-              <p>These records are excluded. Records without a signing date cannot be assigned to a week.</p>
+              <p>These records are excluded. Records without a valid signing or payment date cannot be assigned to a week.</p>
               <ul>{data.closedSales.review.map(item => <li key={item.id}>{item.customerName}: {item.reason}{item.signedAt ? ` (${new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", dateStyle: "medium" }).format(new Date(item.signedAt))})` : ""}</li>)}</ul>
             </details> : null}
           </> : null}
@@ -5254,15 +5254,15 @@ function jessicaNetDrillEntries(rows: CrmBookkeepingRow[], jobs: CrmJob[], files
 function buildClosedSalesDrill(week: CrmClosedSalesWeek, jobs: CrmJob[], files: CrmCustomerFile[], unavailable = false): DrillPayload {
   return {
     title: "Closed Sales", metric: "closedSales", placement: "summary",
-    emptyMessage: unavailable ? "Weekly sales are unavailable until the dashboard refreshes successfully." : "No verified signed sales for this week.",
-    subtitle: unavailable ? "Closed sales could not be refreshed. Please try again." : `${week.label} · ${closedSalesCurrency(week.totalCents)} · ${week.sales.length} signed sale${week.sales.length === 1 ? "" : "s"}`,
+    emptyMessage: unavailable ? "Weekly sales are unavailable until the dashboard refreshes successfully." : "No verified sales for this week.",
+    subtitle: unavailable ? "Closed sales could not be refreshed. Please try again." : `${week.label} · ${closedSalesCurrency(week.totalCents)} · ${week.sales.length} sale${week.sales.length === 1 ? "" : "s"}`,
     entries: unavailable ? [] : week.sales.map(sale => {
       const job = jobs.find(item => item.id === sale.jobId);
       const file = files.find(item => (sale.customerId && item.customer?.id === sale.customerId) || (sale.jobId && item.jobs.some(job => job.id === sale.jobId)) || (sale.quoteId && item.quotes.some(quote => quote.id === sale.quoteId)));
       return { id: sale.id, name: sale.customerName, customerName: sale.customerName,
         jobId: sale.jobId, job, file, value: closedSalesCurrency(sale.amountCents),
-        meta: `${sale.reference} · Signed ${new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", dateStyle: "medium", timeStyle: "short" }).format(new Date(sale.signedAt))}`,
-        notes: ["Full signed contract total, including tax and fees."] };
+        meta: `${sale.reference} · ${sale.dateBasis === "payment" ? "Payment received" : "Signed"} ${new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", dateStyle: "medium", ...(sale.dateBasis === "payment" ? {} : { timeStyle: "short" as const }) }).format(new Date(sale.signedAt))}`,
+        notes: [sale.dateBasis === "payment" ? "Full quote value, including tax and fees. Sale date is based on the first recorded payment; the signing date is not recorded." : "Full signed contract total, including tax and fees."] };
     })
   };
 }

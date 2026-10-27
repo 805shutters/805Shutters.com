@@ -3081,7 +3081,6 @@ describe("job expense CRUD", () => {
     expect(calls.some((call) => call.table === "crm_quote_bookkeeping_payments")).toBe(false);
   });
 
-
 });
 
 describe("dashboard closed sales evidence", () => {
@@ -3099,4 +3098,15 @@ describe("dashboard closed sales evidence", () => {
     expect(data.closedSales?.latestWeekStart).toBe("2026-09-14");
     expect(data.closedSales?.weeks[0]).toMatchObject({ isCurrentWeek: true, endDate: "2026-09-15" });
   });
+});
+
+it("passes received payments into sales reporting without changing signature evidence", () => {
+  const data = buildDashboardData({
+    jobs: [job()], quotes: [quote({ status: "sent", signed_at: null, sold_at: null, approved_at: null, customer_signature: null, quote_total: 331.20 })],
+    events: [], customers: [], products: [], contracts: [], entries: [], payments: [payment({ id: "receipt", payment_label: "Square payment", payment_type: "credit_card", quote_id: "quote-1", job_id: "job-1", amount: 165.60, paid_at: "2026-10-26" })], credits: [], expenses: [],
+    installationInvoiceEmails: [], kenPayments: [], openingBalance: 0, payoffTarget: 500000, now: "2026-10-27T13:00:00Z"
+  });
+  expect(data.closedSales?.weeks[0].totalCents).toBe(33120);
+  expect(data.closedSales?.weeks[0].sales[0].dateBasis).toBe("payment");
+  expect(data.quotes[0].source_signed_at).toBeNull();
 });

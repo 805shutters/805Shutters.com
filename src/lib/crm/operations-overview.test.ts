@@ -1,7 +1,7 @@
 import { buildClosedSalesReport } from "./dashboard-metrics";
 import { describe, expect, it } from "vitest";
 import { buildOperationsItems, buildPerformanceMetrics, formatOperationsDate, productCompletionSourceLinks, workflowSummary } from "./operations-overview";
-import type { CrmBookkeepingRow, CrmCustomerContract, CrmCustomerFile, CrmCustomerProduct, CrmDashboardData, CrmJob, CrmQuote } from "./types";
+import type { CrmBookkeepingRow, CrmBookkeepingPayment, CrmCustomerContract, CrmCustomerFile, CrmCustomerProduct, CrmDashboardData, CrmJob, CrmQuote } from "./types";
 
 const quote = (overrides: Partial<CrmQuote> = {}): CrmQuote => ({ id: "q1", job_id: "j1", created_at: "2026-09-01T12:00:00Z", status: "sent", sent_at: "2026-09-14T18:00:00Z", quote_total: 1000, meta: {}, ...overrides } as CrmQuote);
 const data = (overrides: Partial<CrmDashboardData> = {}): CrmDashboardData => ({ jobs: [], quotes: [], bookkeepingRows: [], customerFiles: [], customerProducts: [], orderCogsEmails: [], installationInvoiceEmails: [], bookkeepingPayments: [], ...overrides } as CrmDashboardData);
@@ -493,3 +493,12 @@ describe('installation prerequisite reconciliation', () => {
     expect(metrics.grossWeeks.at(-1)).toMatchObject({ end: "2026-07-05", grossCents: 2122707, status: "met" });
     expect(closedSales.weeks.flatMap(week => week.sales).some(sale => sale.amountCents === 5000000)).toBe(true);
   });
+
+it("counts payment-backed revenue and cash separately while preserving quote cohorts", () => {
+  const current = new Date("2026-10-27T13:00:00Z");
+  const quotes = [quote({ sent_at: "2026-10-23T22:55:00Z", quote_total: 331.20 })];
+  const payments = [{ id: "receipt", quote_id: "q1", job_id: "j1", amount: 165.60, paid_at: "2026-10-26" } as CrmBookkeepingPayment];
+  const closedSales = buildClosedSalesReport({ jobs: [], quotes, contracts: [], payments, now: current, includeCurrentWeek: true });
+  const metrics = buildPerformanceMetrics(data({ quotes, closedSales, bookkeepingPayments: payments }), current);
+  expect(metrics).toMatchObject({ grossCents: 33120, cashCents: 16560, weekly: { quoted: 0, sold: 0 }, monthly: { quoted: 1, sold: 1 } });
+});

@@ -244,6 +244,7 @@ export function buildPerformanceMetrics(data: CrmDashboardData, now = new Date()
     const value = { id: file.customer?.id || file.id, name: file.customerName };
     for (const quote of file.quotes) identity.set(quote.id, value);
   }
+  const reportedQuoteIds = new Set(data.closedSales?.weeks.flatMap(week => week.sales.map(sale => sale.quoteId)) || []);
   const people = new Map<string, { id: string; name: string; firstQuoted: string | null; sold: boolean }>();
   let missingQuoteDates = 0;
   for (const quote of data.quotes) {
@@ -254,7 +255,7 @@ export function buildPerformanceMetrics(data: CrmDashboardData, now = new Date()
     if (sent && (!existing.firstQuoted || sent < existing.firstQuoted)) existing.firstQuoted = sent;
     if (!sent && quote.status !== "draft") missingQuoteDates++;
     const accepted = businessDate(Object.hasOwn(quote, "source_sold_at") ? quote.source_sold_at : quote.sold_at || quote.signed_at || quote.approved_at, now);
-    existing.sold ||= Boolean(accepted);
+    existing.sold ||= Boolean(accepted) || reportedQuoteIds.has(quote.id);
     people.set(person.id, existing);
   }
   const cohort = (start: string): CloseCohort => {
