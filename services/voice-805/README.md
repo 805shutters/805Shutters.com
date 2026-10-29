@@ -22,6 +22,8 @@ The CRM Messages view shows the saved message, caller transcript and factual cal
 
 The PostgreSQL call-state document uses compare-and-swap transactions. Carrier submissions are claimed before network IO; uncertain carrier outcomes are never blindly retried. CRM message and summary writes are idempotent and can retry after interrupted claims. The watchdog handles recovery.
 
+After a phone message is independently read back from `crm_callback_items`, the same durable worker queues a separate delivery to Jessica Bot's `805 phone message → list` routine. That delivery uses `VOICE_805_JESSICA_WEBHOOK_URL` and `VOICE_805_JESSICA_WEBHOOK_KEY`, sends the verified CRM row, and uses the call SID as its idempotency key. A bot outage cannot roll back the CRM message or change what the caller hears; the bot delivery retries independently. The public health response reports only `jessicaPhoneWebhookConfigured`, never the URL or key.
+
 Staff transcript notices are prepared for Mike and Jessica but remain disabled pending carrier approval and verification that the sender is registered. Dedicated campaign `CMaba6c0b6723563c5a514181126ab706c` was submitted and still showed **In review** on October 25. Service `MG60d4038bf54bffa0690cce85a6e49147` contains +18055908050. This is not SMS-delivery proof. No booking-alert SMS is enabled.
 
 The dedicated number's emergency backup is non-recording TwiML Bin `EH99ed28ca457fca8ced72259f99ec6973`. It says the call could not continue and asks the caller to call back to leave a message. It makes no saved-message claim and has no scheduling offer. The old recording Function remains unselected. Carrier execution of the emergency bin is not proven by a Console readback.

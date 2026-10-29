@@ -27,7 +27,7 @@ export async function savePhoneMessage(client, call, message) {
     p_status: 'needs_callback', p_appointment_id: null, p_customer_id: call.customerId || message.customerId || null,
   });
   if (!row?.id || row.call_sid !== call.sid) throw new Error('Message write not verified');
-  const { data, error } = await client.from('crm_callback_items').select('id,call_sid,reason,transcript,callback_number,recording_url').eq('call_sid', call.sid).single();
+  const { data, error } = await client.from('crm_callback_items').select('id,call_sid,caller_name,callback_number,call_time,transcript,reason,recording_url,status').eq('call_sid', call.sid).single();
   if (error || data?.id !== row.id || data.call_sid !== call.sid || data.reason !== reason || data.transcript !== transcript || data.callback_number !== (message.callback || '') || data.recording_url !== '') throw new Error('Message readback not verified');
-  return { verified: true, id: data.id, call_sid: data.call_sid };
+  return { verified: true, ...data };
 }

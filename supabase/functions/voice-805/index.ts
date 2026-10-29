@@ -10,13 +10,17 @@ import { attachMediaSocket, createSupabaseHandler } from '../../../services/voic
 import { savePhoneMessage } from '../../../services/voice-805/callbacks.mjs';
 import { persistEndedSummary, saveCallSummary } from '../../../services/voice-805/call-summary.mjs';
 import { createSupabasePromptStore, warmPrompts, REALTIME_URL } from '../../../services/voice-805/prompts.mjs';
+import { loadJessicaWebhookConfig, sendJessicaPhoneMessage } from '../../../services/voice-805/jessica-webhook.mjs';
 
 const config=loadSupabaseConfig(Deno.env.toObject());
 const client=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false,autoRefreshToken:false},global:{fetch:(url,options)=>fetch(url,{...options,signal:AbortSignal.timeout(8000)})}});
 const state=new SupabaseState(client,config);
+const jessicaWebhook=loadJessicaWebhookConfig(Deno.env.toObject());
+config.jessicaPhoneWebhookConfigured=jessicaWebhook.configured;
 const worker=new SupabaseWorker(state,new TwilioProvider(config),{
  syncSummary:(call,messages)=>saveCallSummary(client,call,messages),
  syncMessage:(call,message)=>savePhoneMessage(client,call,message),
+ ...(jessicaWebhook.configured?{syncJessica:(row)=>sendJessicaPhoneMessage(fetch,jessicaWebhook,row)}:{}),
 });
 const prompts=createSupabasePromptStore(client);
 const waitUntil=(task:Promise<unknown>)=>EdgeRuntime.waitUntil(task);

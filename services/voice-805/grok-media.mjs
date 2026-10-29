@@ -696,7 +696,7 @@ export class GrokMediaSession {
     const verified = await this.commitBounded((_e, s) => {
       const saved = s.get('message', message.id);
       if (!saved) return false;
-      s.put('message', { ...saved, crmId: row.id, crmVerified: true });
+      s.put('message', { ...saved, crmId: row.id, crmVerified: true, crmRow: row });
       return true;
     });
     return verified === true && !this.closed;

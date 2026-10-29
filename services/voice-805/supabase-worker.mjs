@@ -17,6 +17,7 @@ export class SupabaseWorker {
     this.provider = provider;
     this.syncMessage = typeof options.syncMessage === 'function' ? options.syncMessage : null;
     this.syncSummary = typeof options.syncSummary === 'function' ? options.syncSummary : null;
+    this.syncJessica = typeof options.syncJessica === 'function' ? options.syncJessica : null;
     this.transcriptsEnabled = typeof options.transcriptSmsSendingEnabled === 'function' ? options.transcriptSmsSendingEnabled : transcriptSmsSendingEnabled;
   }
   async finishSummary(item) {
@@ -49,10 +50,31 @@ export class SupabaseWorker {
           if (!result?.verified || !result.id || result.call_sid !== data.call.sid) throw new Error('Message sync was not verified');
           await change((_e, s) => {
             const fresh = s.get('message', data.message.id);
-            if (fresh) s.put('message', { ...fresh, crmVerified: true, crmId: result.id });
+            if (fresh) s.put('message', { ...fresh, crmVerified: true, crmId: result.id, crmRow: result });
           });
         }
-        await change((_e, s) => { const fresh = s.get('effect', item.id); if (fresh) s.put('effect', { ...fresh, status: 'done' }); });
+        await change((e, s) => {
+          const fresh = s.get('effect', item.id);
+          const message = s.get('message', item.data.messageId);
+          const call = s.get('call', item.callId);
+          if (this.syncJessica && call && message?.crmVerified && message.crmRow) {
+            const existing = s.list('effect').some(effect => effect.type === 'sync-jessica' && effect.data?.messageId === message.id);
+            if (!existing) e.effect(call, 'sync-jessica', { messageId: message.id, row: message.crmRow });
+          }
+          if (fresh) s.put('effect', { ...fresh, status: 'done' });
+        });
+        return;
+      }
+      if (kind === 'effect' && item.type === 'sync-jessica') {
+        if (!this.syncJessica) throw new Error('Jessica phone-message delivery is not configured');
+        const result = await this.syncJessica(item.data?.row);
+        if (!result?.delivered) throw new Error('Jessica phone-message delivery was not verified');
+        await change((_e, s) => {
+          const fresh = s.get('effect', item.id);
+          const message = s.get('message', item.data?.messageId);
+          if (message) s.put('message', { ...message, jessicaVerified: true });
+          if (fresh) s.put('effect', { ...fresh, status: 'done' });
+        });
         return;
       }
       if (kind === 'effect' && item.type === 'sync-summary') {
@@ -128,7 +150,7 @@ export class SupabaseWorker {
       await change((_e,s) => { const fresh=s.get(kind,item.id); return s.put(kind,{...fresh,status:'done'}); });
     } catch (error) {
       const failure = reportFailure('worker-effect', error);
-      if (kind === 'effect' && ['sync-summary','sync-message'].includes(item.type)) {
+      if (kind === 'effect' && ['sync-summary','sync-message','sync-jessica'].includes(item.type)) {
         await change((_e, s) => {
           const fresh = s.get('effect', item.id);
           const call = s.get('call', item.callId);
