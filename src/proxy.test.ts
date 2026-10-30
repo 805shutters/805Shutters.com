@@ -39,7 +39,7 @@ describe("GTM navigation isolation", () => {
     }
   });
   it("uses next-url without a referrer and fails closed when the source is unknown", () => {
-    for (const headers of [{ rsc: "1", "next-url": "/" }, { rsc: "1" }]) {
+    for (const headers of [new Headers({ rsc: "1", "next-url": "/" }), new Headers({ rsc: "1" })]) {
       const response = proxy(new NextRequest("https://www.805shutters.com/crm/", { headers }));
       expect(response.headers.get("content-type")).toContain("text/html");
     }
