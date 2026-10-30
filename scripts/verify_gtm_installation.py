@@ -10,7 +10,9 @@ from urllib.request import Request, urlopen
 import xml.etree.ElementTree as ET
 
 CONTAINER = "GTM-MLVF9PP3"
-PRIVATE = ["/crm/", "/crm/mobile/", "/quote/gtm-verification-invalid-token/",
+# Quote tokens are UUIDs. Use a valid-format nonexistent token to exercise the
+# normal private 404 path rather than the database's malformed-token error.
+PRIVATE = ["/crm/", "/crm/mobile/", "/quote/00000000-0000-4000-8000-000000000805/",
            "/autopay/gtm-verification-invalid-token/", "/installer-form/gtm-verification-invalid-token/",
            "/quote/sketch-catalog/", "/quote-lab/", "/staff-booking-sms/"]
 
