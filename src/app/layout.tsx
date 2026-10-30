@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { ConditionalChrome } from "@/components/ConditionalChrome";
 import { PublicActivityTracking } from "@/components/PublicActivityTracking";
+import { GoogleTagManagerHead, GoogleTagManagerBody } from "@/components/GoogleTagManager";
 import { CrmAuthRedirect } from "@/components/crm/CrmAuthRedirect";
 import { absoluteUrl, machineReadableFeeds } from "@/lib/ai-search-data";
 import { site } from "@/lib/site-data";
@@ -85,6 +86,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${bodoniModa.variable} ${theanoDidot.variable} ${archivo.variable}`}>
       <head>
+        <GoogleTagManagerHead />
         <meta name="google-site-verification" content="0osZlIomEHhR-GFHzdCGTyivi1s9UtccMHBe2E-LuSM" />
         {machineReadableFeeds.map((feed) => (
           <link
@@ -98,6 +100,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <meta name="ai-search-feeds" content={machineReadableFeeds.map((feed) => absoluteUrl(feed.href)).join(",")} />
       </head>
       <body>
+        <GoogleTagManagerBody />
         <PublicActivityTracking />
         <CrmAuthRedirect />
         <BusinessStructuredData

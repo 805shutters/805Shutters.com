@@ -276,6 +276,8 @@ const nextConfig = {
   reactStrictMode: true,
   trailingSlash: true,
   skipTrailingSlashRedirect: true,
+  // Keep RSC headers available to the public/private GTM boundary in proxy.ts.
+  skipProxyUrlNormalize: true,
   async headers() {
     return [
       {
