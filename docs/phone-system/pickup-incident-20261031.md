@@ -12,7 +12,7 @@ An empty Gather now repeats the staff prompt while the original confirmation dea
 - Complete: rebuilt 0abe6884 baseline matches live v37 apart from trailing newline. Narrow deployment candidate includes only the staff-pickup change, excluding unrelated newer unreleased phone changes.
 - Complete: typecheck, production build, 10,700 application tests (36 skipped), and 175 tests on the actual live baseline plus patch. Current-main phone tests: 178 passed.
 - Complete: deployed Edge v38 ACTIVE; full 158,255-character source readback exactly matches candidate. Health ready=true, staffAcceptance=dtmf, Mike/Jessica ring list preserved. Unsigned form callback rejected 401.
-- In progress: source publication.
+- Complete: source commit `72539da9dc4df4fd00e617695e343c636be7383e` pushed to origin/main and remote SHA independently read back.
 - Remaining: owner confirms they answer, hear the prompt, press 1, and still hear ringing. The empty-Gather repair is deployed but does not establish that this reported symptom is resolved. Twilio carrier request/audio diagnosis requires restoring the logged-out Chrome session; sign-in requested. Real handset/two-way audio remains unverified; no test call placed.
 
 Local rollback and candidate bundles: artifacts/phone-incident/. No schema, secret, incoming destination, SMS or website change is needed.
