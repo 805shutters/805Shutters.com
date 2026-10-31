@@ -41,19 +41,24 @@ const path=(f,o,suffix='')=>`/twilio/offer/${f.call.id}/${o.id}${suffix}`;
 async function answer(f,o){const r=await f.handler(request(f,path(f,o),fields(f,o)));assert.equal(r.status,200);await drain(f);return r.text();}
 async function press(f,o,digit='1'){const r=await f.handler(request(f,path(f,o,'/accept'),fields(f,o,{Digits:digit})));await drain(f);return {status:r.status,xml:await r.text()};}
 
-test('new staff calls ring for 40 seconds without AMD and play a staff-only acceptance prompt',async()=>{
+test('new staff calls ring for 40 seconds without AMD and connect on answer',async()=>{
   const f=await setup(),o=f.call.offers[0],p=new URLSearchParams(staffDialParams(f.c,f.call,o));
   assert.equal(o.acceptance,'dtmf');assert.equal(p.get('Timeout'),'40');
   assert.equal(p.has('MachineDetection'),false);assert.equal(p.has('AsyncAmdStatusCallback'),false);
-  assert.match(await answer(f,o),/<Gather input="dtmf" numDigits="1"/);
-  const current=await read(f);assert.equal(current.owner,null);assert.equal(current.ai,true);
-  assert.equal(current.offers[0].expiresAt-current.offers[0].answeredAt,20000);
+  const xml=await answer(f,o);
+  assert.match(xml,new RegExp(`>805-${f.call.id}-main</Conference>`));
+  assert.doesNotMatch(xml,/Gather|Press 1|<Say>/);
+  const current=await read(f);assert.equal(current.owner,o.staff);assert.equal(current.phase,'handoff');
+  assert.equal(current.offers.find(item=>item.id===o.id).status,'accepted');
+  assert.equal(current.offers.find(item=>item.id!==o.id).status,'canceled');
 });
-for(const staff of ['mike','jessica'])test(`${staff} presses 1: direct staff conference and exactly one caller redirect, human only after joins`,async()=>{
+for(const staff of ['mike','jessica'])test(`${staff} answer connects that handset, hangs up the other, and pulls the caller`,async()=>{
   const f=await setup(),o=f.call.offers.find(o=>o.staff===staff),other=f.call.offers.find(o=>o.staff!==staff);
-  await answer(f,o);const requests=[];
+  const requests=[];
   f.worker.provider=new TwilioProvider(f.c,async(url,init)=>{requests.push({url,p:new URLSearchParams(init.body)});return new Response('{}');});
-  for(let i=0;i<2;i++){const r=await press(f,o);assert.equal(r.status,200);assert.match(r.xml,new RegExp(`>805-${f.call.id}-main</Conference>`));assert.doesNotMatch(r.xml,/<Pause|<Stream|muted="true"/);}
+  const xml=await answer(f,o);
+  assert.match(xml,new RegExp(`>805-${f.call.id}-main</Conference>`));assert.doesNotMatch(xml,/<Pause|<Stream|muted="true"|Gather|Press 1/);
+  const again=await answer(f,o);assert.match(again,/<Conference/);
   const routes=requests.filter(x=>x.p.has('Twiml'));assert.equal(routes.length,1);assert.ok(routes[0].url.endsWith(`/Calls/${f.call.sid}.json`));
   assert.equal(requests.filter(x=>x.url.endsWith(`/Calls/${other.sid}.json`)&&x.p.get('Status')==='completed').length,1);
   let current=await read(f);assert.equal(current.owner,staff);assert.equal(current.phase,'handoff');
@@ -62,74 +67,72 @@ for(const staff of ['mike','jessica'])test(`${staff} presses 1: direct staff con
   }
   current=await read(f);assert.equal(current.phase,'human');assert.equal(current.ai,false);assert.equal(current.callerJoined,true);assert.equal(current.ownerJoined,true);
 });
-test('a pickup at 35 seconds receives its own confirmation window; duplicate answer does not extend it',async()=>{
+test('a pickup at 35 seconds can still connect; a duplicate answer stamp does not extend the window',async()=>{
   const f=await setup(),o=f.call.offers[0],t=f.call.createdAt+35000;
   await f.state.transact(e=>e.staffAnswered(f.call.id,o.id,o.sid,t));
   await f.state.transact(e=>e.staffAnswered(f.call.id,o.id,o.sid,t+10000));
   let c=await read(f);assert.equal(c.offers[0].expiresAt,t+20000);
-  await f.state.transact(e=>e.confirmStaff(f.call.id,o.id,o.sid,'1',t+10000));
+  await f.state.transact(e=>e.confirmStaff(f.call.id,o.id,o.sid,t+10000));
   c=await read(f);assert.equal(c.owner,o.staff);assert.equal(c.phase,'handoff');
 });
-test('voicemail/no key and wrong keys cannot take the caller; the other staff can still accept',async()=>{
+test('the second staff answer does not take the caller and digits are ignored',async()=>{
   const f=await setup(),[a,b]=f.call.offers;
-  await answer(f,a);await answer(f,b);
-  assert.match((await press(f,a,'9')).xml,/<Gather/);assert.equal((await read(f)).owner,null);
-  assert.match((await press(f,a,'')).xml,/<Gather/);assert.equal((await read(f)).owner,null);
-  assert.match((await press(f,b)).xml,/<Conference/);assert.equal((await read(f)).owner,b.staff);
+  const first=await answer(f,a);
+  assert.match(first,/<Conference/);assert.doesNotMatch(first,/Gather|Press 1/);
+  assert.match(await answer(f,b),/<Hangup/);
+  assert.equal((await read(f)).owner,a.staff);
+  const keypad=await press(f,b,'9');
+  assert.match(keypad.xml,/<Hangup/);assert.doesNotMatch(keypad.xml,/Gather|Press 1|Conference/);
+  assert.equal((await read(f)).owner,a.staff);
+  assert.match((await press(f,a,'')).xml,/<Conference/);
+  assert.equal((await read(f)).owner,a.staff);
 });
-test('simultaneous staff confirmations choose one owner and one customer redirect',async()=>{
-  const f=await setup();for(const o of f.call.offers)await answer(f,o);
-  const results=await Promise.all(f.call.offers.map(o=>press(f,o)));
-  assert.equal(results.filter(r=>r.xml.includes('<Conference')).length,1);
+test('simultaneous answers choose one owner, hang up the other leg, and redirect the caller once',async()=>{
+  const f=await setup();
+  const results=await Promise.all(f.call.offers.map(o=>answer(f,o)));
+  assert.equal(results.filter(xml=>xml.includes('<Conference')).length,1);
+  assert.equal(results.filter(xml=>xml.includes('<Hangup')).length,1);
   assert.equal(f.provider.operations.filter(x=>x.type==='route'&&x.sid===f.call.sid).length,1);
+  assert.equal(f.provider.operations.filter(x=>x.type==='hangup').length,1);
   assert.equal((await read(f)).offers.filter(o=>o.status==='accepted').length,1);
 });
-test('unsigned, wrong-account, wrong-destination, unbound and pre-answer confirmations cannot connect',async()=>{
-  const f=await setup(),o=f.call.offers[0],p=path(f,o,'/accept');
-  const bad=request(f,p,fields(f,o,{Digits:'1'}));bad.headers.set('x-twilio-signature','invalid');assert.equal((await f.handler(bad)).status,401);
-  for(const [extra,status] of [[{AccountSid:'AC'+'b'.repeat(32)},401],[{To:'+18055550999'},409],[{From:'+18055550999'},409],[{CallSid:f.call.sid},409]])assert.equal((await f.handler(request(f,p,fields(f,o,{Digits:'1',...extra})))).status,status);
-  assert.match((await press(f,o)).xml,/<Hangup/);assert.equal((await read(f)).owner,null);
+test('unsigned, wrong-account, wrong-destination, and unbound answers cannot connect',async()=>{
+  const f=await setup(),o=f.call.offers[0],p=path(f,o);
+  const bad=request(f,p,fields(f,o));bad.headers.set('x-twilio-signature','invalid');assert.equal((await f.handler(bad)).status,401);
+  for(const [extra,status] of [[{AccountSid:'AC'+'b'.repeat(32)},401],[{To:'+18055550999'},409],[{From:'+18055550999'},409],[{CallSid:f.call.sid},409]])assert.equal((await f.handler(request(f,p,fields(f,o,extra)))).status,status);
+  assert.match((await press(f,o,'1')).xml,/<Hangup/);assert.doesNotMatch((await press(f,o,'')).xml,/Gather|Press 1|Conference/);
+  assert.equal((await read(f)).owner,null);
 });
-test('late AMD cannot accept or cancel new offers; expired and ended confirmations cannot revive calls',async()=>{
+test('late AMD cannot accept a ringing offer; expired, ended, and canceled answers cannot connect',async()=>{
   for(const condition of ['expired','ended','canceled']){
-    const f=await setup(),o=f.call.offers[0];await answer(f,o);
+    const f=await setup(),o=f.call.offers[0];
     for(const AnsweredBy of ['human','machine_start','unknown']){await f.handler(request(f,path(f,o,'/amd'),{CallSid:o.sid,AnsweredBy}));await drain(f);}
     assert.equal((await read(f)).offers[0].status,'ringing');
     await f.state.transact((_e,s)=>{const c=s.get('call',f.call.id);if(condition==='expired')c.offers[0].expiresAt=Date.now()-1;else if(condition==='ended')c.phase='ended';else c.offers[0].status='canceled';s.put('call',c);});
-    assert.match((await press(f,o)).xml,/<Hangup/);assert.equal((await read(f)).owner,null);
+    assert.match(await answer(f,o),/<Hangup/);assert.equal((await read(f)).owner,null);
     assert.equal(f.provider.operations.some(x=>x.type==='route'),false);
   }
 });
-
-test('both handsets time out without taking the caller; message fallback remains available',async()=>{
+test('an answer after the ring window does not take the caller',async()=>{
   const f=await setup();
-  for(const o of f.call.offers){await answer(f,o);await f.state.transact((_e,s)=>{const c=s.get('call',f.call.id);c.offers.find(x=>x.id===o.id).expiresAt=Date.now()+4000;s.put('call',c);});assert.match((await press(f,o,'')).xml,/<Hangup/);}
-  const c=await read(f);assert.equal(c.phase,'message');assert.equal(c.owner,null);
+  for(const o of f.call.offers)await f.state.transact((_e,s)=>{const c=s.get('call',f.call.id);c.offers.find(x=>x.id===o.id).expiresAt=Date.now()-1;s.put('call',c);});
+  for(const o of f.call.offers)assert.match(await answer(f,o),/<Hangup/);
+  const c=await read(f);assert.equal(c.owner,null);assert.equal(c.phase,'offering');
   assert.equal(f.provider.operations.some(x=>x.type==='route'),false);
 });
-test('consult and staff-initiated callback use the correct room after Press 1',async()=>{
-  const f=await setup(),o=f.call.offers[0];await answer(f,o);await press(f,o);
+test('consult and staff-initiated callback connect on answer in the correct room',async()=>{
+  const f=await setup(),o=f.call.offers[0];
+  assert.match(await answer(f,o),new RegExp(`>805-${f.call.id}-main</Conference>`));
   await f.state.transact(e=>{e.joined(f.call.id,f.call.sid,'main','CFmain','caller-joined');e.joined(f.call.id,o.sid,'main','CFmain','owner-joined');});
   let c=await read(f);assert.equal(c.phase,'human');
   await f.state.transact(e=>e.command(c.id,c.owner,c.revision,'consult',crypto.randomUUID()));await f.worker.drain();
   c=await read(f);const target=c.offers.find(x=>x.purpose==='consult');assert.ok(target);
-  await answer(f,target);assert.match((await press(f,target)).xml,new RegExp(`>805-${c.id}-consult</Conference>`));
+  assert.match(await answer(f,target),new RegExp(`>805-${c.id}-consult</Conference>`));
   await f.state.transact(e=>e.ended(c.id,c.sid,'test-end'));await f.worker.drain();
   const messageId=crypto.randomUUID();
   await f.state.transact((_e,s)=>s.put('message',{id:messageId,callId:c.id,callback:'+18055550199',confirmed:true}));
   f.call=await f.state.transact(e=>e.callback(messageId,'mike',crypto.randomUUID()));await f.worker.drain();f.call=await read(f);
-  const callback=f.call.offers[0];await answer(f,callback);
-  assert.match((await press(f,callback)).xml,new RegExp(`>805-${f.call.id}-main</Conference>`));
+  const callback=f.call.offers[0];
+  assert.match(await answer(f,callback),new RegExp(`>805-${f.call.id}-main</Conference>`));
   assert.equal((await read(f)).phase,'callback-connecting');
-});
-
-// Reproduce the October 31 empty-result callback before the pickup window ends.
-test('empty result repeats without extending the deadline and later Press 1 connects',async()=>{
-  const f=await setup(),o=f.call.offers[0];await answer(f,o);
-  const deadline=(await read(f)).offers[0].expiresAt;
-  const retry=await press(f,o,'');
-  assert.match(retry.xml,/<Gather/);assert.match(retry.xml,/finishOnKey=""/);
-  let c=await read(f);assert.equal(c.offers[0].status,'ringing');assert.equal(c.offers[0].expiresAt,deadline);assert.equal(c.owner,null);
-  assert.match((await press(f,o)).xml,/<Conference/);
-  c=await read(f);assert.equal(c.owner,o.staff);assert.equal(c.phase,'handoff');
 });
