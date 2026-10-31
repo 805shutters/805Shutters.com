@@ -401,10 +401,10 @@ export class Engine {
       c.deadline = Math.max(c.deadline || 0, o.expiresAt);
     });
   }
-  confirmStaff(id, offerId, sid, digits, now = Date.now()) {
+  confirmStaff(id, offerId, sid, now = Date.now()) {
     const c = this.store.get("call", id), o = c?.offers.find(o => o.id === offerId);
     if (!o || o.sid !== sid || o.acceptance !== "dtmf") throw new Conflict("Unbound staff confirmation");
-    if (digits !== "1" || !o.answeredAt) return c;
+    if (!o.answeredAt) return c;
     return this.accept(id, offerId, sid, "staff-confirmed", now);
   }
   accept(id, offerId, sid, answeredBy, now = Date.now()) {
