@@ -10,12 +10,13 @@ export function kenPayoffView(rows: CrmBookkeepingRow[], ledger?: CrmPartnerPaym
   for (const item of ledger?.kenMonthly?.items || []) {
     const row = eligible.get(item.itemKey);
     if (!row || seen.has(item.itemKey) || item.person !== "ken" || item.remainingAmount <= 0 || !item.eligibleAt || !item.dueDate || item.dueDate > ledger!.kenMonthly!.dueDate) continue;
-    seen.add(item.itemKey); ready.push({ row, item });
+    if (seen.has(item.canonicalObligationKey || item.itemKey)) continue;
+    seen.add(item.canonicalObligationKey || item.itemKey); ready.push({ row, item });
   }
   const batches = (ledger?.history || []).filter(batch => batch.person === "ken");
   const history = batches.filter(batch => batch.reconciliation?.status === "payment");
   const paidTotal = payableMoney(history.reduce((sum, batch) => sum + (batch.recordedAmount ?? batch.amount), 0));
-  return { paidTotal, remainingBuyout: payableMoney(Math.max(0, (ledger?.kenBuyout.target || 0) - paidTotal)), ready, total: payableMoney(ready.reduce((sum, { item }) => sum + item.remainingAmount, 0)), dueDate: ledger?.kenMonthly?.dueDate,
+  return { identityReview: ledger?.kenMonthly?.identityReview || [], paidTotal, remainingBuyout: payableMoney(Math.max(0, (ledger?.kenBuyout.target || 0) - paidTotal)), ready, total: payableMoney(ready.reduce((sum, { item }) => sum + item.remainingAmount, 0)), dueDate: ledger?.kenMonthly?.dueDate,
     history,
     review: batches.filter(batch => !batch.reconciliation || batch.reconciliation.status === "review"),
     duplicates: batches.filter(batch => batch.reconciliation?.status === "confirmed_duplicate") };

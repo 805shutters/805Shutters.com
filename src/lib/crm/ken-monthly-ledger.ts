@@ -1,3 +1,4 @@
+import { kenPayoffIdentity, type KenPayoffAlias } from "./ken-payoff-identity";
 import { BUSINESS_PAYOFF_TARGET } from "./bookkeeping";
 import { explicitAllocationHistory, historyFromKenPayment, paymentMetadataAllocations, paymentPersonFromKenPayment, partnerPaymentItemKeyForRow } from "./partner-payments";
 import type { CrmBookkeepingRow, CrmKenPayment, CrmKenPaymentAllocation, CrmPartnerPaymentHistoryAllocation, CrmPartnerPaymentLedger, CrmPartnerPaymentLedgerItem } from "./types";
@@ -58,7 +59,9 @@ function sameIdentity(a: CrmPartnerPaymentHistoryAllocation, b: CrmPartnerPaymen
 const checkboxEntry = (payment: CrmKenPayment) => /^Manual paid checkbox reconciliation for /i.test(payment.note || "") || payment.meta?.batchSource === "manual_paid_checkbox_reconciliation";
 
 /** A read-only projection: source payments and allocations are never rewritten. */
-export function reconcileKenMonthlyLedger(ledger: CrmPartnerPaymentLedger, input: { rows: CrmBookkeepingRow[]; kenPayments: CrmKenPayment[]; kenAllocations?: CrmKenPaymentAllocation[]; now?: Date | string }) {
+export function reconcileKenMonthlyLedger(ledger: CrmPartnerPaymentLedger, input: { rows: CrmBookkeepingRow[]; kenPayments: CrmKenPayment[]; kenAllocations?: CrmKenPaymentAllocation[]; now?: Date | string; kenPayoffRegistry?: KenPayoffAlias[] }) {
+  const identityGroups = kenPayoffIdentity(input.rows, input.kenPayoffRegistry);
+  const identityReview = [...identityGroups.review];
   const now = new Date(input.now || new Date());
   const today = pacificDate(now);
   let dueDate = nextKenDueDate(now);
@@ -85,7 +88,7 @@ export function reconcileKenMonthlyLedger(ledger: CrmPartnerPaymentLedger, input
   const consumed = new Set<string>();
   for (const marker of raw.filter(checkboxEntry)) {
     const batch = byId.get(marker.id)!;
-    const matches = batch.allocations.map(a => actual.filter(candidate => candidate.reconciliation?.status === "payment").flatMap(candidate => candidate.allocations.filter(b => !consumed.has(b.id) && money(a.amount) === money(b.amount) && sameIdentity(a, b)).map(b => ({ batch: candidate, allocation: b }))));
+    const matches = batch.allocations.map(a => actual.filter(candidate => candidate.reconciliation?.status === "payment").flatMap(candidate => candidate.allocations.filter(b => !consumed.has(b.id) && money(a.amount) === money(b.amount) && (sameIdentity(a, b) || Boolean(identityGroups.resolve(a) && identityGroups.resolve(a) === identityGroups.resolve(b)))).map(b => ({ batch: candidate, allocation: b }))));
     const matchedIds = matches.map(m => m[0]?.allocation.id);
     const confirmed = matches.length > 0 && matches.every(m => m.length === 1) && new Set(matchedIds).size === matchedIds.length && money(batch.allocations.reduce((sum, a) => sum + a.amount, 0)) === batch.amount;
     if (confirmed) {
@@ -99,32 +102,35 @@ export function reconcileKenMonthlyLedger(ledger: CrmPartnerPaymentLedger, input
   }
   const items: CrmPartnerPaymentLedgerItem[] = [];
   const remainingAllocations = new Set(history.flatMap(batch => batch.recordedAmount ? batch.allocations.map(a => a.id) : []));
-  for (const row of input.rows.filter(row => row.total > 0)) {
+  for (const group of identityGroups.groups) {
+    const { row, canonicalKey, aliasKeys } = group;
     const itemKey = partnerPaymentItemKeyForRow("ken", row);
     const readiness = kenPayableReadiness(row);
     const identity = { itemKey, quoteId: row.quoteId, bookkeepingEntryId: row.source === "crm_quote" ? null : row.id, jobId: row.jobId };
-    const match = (a: CrmPartnerPaymentHistoryAllocation) => {
-      if (a.itemKey === itemKey) return true;
-      const candidates = input.rows.filter(candidate => a.quoteId ? candidate.quoteId === a.quoteId || candidate.quoteIdAliases?.includes(a.quoteId) : a.bookkeepingEntryId ? candidate.source !== "crm_quote" && candidate.id === a.bookkeepingEntryId : false);
-      return candidates.length === 1 && candidates[0] === row;
-    };
+    const match = (a: CrmPartnerPaymentHistoryAllocation) => identityGroups.resolve(a) === canonicalKey;
+    const uncertain = history.some(batch => batch.reconciliation?.status !== "confirmed_duplicate" && batch.allocations.some(a =>
+      (identityGroups.related(a, canonicalKey) || (!identityGroups.hasKnownContractIdentity(a) && a.jobId && a.jobId === row.jobId)) && (batch.reconciliation?.status !== "payment" || !match(a))));
+    if (uncertain) {
+      identityReview.push({ itemKey, customerName: row.customerName, quoteNumber: row.quoteNumber, canonicalKey, status: "blocked", reason: "Historical allocation needs review before this contract can be paid again." });
+      continue;
+    }
     const paidAllocations = history.filter(batch => batch.recordedAmount && batch.reconciliation?.status === "payment").flatMap(batch => batch.allocations).filter(match);
     const paidAmount = money(paidAllocations.reduce((sum, a) => sum + a.amount, 0));
     const datedReady = readiness.ready && Boolean(readiness.eligibleAt) && pacificDate(readiness.eligibleAt!) <= pacificDate(now);
     if (readiness.reviewReason) review.push({ id: itemKey, label: row.customerName, reason: readiness.reviewReason });
     if (!datedReady && !paidAmount) continue;
-    const entitlement = money(row.total * .1);
+    const entitlement = group.entitlement;
     // Historical allocations remain paid even if the current job was reopened.
     // Only the currently eligible remainder can enter a new monthly ledger.
     const owedAmount = datedReady ? Math.max(entitlement, paidAmount) : paidAmount;
     const remainingAmount = money(Math.max(owedAmount - paidAmount, 0));
     if (paidAmount > entitlement) review.push({ id: itemKey, label: row.customerName, reason: "Recorded allocations exceed the current contract's 10% entitlement." });
     paidAllocations.forEach(a => { remainingAllocations.delete(a.id); a.resolvedItemKey = itemKey; a.resolution = "exact_key"; });
-    items.push({ id: itemKey, person: "ken", source: row.source, ...identity, quoteIdAliases: row.quoteIdAliases || [], customerName: row.customerName, quoteNumber: row.quoteNumber,
+    items.push({ canonicalObligationKey: canonicalKey, aliasKeys, id: itemKey, person: "ken", source: row.source, ...identity, quoteIdAliases: row.quoteIdAliases || [], customerName: row.customerName, quoteNumber: row.quoteNumber,
       closedAt: readiness.eligibleAt, eligibleAt: readiness.eligibleAt, dueDate: readiness.eligibleAt ? nextKenDueDate(readiness.eligibleAt) : null,
       periodMonth: readiness.eligibleAt ? nextKenDueDate(readiness.eligibleAt) : null, sourceStatus: row.liveStatus || row.status, salesOwner: row.salesOwner, total: row.total, advertisingReserve: row.advertisingReserve,
       owedAmount, paidAmount, remainingAmount, paymentState: remainingAmount ? paidAmount ? "partial" : "unpaid" : "paid", explicitAllocationIds: paidAllocations.map(a => a.id), legacyPaidAmount: 0,
-      rawExplicitPaidAmount: money(allocations.filter(a => a.item_key === itemKey).reduce((sum, a) => sum + a.amount, 0)), reviewReason: readiness.reviewReason });
+      rawExplicitPaidAmount: money(allocations.filter(a => identityGroups.resolve({ itemKey: a.item_key, quoteId: a.quote_id, bookkeepingEntryId: a.bookkeeping_entry_id }) === canonicalKey).reduce((sum, a) => sum + a.amount, 0)), reviewReason: readiness.reviewReason });
   }
   for (const batch of history.filter(batch => batch.recordedAmount)) {
     batch.unappliedAmount = money(Math.max(0, batch.amount - batch.allocations.filter(a => !remainingAllocations.has(a.id)).reduce((sum, a) => sum + a.amount, 0)));
@@ -147,6 +153,6 @@ export function reconcileKenMonthlyLedger(ledger: CrmPartnerPaymentLedger, input
   ledger.history = [...ledger.history.filter(batch => batch.person !== "ken"), ...history].sort((a, b) => (b.paidOn || b.createdAt).localeCompare(a.paidOn || a.createdAt));
   ledger.kenBuyout = { target: BUSINESS_PAYOFF_TARGET, totalPaid: recordedTotal, remainingBalance: money(Math.max(BUSINESS_PAYOFF_TARGET - recordedTotal, 0)), paidPct: Math.min(100, recordedTotal / BUSINESS_PAYOFF_TARGET * 100), paymentCount: payments.length, payments };
   const monthlyItems = activeItems.filter(item => item.dueDate && item.dueDate <= dueDate);
-  ledger.kenMonthly = { dueDate, total: money(monthlyItems.reduce((sum, item) => sum + item.remainingAmount, 0)), recordedTotal, excludedDuplicates: money(history.reduce((sum, b) => sum + b.amount - (b.recordedAmount || 0), 0)), items: monthlyItems, review };
+  ledger.kenMonthly = { dueDate, total: money(monthlyItems.reduce((sum, item) => sum + item.remainingAmount, 0)), recordedTotal, excludedDuplicates: money(history.reduce((sum, b) => sum + b.amount - (b.recordedAmount || 0), 0)), items: monthlyItems, review, identityReview };
   return ledger;
 }

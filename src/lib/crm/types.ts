@@ -692,6 +692,8 @@ export type CrmPartnerJobLedgerItem = {
 };
 
 export type CrmPartnerPaymentLedgerItem = {
+  canonicalObligationKey?: string;
+  aliasKeys?: string[];
   eligibleAt?: string | null;
   dueDate?: string | null;
   reviewReason?: string | null;
@@ -821,6 +823,7 @@ export type CrmPartnerPaymentLedger = {
   history: CrmPartnerPaymentHistoryBatch[];
   kenBuyout: CrmKenBuyoutLedger;
   kenMonthly?: {
+    identityReview?: import("./ken-payoff-identity").KenPayoffIdentityReview[];
     dueDate: string; total: number; recordedTotal: number; excludedDuplicates: number;
     items: CrmPartnerPaymentLedgerItem[];
     review: { id: string; label: string; reason: string }[];

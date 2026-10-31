@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const { supabase } = await requireCrmUser(request);
     const dashboard = await loadCrmDashboardData(supabase);
-    if ((dashboard.sourceHealth || []).some(source => source.state !== "complete" && ["job expenses", "installation invoices", "order emails", "Ken payments", "Ken allocations", "commission payments", "commission allocations", "settings"].includes(source.source))) {
+    if ((dashboard.sourceHealth || []).some(source => source.state !== "complete" && ["job expenses", "installation invoices", "order emails", "Ken payments", "Ken allocations", "Ken payoff identity", "commission payments", "commission allocations", "settings"].includes(source.source))) {
       return NextResponse.json({ message: "Payoff data is temporarily unavailable. Please retry." }, { status: 503 });
     }
     return NextResponse.json(kenPayoffResponse(dashboard));

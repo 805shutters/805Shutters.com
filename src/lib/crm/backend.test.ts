@@ -15,6 +15,9 @@ import {
   createCrmCalendarEvent,
   createCrmQuote,
   createManualKenPaymentBatchRpc,
+  createKenPayment,
+  updateKenPayment,
+  deleteKenPayment,
   createPartnerPaymentBatch,
   deleteCrmBookkeepingCredit,
   deleteCrmBookkeepingPayment,
@@ -1317,6 +1320,17 @@ describe("quote bookkeeping notes", () => {
 });
 
 describe("partner payment write rules", () => {
+  it("blocks all unallocated legacy Ken writes before touching storage", async () => {
+    const client = { from: vi.fn(), rpc: vi.fn() };
+    const admin = { email: "805shutters@gmail.com" };
+    for (const action of [
+      () => createKenPayment(client as never, { amount: 125.4 }, admin),
+      () => updateKenPayment(client as never, "old-payment", { amount: 125.4 }, admin),
+      () => deleteKenPayment(client as never, "old-payment", admin)
+    ]) await expect(action()).rejects.toMatchObject({status:409});
+    expect(client.from).not.toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
   it("uses the atomic v2 Ken payment RPC when only the v3 validation wrapper is missing", async () => {
     const calls: string[] = [];
     const supabase = {

@@ -16,10 +16,11 @@ export function kenPayoffResponse(data: CrmDashboardData) {
   return {
     target: ledger?.kenBuyout.target || 0,
     view: {
+      identityReview: view.identityReview,
       total: view.total, paidTotal: view.paidTotal, remainingBuyout: view.remainingBuyout, dueDate: view.dueDate,
       ready: view.ready.map(({ row, item }) => ({
         row: { jobClosedAt: row.jobClosedAt }, automatic: kenPayableReadiness(row).automatic,
-        item: { itemKey: item.itemKey, customerName: item.customerName, quoteNumber: item.quoteNumber,
+        item: { canonicalObligationKey: item.canonicalObligationKey, itemKey: item.itemKey, customerName: item.customerName, quoteNumber: item.quoteNumber,
           dueDate: item.dueDate, eligibleAt: item.eligibleAt, total: item.total,
           owedAmount: item.owedAmount, paidAmount: item.paidAmount, remainingAmount: item.remainingAmount }
       })),

@@ -1,3 +1,4 @@
+import type { KenPayoffAlias } from "./ken-payoff-identity";
 import { assertCustomerFileDeletable } from "./customer-file-delete-guard";
 import { allocateReceivedMoney } from "./payment-allocation";
 import { eligibleBeforeCutoff, pacificDate, nextKenDueDate } from "./ken-monthly-ledger";
@@ -1203,6 +1204,7 @@ export function buildDashboardData({
   sourceHealth = [],
   kenPayments,
   kenPaymentAllocations = [],
+  kenPayoffRegistry,
   orderCogsEmails = [],
   commissionPayments = [],
   commissionPaymentAllocations = [],
@@ -1228,6 +1230,7 @@ export function buildDashboardData({
   sourceHealth?: ProgressSourceHealth[];
   kenPayments: CrmKenPayment[];
   kenPaymentAllocations?: CrmKenPaymentAllocation[];
+  kenPayoffRegistry?: KenPayoffAlias[];
   orderCogsEmails?: CrmOrderCogsEmail[];
   commissionPayments?: CrmCommissionPayment[];
   commissionPaymentAllocations?: CrmCommissionPaymentAllocation[];
@@ -1284,7 +1287,7 @@ export function buildDashboardData({
     kenAllocations: kenPaymentAllocations,
     commissionAllocations: commissionPaymentAllocations
   });
-  const ownerPayablesLedger = buildOwnerPayablesLedger({ rows: bookkeepingRows, kenPayments, commissionPayments, kenAllocations: kenPaymentAllocations, commissionAllocations: commissionPaymentAllocations, now });
+  const ownerPayablesLedger = buildOwnerPayablesLedger({ rows: bookkeepingRows, kenPayments, commissionPayments, kenAllocations: kenPaymentAllocations, commissionAllocations: commissionPaymentAllocations, now, kenPayoffRegistry });
   // Every Ken view uses the same reconciliation; owner projections stay intact.
   partnerPaymentLedger.people.ken = ownerPayablesLedger.people.ken;
   partnerPaymentLedger.activeItems = [...partnerPaymentLedger.activeItems.filter(item => item.person !== "ken"), ...ownerPayablesLedger.people.ken.activeItems];
@@ -1765,6 +1768,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     installationInvoiceEmailsResult,
     kenPaymentsResult,
     kenPaymentAllocationsResult,
+    kenPayoffRegistryResult,
     orderCogsEmailsResult,
     orderCogsEmailFallbackEventsResult,
     commissionPaymentsResult,
@@ -1793,6 +1797,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     loadCompleteCrmTable(supabase, "crm_installation_invoice_emails", "created_at"),
     loadCompleteCrmTable(supabase, "crm_ken_payments", "paid_on"),
     loadCompleteCrmTable(supabase, "crm_ken_payment_allocations", "created_at"),
+    loadCompleteCrmTable(supabase, "crm_ken_payoff_registry", "alias_key", "*", "alias_key"),
     loadCompleteCrmTable(supabase, "crm_order_cogs_emails", "created_at"),
     loadCompleteCrmTable(supabase, "crm_activity_events", "created_at", "id,created_at,after_data,metadata", "id", [{column:"entity_type",value:"order_cogs_email"},{column:"action",value:"order_cogs_email_audit_fallback"}]),
     loadCompleteCrmTable(supabase, "crm_commission_payments", "paid_on"),
@@ -1932,7 +1937,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   const payoffTarget = BUSINESS_PAYOFF_TARGET;
   const jobNames = new Map(jobs.map((job) => [job.id, job.customer_name]));
 
-  const optionalEvidence = [["purchased scope",fulfillmentScopesResult],["product quantities",fulfillmentLinesResult],["shipment and receipt evidence",productMovementsResult],["service visits",serviceVisitsResult],["owned actions", ownedActionsResult], ["job expenses", expensesResult], ["installation invoices", installationInvoiceEmailsResult], ["order emails", orderCogsEmailsResult], ["installer outcomes", installerOutcomesResult], ["Ken payments", kenPaymentsResult], ["Ken allocations", kenPaymentAllocationsResult], ["commission payments", commissionPaymentsResult], ["commission allocations", commissionPaymentAllocationsResult], ["vendor drafts", vendorOrderDraftsResult], ["measure forms", vendorOrderTasksResult], ["settings", settingsResult]] as const;
+  const optionalEvidence = [["purchased scope",fulfillmentScopesResult],["product quantities",fulfillmentLinesResult],["shipment and receipt evidence",productMovementsResult],["service visits",serviceVisitsResult],["owned actions", ownedActionsResult], ["job expenses", expensesResult], ["installation invoices", installationInvoiceEmailsResult], ["order emails", orderCogsEmailsResult], ["installer outcomes", installerOutcomesResult], ["Ken payments", kenPaymentsResult], ["Ken allocations", kenPaymentAllocationsResult], ["Ken payoff identity", kenPayoffRegistryResult], ["commission payments", commissionPaymentsResult], ["commission allocations", commissionPaymentAllocationsResult], ["vendor drafts", vendorOrderDraftsResult], ["measure forms", vendorOrderTasksResult], ["settings", settingsResult]] as const;
   const loadedAt = new Date().toISOString();
   const sourceHealth: ProgressSourceHealth[] = optionalEvidence.map(([source, result]) => ({ source, state: result.error ? "unavailable" : "complete", loadedAt, ...(result.error ? { message: `Could not load ${source}. Related conclusions are incomplete.` } : {}) }));
   // Never send the public installer bearer token or signed/customer snapshots to dashboard consumers.
@@ -1968,6 +1973,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     expenses,
     installationInvoiceEmails,
     kenPayments,
+    kenPayoffRegistry: (kenPayoffRegistryResult.error ? [] : kenPayoffRegistryResult.data || []) as KenPayoffAlias[],
     kenPaymentAllocations,
     orderCogsEmails,
     commissionPayments,
@@ -4439,53 +4445,12 @@ export async function createKenPayment(
   actor: CrmActor
 ) {
   assertMikePaymentAdmin(actor);
-
-  const amount = toMoney(payload.amount);
-  if (amount <= 0) throw new CrmAuthError(400, "Ken payment amount must be greater than zero.");
-
-  const record = {
-    paid_on: payload.paid_on || new Date().toISOString().slice(0, 10),
-    period_month: payload.period_month || null,
-    amount,
-    note: optionalText(payload.note),
-    created_by_email: actor.email,
-    meta: { createdBy: actor.email }
-  };
-
-  const { data, error } = await supabase.from("crm_ken_payments").insert(record).select("*").single();
-  if (error || !data) throw new CrmAuthError(502, "Ken payment could not be saved.");
-
-  await recordCrmActivity(supabase, actor, {
-    entityType: "ken_payment",
-    entityId: data.id,
-    action: "create",
-    after: data
-  });
-
-  return data as CrmKenPayment;
+  throw new CrmAuthError(409, "Use Payoff to record a payment against verified contract obligations. Historical payments are preserved for reconciliation.");
 }
 
 export async function deleteKenPayment(supabase: CrmSupabaseClient, id: string, actor: CrmActor) {
   assertMikePaymentAdmin(actor);
-
-  const { data: existing, error: existingError } = await supabase
-    .from("crm_ken_payments")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  if (existingError || !existing) throw new CrmAuthError(404, "Ken payment was not found.");
-
-  const { error } = await supabase.from("crm_ken_payments").delete().eq("id", id);
-  if (error) throw new CrmAuthError(502, "Ken payment could not be deleted.");
-
-  await recordCrmActivity(supabase, actor, {
-    entityType: "ken_payment",
-    entityId: id,
-    action: "delete",
-    before: existing
-  });
-
-  return { id };
+  throw new CrmAuthError(409, "Use Payoff to record a payment against verified contract obligations. Historical payments are preserved for reconciliation.");
 }
 
 export async function updateKenPayment(
@@ -4495,45 +4460,7 @@ export async function updateKenPayment(
   actor: CrmActor
 ) {
   assertMikePaymentAdmin(actor);
-
-  const { data: existing, error: existingError } = await supabase
-    .from("crm_ken_payments")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  if (existingError || !existing) throw new CrmAuthError(404, "Ken payment was not found.");
-
-  const patch: Record<string, unknown> = {};
-  if (payload.amount !== undefined) {
-    const amount = toMoney(payload.amount);
-    if (amount <= 0) throw new CrmAuthError(400, "Ken payment amount must be greater than zero.");
-    patch.amount = amount;
-  }
-  if (payload.paid_on !== undefined) patch.paid_on = payload.paid_on || null;
-  if (payload.period_month !== undefined) patch.period_month = payload.period_month || null;
-  if (payload.note !== undefined) patch.note = optionalText(payload.note);
-
-  if (!Object.keys(patch).length) {
-    throw new CrmAuthError(400, "No supported Ken payment fields provided.");
-  }
-
-  const { data, error } = await supabase
-    .from("crm_ken_payments")
-    .update(patch)
-    .eq("id", id)
-    .select("*")
-    .single();
-  if (error || !data) throw new CrmAuthError(502, "Ken payment could not be updated.");
-
-  await recordCrmActivity(supabase, actor, {
-    entityType: "ken_payment",
-    entityId: id,
-    action: "update",
-    before: existing,
-    after: data
-  });
-
-  return data as CrmKenPayment;
+  throw new CrmAuthError(409, "Historical Ken payments cannot be edited directly. Reconcile the original allocation before making a correction.");
 }
 
 function normalizeCommissionRecipient(value: unknown) {
@@ -4613,7 +4540,7 @@ function paymentAllocationRows({
         quoteNumber: item.quoteNumber,
         total: item.total,
         owedAmount: item.owedAmount,
-        ...(person === "ken" ? { eligibleAt: item.eligibleAt || null, dueDate: item.dueDate || null } : {}),
+        ...(person === "ken" ? { eligibleAt: item.eligibleAt || null, dueDate: item.dueDate || null, canonicalObligationKey: item.canonicalObligationKey, expectedCanonicalPaidAmount: item.paidAmount } : {}),
         expectedExplicitPaidAmount: item.rawExplicitPaidAmount ?? Math.round(Math.max(item.paidAmount - item.legacyPaidAmount, 0) * 100) / 100
       }
     });
@@ -4753,11 +4680,6 @@ export async function createPartnerPaymentBatch(
   if (person === "ken" && (!paymentMethod || !allowedManualMethods.has(paymentMethod))) {
     throw new CrmAuthError(400, "Ken manual payment requires a valid payment method.");
   }
-  if (person === "ken" && paymentReference && dashboard.kenPayments.some((candidate) =>
-    candidate.meta?.manualPaymentReference === paymentReference
-  )) {
-    throw new CrmAuthError(409, "That manual payment reference has already been recorded.");
-  }
   if (person === "ken" && !paymentRequestId) {
     throw new CrmAuthError(400, "Ken payment confirmation requires a unique request ID.");
   }
@@ -4773,9 +4695,27 @@ export async function createPartnerPaymentBatch(
       };
     }
   }
-  const selectedKeys = selectedPaymentItemKeys(payload);
+  if (person === "ken" && paymentReference && dashboard.kenPayments.some((candidate) =>
+    candidate.meta?.manualPaymentReference === paymentReference
+  )) {
+    throw new CrmAuthError(409, "That manual payment reference has already been recorded.");
+  }
+  let selectedKeys = selectedPaymentItemKeys(payload);
   const equalOwners = payload.payment_model === OWNER_PAYABLES_MODEL;
   const personLedger = (equalOwners || person === "ken" ? dashboard.ownerPayablesLedger! : dashboard.partnerPaymentLedger).people[person];
+  if (person === "ken") {
+    const rawKeys = payload.item_ids ?? payload.itemIds ?? payload.selected_item_ids ?? payload.selectedItemIds;
+    if (Array.isArray(rawKeys) && selectedKeys && rawKeys.length !== selectedKeys.size) throw new CrmAuthError(409, "Duplicate or invalid contract selections. Reload Payoff.");
+    if (dashboard.sourceHealth?.some(source => ["Ken payments", "Ken allocations", "Ken payoff identity"].includes(source.source) && source.state !== "complete")) {
+      throw new CrmAuthError(503, "Payoff identity or payment history is unavailable. No payment was recorded.");
+    }
+    if (selectedKeys) {
+      const resolved = [...selectedKeys].map(key => personLedger.items.find(item => item.itemKey === key || item.aliasKeys?.includes(key)));
+      if (resolved.some(item => !item || !item.canonicalObligationKey || item.remainingAmount <= 0)) throw new CrmAuthError(409, "A selected contract is blocked or no longer payable. Reload Payoff.");
+      if (new Set(resolved.map(item => item!.canonicalObligationKey)).size !== resolved.length) throw new CrmAuthError(409, "The same contract cannot be selected twice for Ken payoff.");
+      selectedKeys = new Set(resolved.map(item => item!.itemKey));
+    }
+  }
   const activeItems = personLedger.activeItems;
   const selectedItemsByKey = new Map<string, CrmPartnerPaymentLedgerItem>();
   const ledgerMatchedKeys = new Set<string>();
@@ -4911,6 +4851,7 @@ export async function createPartnerPaymentBatch(
   let payment: Record<string, unknown>;
   if (rpcError || !paymentId) {
     if (person === "ken") {
+      if (rpcError?.code === "23514" || rpcError?.code === "23505") throw new CrmAuthError(409, rpcError.message);
       throw new CrmAuthError(503, "Ken payment was not recorded because the atomic idempotent payment function is unavailable.");
     }
     if (rpcError) {

@@ -62,7 +62,7 @@ export function projectOwnerPayableRows(rows: CrmBookkeepingRow[]) {
   });
 }
 
-export function buildOwnerPayablesLedger(input: Parameters<typeof buildPartnerPaymentLedger>[0] & { now?: Date | string }) {
+export function buildOwnerPayablesLedger(input: Parameters<typeof buildPartnerPaymentLedger>[0] & { now?: Date | string; kenPayoffRegistry?: import("./ken-payoff-identity").KenPayoffAlias[] }) {
   const ledger = buildPartnerPaymentLedger({ ...input, earningsModel: OWNER_PAYABLES_MODEL, rows: projectOwnerPayableRows(input.rows) });
   for (const person of ["mike", "jessica"] as const) {
     const account = ledger.people[person];
