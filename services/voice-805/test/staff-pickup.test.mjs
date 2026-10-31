@@ -74,7 +74,7 @@ test('voicemail/no key and wrong keys cannot take the caller; the other staff ca
   const f=await setup(),[a,b]=f.call.offers;
   await answer(f,a);await answer(f,b);
   assert.match((await press(f,a,'9')).xml,/<Gather/);assert.equal((await read(f)).owner,null);
-  assert.match((await press(f,a,'')).xml,/<Hangup/);assert.equal((await read(f)).owner,null);
+  assert.match((await press(f,a,'')).xml,/<Gather/);assert.equal((await read(f)).owner,null);
   assert.match((await press(f,b)).xml,/<Conference/);assert.equal((await read(f)).owner,b.staff);
 });
 test('simultaneous staff confirmations choose one owner and one customer redirect',async()=>{
@@ -101,9 +101,9 @@ test('late AMD cannot accept or cancel new offers; expired and ended confirmatio
   }
 });
 
-test('both handsets decline without taking the caller; message fallback remains available',async()=>{
+test('both handsets time out without taking the caller; message fallback remains available',async()=>{
   const f=await setup();
-  for(const o of f.call.offers){await answer(f,o);assert.match((await press(f,o,'')).xml,/<Hangup/);}
+  for(const o of f.call.offers){await answer(f,o);await f.state.transact((_e,s)=>{const c=s.get('call',f.call.id);c.offers.find(x=>x.id===o.id).expiresAt=Date.now()+4000;s.put('call',c);});assert.match((await press(f,o,'')).xml,/<Hangup/);}
   const c=await read(f);assert.equal(c.phase,'message');assert.equal(c.owner,null);
   assert.equal(f.provider.operations.some(x=>x.type==='route'),false);
 });
@@ -121,4 +121,15 @@ test('consult and staff-initiated callback use the correct room after Press 1',a
   const callback=f.call.offers[0];await answer(f,callback);
   assert.match((await press(f,callback)).xml,new RegExp(`>805-${f.call.id}-main</Conference>`));
   assert.equal((await read(f)).phase,'callback-connecting');
+});
+
+// Reproduce the October 31 empty-result callback before the pickup window ends.
+test('empty result repeats without extending the deadline and later Press 1 connects',async()=>{
+  const f=await setup(),o=f.call.offers[0];await answer(f,o);
+  const deadline=(await read(f)).offers[0].expiresAt;
+  const retry=await press(f,o,'');
+  assert.match(retry.xml,/<Gather/);assert.match(retry.xml,/finishOnKey=""/);
+  let c=await read(f);assert.equal(c.offers[0].status,'ringing');assert.equal(c.offers[0].expiresAt,deadline);assert.equal(c.owner,null);
+  assert.match((await press(f,o)).xml,/<Conference/);
+  c=await read(f);assert.equal(c.owner,o.staff);assert.equal(c.phase,'handoff');
 });

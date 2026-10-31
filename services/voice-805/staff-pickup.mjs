@@ -15,17 +15,19 @@ export function staffPickup(engine, config, callId, offerId, sid, action, fields
       // Return the staff bridge directly, avoiding a REST redirect racing this response.
       return conferenceXml(config, call, offer.purpose === 'consult' ? 'consult' : 'main');
     }
-    if (!fields.get('Digits')) {
-      engine.ended(callId, sid, `staff-declined:${offerId}:${sid}`);
-      return twiml('<Hangup/>');
-    }
+    // An empty Gather result is silence, not a decline. Keep the original
+    // pickup deadline and repeat the prompt while there is time to respond.
   } else if (!action) {
     call = engine.staffAnswered(callId, offerId, sid, now);
     offer = call.offers.find(o => o.id === offerId);
   } else throw new Conflict('Unsupported staff action');
   const remaining = Math.floor((offer.expiresAt - now) / 1000);
-  if (call.phase === 'ended' || offer.status !== 'ringing' || !offer.answeredAt || remaining < 5) return twiml('<Hangup/>');
-  const timeout = Math.max(1, Math.min(10, remaining - 4));
+  if (call.phase === 'ended' || offer.status !== 'ringing' || !offer.answeredAt) return twiml('<Hangup/>');
+  if (remaining < 5) {
+    engine.ended(callId, sid, `staff-confirmation-timeout:${offerId}:${sid}`);
+    return twiml('<Say>No confirmation received. The caller will remain with 805 Shutters.</Say><Hangup/>');
+  }
+  const timeout = Math.max(1, Math.min(5, remaining - 4));
   const url = `${config.origin}/twilio/offer/${callId}/${offerId}/accept`;
-  return twiml(`<Gather input="dtmf" numDigits="1" timeout="${timeout}" actionOnEmptyResult="true" method="POST" action="${xml(url)}"><Say>805 Shutters call. Press 1 to connect.</Say></Gather><Hangup/>`);
+  return twiml(`<Gather input="dtmf" numDigits="1" finishOnKey="" timeout="${timeout}" actionOnEmptyResult="true" method="POST" action="${xml(url)}"><Say>805 Shutters call. Press 1 to connect.</Say></Gather><Hangup/>`);
 }
