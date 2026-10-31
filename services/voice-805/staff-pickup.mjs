@@ -27,7 +27,7 @@ export function staffPickup(engine, config, callId, offerId, sid, action, fields
     engine.ended(callId, sid, `staff-confirmation-timeout:${offerId}:${sid}`);
     return twiml('<Say>No confirmation received. The caller will remain with 805 Shutters.</Say><Hangup/>');
   }
-  const timeout = Math.max(1, Math.min(5, remaining - 4));
+  const timeout = Math.max(1, Math.min(15, remaining - 4));
   const url = `${config.origin}/twilio/offer/${callId}/${offerId}/accept`;
   return twiml(`<Gather input="dtmf" numDigits="1" finishOnKey="" timeout="${timeout}" actionOnEmptyResult="true" method="POST" action="${xml(url)}"><Say>805 Shutters call. Press 1 to connect.</Say></Gather><Hangup/>`);
 }

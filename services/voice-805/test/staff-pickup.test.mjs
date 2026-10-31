@@ -45,7 +45,7 @@ test('new staff calls ring for 40 seconds without AMD and play a staff-only acce
   const f=await setup(),o=f.call.offers[0],p=new URLSearchParams(staffDialParams(f.c,f.call,o));
   assert.equal(o.acceptance,'dtmf');assert.equal(p.get('Timeout'),'40');
   assert.equal(p.has('MachineDetection'),false);assert.equal(p.has('AsyncAmdStatusCallback'),false);
-  assert.match(await answer(f,o),/<Gather input="dtmf" numDigits="1"/);
+  assert.match(await answer(f,o),/<Gather input="dtmf" numDigits="1" finishOnKey="" timeout="15"/);
   const current=await read(f);assert.equal(current.owner,null);assert.equal(current.ai,true);
   assert.equal(current.offers[0].expiresAt-current.offers[0].answeredAt,20000);
 });
