@@ -5,7 +5,7 @@ Base: origin/main 317a52bc6cf44c99892ea1d9a0af39a1b3dff14d. Isolated worktree; c
 ## Plan and acceptance
 - [x] Verify current main and establish clean baseline: 344 test files / 2,812 tests passed; 20 skipped.
 - [x] 1A: shared evidence-derived progress, installer outcomes, consistent queues, terminal conflicts, financial closeout separation, source health; no migration.
-- [ ] 1B: database role enforcement, source completeness and integration-health reporting are implemented and verified. Gmail repair remains blocked on a secure 805 mailbox connection; no importer replay authorized.
+- [ ] 1B: database role enforcement, source completeness and integration-health reporting are implemented and verified. The 805 Gmail token handler is `src/lib/crm/gmail-token-broker.ts`. No importer replay authorized.
 - [x] 2: owned next actions and revisions, open service obligations, operational timeline with raw audit, separate future appointments, durable report history and independent submission/notification acknowledgement. Released and verified live.
 - [x] 3 (released and verified live): exact purchased-line quantities, shipment/receipt child records, attributed vendor promise changes, service/visit relationships and closeout guard.
 - [x] 4: reporting contracts, quote conversion, run-rate labeling, incomplete-data handling and remaining reporting-source pagination. Final release verification follows this commit.
@@ -19,7 +19,7 @@ Constraints: preserve monetary authority, payout policy, desktop workspace, sour
 - Applied migration `20260905002131_enforce_805_sales_write_roles` and recorded it in `supabase_migrations.schema_migrations`. Verified 18 restrictive write policies over the six existing 805 sales tables. Existing account/quote scope and reads remain intact.
 - Before application, rehearsed the migration in a rolled-back transaction with synthetic table rows and the real owner, salesperson, read-only and unrelated identities. Read/insert/update/delete assertions passed. No customer rows were changed.
 - Profile RLS permits management only to service_role. Anonymous users have no grants or applicable policies on the six sales tables. Sales mutation security-definer RPCs inspected are not executable by authenticated or anonymous callers.
-- Gmail production broker points to the MTS gmail-oauth-repair function. Verified deployed version 71 supports only auth-url and exchange; it cannot return access tokens. Removed action-name probing. A secure scoped token endpoint or direct 805 OAuth configuration is still required. No replay or external communication performed.
+- On 2026-09-05 the production broker pointed at the MTS gmail-oauth-repair function. That deployed version 71 supported only auth-url and exchange and could not return access tokens. Action-name probing was removed. No replay or external communication was performed. This checkout has the 805 handler at `src/lib/crm/gmail-token-broker.ts`. `handle805GmailTokenRequest` returns an access token only for `805shutters@gmail.com` or `805@805shutters.com`.
 - Integration attempts now record separate success/failure evidence without tokens or email content. Unknown prior history remains explicit. Remaining secondary financial payment/allocation ledgers are paginated; source failures are exposed.
 - The 1A release intentionally introduces no task, receipt, service or event schema. The subsequent releases add the structures listed below.
 
@@ -54,6 +54,6 @@ Constraints: preserve monetary authority, payout policy, desktop workspace, sour
 - PostgreSQL regression proves a paid first quote leaves its parent job and second order actionable, duplicate callback creates one receipt/audit, unsigned receipt does not mark a quote paid, and amount/link mismatch still fails.
 
 ## Remaining external dependency
-Gmail scheduled recovery requires a secure 805-scoped token broker or direct 805 OAuth connection. The configured MTS setup endpoint cannot return access tokens and must not become an unauthenticated token endpoint. Last-success unknown/failure states are explicit. A narrow applying replay still requires separate authorization and exact effect verification.
+The 805 Gmail token handler is `src/lib/crm/gmail-token-broker.ts`. `handle805GmailTokenRequest` accepts `action: "access-token"` and returns an access token only for `805shutters@gmail.com` or `805@805shutters.com`. The MTS setup endpoint must not become an unauthenticated token endpoint. Last-success unknown/failure states are explicit. A narrow applying replay still requires separate authorization and exact effect verification.
 
 - Authenticated report verification exposed labeled legacy test records and netted overpayments. Reports now exclude explicit test identities across customer-file mirrors and linked ledgers, show the exclusion count, and present positive receivables separately from overpayments. Affected source records remain untouched. Added regressions cover both cases; attention conflicts sort before ordinary legacy actions.
