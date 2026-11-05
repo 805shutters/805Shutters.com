@@ -17,7 +17,7 @@ describe("staff booking SMS public notice", () => {
     expect(sms?.body).toContain("Message and data rates may apply.");
     expect(sms?.body).toContain("STOP");
     expect(sms?.body).toContain("805@805shutters.com");
-    expect(sms?.body).toContain("805-590-8050");
+    expect(sms?.body).toContain("805-806-9344");
     expect(sms?.body).toContain("Carriers are not liable for delayed or undelivered messages.");
     expect(sms?.body).toContain(staffBookingSmsNotice.enrollment);
     expect(sms?.body).toContain("caller");
