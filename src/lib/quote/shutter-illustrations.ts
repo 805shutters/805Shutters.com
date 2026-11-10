@@ -15,16 +15,18 @@ export function shutterIllustration(fields: readonly string[][]) {
   const panels = [...counts][0];
   if (panels < 1 || panels > 8) return null;
   const tilts = new Set(values("tilt", "tilt type").map((value) => {
-    if (/hidden|invisible|in stile/.test(value)) return "hidden";
-    if (/offset/.test(value)) return "unknown";
-    if (/^(?:c )?(?:standard(?: tilt)?|front center(?: tiltrod)?|front tilt rod|center tilt(?: rod)?|tilt bar|tilt rod)$/.test(value)) return "center";
+    const tilt = value.toLowerCase();
+    if (/hidden|invisible|in stile/.test(tilt)) return "hidden";
+    if (/offset/.test(tilt)) return "unknown";
+    if (/^(?:c )?(?:standard(?: tilt)?|front center(?: tiltrod)?|front tilt rod|center tilt(?: rod)?|tilt bar|tilt rod)$/.test(tilt)) return "center";
     return "unknown";
   }));
   if (tilts.size !== 1 || tilts.has("unknown")) return null;
   const tilt = [...tilts][0];
-  const booleans = (entries: string[]) => new Set(entries.map((value) => /^(yes|true|1)$/.test(value) ? true : /^(no|false|0|none)$/.test(value) ? false : null));
-  const splits = booleans(values("split tilt"));
-  const rails = booleans(values("divider rail", "divider rail count"));
+  const booleans = (entries: string[], absent = /^(?:no|false|0|none)$/) => new Set(entries.map((value) => /^(?:yes|true|1)$/.test(value) ? true : absent.test(value) ? false : null));
+  const splits = booleans(values("split tilt").map((value) => value.toLowerCase()));
+  // Onyx stores an unselected divider rail as "Standard".
+  const rails = booleans(values("divider rail", "divider rail count").map((value) => value.toLowerCase()), /^(?:no|false|0|none|standard)$/);
   if (splits.has(null) || rails.has(null) || splits.size > 1 || rails.size > 1) return null;
   const split = splits.has(true);
   const divider = rails.has(true);

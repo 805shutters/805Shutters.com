@@ -3,8 +3,10 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ContractProductIllustration } from "@/components/quote/ContractProductIllustration";
+import { QuoteLineItemCard } from "@/components/quote/QuoteLineItemCard";
 import { ShutterAssembly } from "@/components/quote/ShutterAssembly";
 import { contractIllustration } from "./contract-illustrations";
+import { shutterIllustration } from "./shutter-illustrations";
 import { customerQuoteOptions } from "@/lib/crm/customer-quote-branding";
 import { v2CustomerConfigurationOptions } from "@/lib/crm/sales-quote-v2-customer-configuration";
 
@@ -100,5 +102,94 @@ describe("saved Onyx split tilt contracts", () => {
   it("continues rejecting conflicting or unknown tilt selections", () => {
     expect(contractIllustration("Shutters", ["Tilt: standard", "Tilt: hidden", "Panel configuration: L", "Split tilt: Yes"])).toBeNull();
     expect(contractIllustration("Shutters", ["Tilt: nonstandard", "Panel configuration: L", "Split tilt: Yes"])).toBeNull();
+  });
+});
+
+describe("stored Onyx tilt and divider values", () => {
+  it.each(["standard", "Standard", "STANDARD"])("draws a center front tilt picture for tilt %s", (tilt) => {
+    const art = shutterIllustration([["panel config", "l"], ["tilt", tilt], ["split tilt", "No"], ["divider rail", "No"]]);
+    expect(art).toMatchObject({ asset: "shutter-center-plain", detail: expect.stringContaining("Center tilt bar") });
+    const html = renderToStaticMarkup(createElement(ContractProductIllustration, {
+      productType: "Shutters", size: "anatomy", options: [`Panel configuration: L`, `Tilt: ${tilt}`, "Split tilt: No", "Divider rail: No"],
+    }));
+    expect(html).toContain("/c-v1/shutter-center-plain.webp");
+    expect(html).toContain('data-shutter-target="tilt-detail"');
+    expect(html).not.toContain('data-shutter-target="divider-detail"');
+  });
+
+  it.each(["Standard", "standard", "STANDARD"])("treats Onyx divider rail %s as no divider", (divider) => {
+    const art = shutterIllustration([["panel configuration", "lr"], ["tilt type", "standard"], ["divider rail", divider]]);
+    expect(art).toMatchObject({ asset: "shutter-center-plain" });
+    expect(art?.detail).not.toContain("Divider rail");
+    const html = renderToStaticMarkup(createElement(ContractProductIllustration, {
+      productType: "Onyx Shutters", size: "anatomy", options: ["Panel configuration: LR", "Tilt: standard", `Divider rail: ${divider}`],
+    }));
+    expect(html).toContain("/c-v1/shutter-center-plain.webp");
+    expect(html).not.toContain("shutter-center-divider");
+    expect(html).not.toContain('data-shutter-target="divider-detail"');
+  });
+
+  it("keeps existing tilt and divider selections", () => {
+    expect(shutterIllustration([["panel config", "llrr"], ["tilt", "Standard Tilt"], ["split tilt", "Yes"], ["divider rail", "Yes"]]))
+      .toMatchObject({ asset: "shutter-center-split-divider" });
+    expect(shutterIllustration([["panel config", "lr"], ["tilt type", "Invisible Tilt"], ["split tilt", "No"], ["divider rail", "No"]]))
+      .toMatchObject({ asset: "shutter-hidden-plain" });
+    expect(shutterIllustration([["panel config", "l"], ["tilt", "hidden"], ["split tilt", "Yes"], ["divider rail count", "0"]]))
+      .toMatchObject({ asset: "shutter-hidden-split" });
+    expect(shutterIllustration([["panel config", "l"], ["tilt", "c front center tiltrod"], ["divider rail", "Yes"]]))
+      .toMatchObject({ asset: "shutter-center-divider" });
+    expect(contractIllustration("Shutters", ["Panel Config: L", "Tilt: C - Front Center Tiltrod", "Divider rail: Yes"])?.src)
+      .toContain("shutter-center-divider.webp");
+    expect(shutterIllustration([["panel config", "lr"], ["tilt type", "Offset Tilt"]])).toBeNull();
+    expect(shutterIllustration([["panel config", "l"], ["tilt", "standard"], ["divider rail", "Yes"], ["divider rail", "Standard"]])).toBeNull();
+  });
+
+  it("draws the stored 805-0563 and 805-0485 shutter selections without changing their prices", () => {
+    const draw = (selections: Record<string, string | number | boolean>, price: string) => {
+      const before = structuredClone(selections);
+      const options = customerQuoteOptions(v2CustomerConfigurationOptions({ manufacturerId: "onyx", selections }));
+      const html = renderToStaticMarkup(createElement(ContractProductIllustration, { productType: "Onyx Shutters", size: "anatomy", options }));
+      const card = renderToStaticMarkup(createElement(QuoteLineItemCard, { lineNumber: 1, room: "Window", productType: "Onyx Shutters", options: [...options], price, quantity: 1 }));
+      expect(selections).toEqual(before);
+      expect(card).toContain(price);
+      return html;
+    };
+    const laundry = draw({
+      tilt_type: "standard", divider_rail: "Standard", panel_config: "L", panel_configuration: "L",
+      order_type: "standard", onyx_order_type: "Regular", frame_type: "L Frame", louver_size: '4 1/2"',
+      mount_type: "outside", folding_direction: "L",
+    }, "$482.75");
+    expect(laundry).toContain("/c-v1/shutter-center-plain.webp");
+    expect(laundry).toContain('data-shutter-target="tilt-detail"');
+    expect(laundry).not.toContain('data-shutter-target="divider-detail"');
+    expect(laundry).not.toContain('data-family-reference="true"');
+
+    const bedroom = draw({
+      tilt_type: "standard", divider_rail: "No", divider_rail_count: 0, split_tilt: "No",
+      panel_config: "L", panel_configuration: "L", order_type: "standard", onyx_order_type: "Regular", frame_type: "Z Crest FS",
+    }, "$622.85");
+    expect(bedroom).toContain("/c-v1/shutter-center-plain.webp");
+    expect(bedroom).toContain('data-shutter-target="tilt-detail"');
+
+    const split = draw({
+      tilt_type: "standard", divider_rail: "No", divider_rail_count: 0, split_tilt: "Yes",
+      panel_config: "L", panel_configuration: "L", order_type: "standard", onyx_order_type: "Regular",
+    }, "$428.72");
+    expect(split).toContain("/c-v1/shutter-center-split.webp");
+    expect(split).not.toContain("divider");
+
+    const hidden = draw({
+      tilt_type: "hidden", divider_rail: "No", divider_rail_count: 0, split_tilt: "Yes",
+      panel_config: "R", panel_configuration: "R", order_type: "standard", onyx_order_type: "Regular",
+    }, "$624.41");
+    expect(hidden).toContain("/c-v1/shutter-hidden-split.webp");
+    expect(hidden).not.toContain("shutter-center");
+
+    const arch = draw({
+      tilt_type: "standard", divider_rail: "No", divider_rail_count: 0, split_tilt: "No",
+      panel_config: "R", panel_configuration: "R", order_type: "arch_shutters", onyx_order_type: "Arch Shutters",
+    }, "$943.68");
+    expect(arch).toContain('data-front-tilt-rod="center"');
+    expect(arch).not.toContain('data-divider-rail="true"');
   });
 });
