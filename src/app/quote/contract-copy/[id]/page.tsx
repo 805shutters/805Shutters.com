@@ -24,9 +24,17 @@ export default async function SignedContractCopy({ params }: { params: Promise<{
   if (!supabase) notFound();
   const { data, error } = await supabase.from("crm_customer_signed_contract_email_outbox")
     .select("signed_snapshot,customer_signature,quote_id,contract_signed_at").eq("id", id).maybeSingle();
-  if (error || !data || contractSnapshotDigest(data.signed_snapshot) !== digest) notFound();
-  const snapshot = validateSignedContractSnapshot(data.signed_snapshot, data.customer_signature);
-  if (snapshot.quote.id !== data.quote_id || Date.parse(snapshot.signedAt) !== Date.parse(data.contract_signed_at)) notFound();
+  if (error) notFound();
+  let source = data;
+  if (!source) {
+    const internal = await supabase.from("crm_internal_signed_contract_copy_outbox")
+      .select("signed_snapshot,customer_signature,quote_id,contract_signed_at").eq("id", id).maybeSingle();
+    if (internal.error || !internal.data) notFound();
+    source = internal.data;
+  }
+  if (contractSnapshotDigest(source.signed_snapshot) !== digest) notFound();
+  const snapshot = validateSignedContractSnapshot(source.signed_snapshot, source.customer_signature);
+  if (snapshot.quote.id !== source.quote_id || Date.parse(snapshot.signedAt) !== Date.parse(source.contract_signed_at)) notFound();
   return <div data-contract-digest={digest}>
     <CustomerContractDocument quote={signedSnapshotPublicQuote(snapshot)} previewOnly
       contractTerms={snapshot.terms} previewLabel="Signed contract copy" />
