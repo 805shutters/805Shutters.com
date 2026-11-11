@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  DEFAULT_INSTALLER_PACKET_RECIPIENTS,
   INSTALLER_FORM_FROM,
+  installerPacketRecipients,
   processInstallerDeliveryOutbox,
   type FrozenInstallerEmail,
   type InstallerDeliveryDependencies,
@@ -35,14 +37,23 @@ const form: InstallerFormRow = {
   meta: {},
 };
 
+const packetRecipients = [...DEFAULT_INSTALLER_PACKET_RECIPIENTS];
+
 const payload: FrozenInstallerEmail = {
-  to: "wcbot@mail.grokbot.com",
+  to: packetRecipients,
   from: INSTALLER_FORM_FROM,
   subject: "Installer packet",
   html: "<p>Installer packet</p>",
   text: "Installer packet",
-  attachments: [{ filename: "installer.pdf", content: "cGRm", contentType: "application/pdf" }],
-  idempotencyKey: "805-installer-form-10000000-0000-4000-8000-000000000003-base-v1-wcbot@mail.grokbot.com",
+  attachments: [{ filename: "805-Shutters-Installation-Form-805-0200.pdf", content: "cGRm", contentType: "application/pdf" }],
+  idempotencyKey: `805-installer-form-10000000-0000-4000-8000-000000000003-base-v1-${packetRecipients.join(",")}`,
+};
+
+const handoffEnvelope: FrozenInstallerEmail = {
+  ...payload,
+  to: "wcbot@mail.grokbot.com",
+  subject: "Canonical handoff",
+  idempotencyKey: "805-installer-handoff-10000000-0000-4000-8000-000000000003-sha256-version-wcbot@mail.grokbot.com",
 };
 
 function claim(overrides: Partial<InstallerOutboxClaim> = {}): InstallerOutboxClaim {
@@ -82,7 +93,7 @@ function harness(input: {
     updateOutbox: vi.fn(async (_client, item, patch) => { updates.push({ id: item.id, patch }); }),
     loadForm: vi.fn(async () => form),
     prepareBase: input.prepareBase || vi.fn(async () => ({ form, payload })),
-    prepareHandoff: input.prepareHandoff || vi.fn(async () => ({ form, payload: { ...payload, idempotencyKey: "handoff-key" } })),
+    prepareHandoff: input.prepareHandoff || vi.fn(async () => ({ form, payload: handoffEnvelope })),
     discoverHandoff: input.discoverHandoff || vi.fn(async () => undefined),
     recordFormFailure,
     recordAccepted,
@@ -133,12 +144,17 @@ describe("installer delivery outbox runtime", () => {
     const request = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(request).toMatchObject({
       from: "805 Shutters <805@805shutters.com>",
-      to: ["wcbot@mail.grokbot.com"],
+      to: kind === "base_packet" ? packetRecipients : ["wcbot@mail.grokbot.com"],
     });
     expect(request.cc).toBeUndefined();
+    expect(request.bcc).toBeUndefined();
+    expect(request.html).not.toMatch(/\/quote\//i);
+    expect(request.text).not.toMatch(/\/quote\//i);
     expect(request.attachments).toHaveLength(kind === "base_packet" ? 1 : 3);
-    expect(request.attachments[0].filename).toMatch(/\.pdf$/);
-    expect(h.updates[0].patch.payload).toMatchObject({ to: "wcbot@mail.grokbot.com" });
+    expect(request.attachments[0].filename).toMatch(/Installation-Form-.+\.pdf$/);
+    expect(h.updates[0].patch.payload).toMatchObject({
+      to: kind === "base_packet" ? packetRecipients : "wcbot@mail.grokbot.com",
+    });
     expect(h.updates.at(-1)?.patch).toMatchObject({ status: "sent", provider_message_id: "both-recipients" });
   });
 
@@ -151,11 +167,107 @@ describe("installer delivery outbox runtime", () => {
   });
 
   it("retries both recipients using the exact frozen payload", async () => {
-    const both: FrozenInstallerEmail = { ...payload, cc: ["mtsinstallations@gmail.com"] };
+    const both: FrozenInstallerEmail = { ...payload, to: packetRecipients };
     const h = harness({ claims: [claim({ payload: both, idempotency_key: both.idempotencyKey, first_send_attempt_at: "2026-09-15T11:00:00.000Z" })] });
     await processInstallerDeliveryOutbox(client, { dependencies: h.dependencies, limit: 1 });
     expect(h.send).toHaveBeenCalledExactlyOnceWith(both);
     expect(h.dependencies.prepareBase).not.toHaveBeenCalled();
+  });
+
+  it("retries a rejected send once more and does not send again after it is accepted", async () => {
+    const rejected = vi.fn(async () => ({ sent: false, error: "mailbox unavailable" }));
+    const first = harness({ send: rejected });
+    await processInstallerDeliveryOutbox(client, { dependencies: first.dependencies, limit: 1 });
+    expect(rejected).toHaveBeenCalledTimes(1);
+    expect(first.updates.at(-1)?.patch).toMatchObject({ status: "retry", failure_stage: "send" });
+
+    const replaySend = vi.fn(async () => ({ sent: true, id: "accepted-once" }));
+    const replay = harness({
+      claims: [claim({ payload, idempotency_key: payload.idempotencyKey, first_send_attempt_at: "2026-09-15T11:00:00.000Z" })],
+      send: replaySend,
+    });
+    await processInstallerDeliveryOutbox(client, { dependencies: replay.dependencies, limit: 1 });
+    expect(replaySend).toHaveBeenCalledTimes(1);
+    expect(replaySend).toHaveBeenCalledWith(payload);
+    expect(payload.cc).toBeUndefined();
+    expect(payload.bcc).toBeUndefined();
+
+    const duplicateSend = vi.fn(async () => ({ sent: true, id: "second-send" }));
+    const duplicate = harness({
+      claims: [claim({
+        payload,
+        idempotency_key: payload.idempotencyKey,
+        provider_message_id: "accepted-once",
+        sent_at: "2026-09-15T12:00:00.000Z",
+      })],
+      send: duplicateSend,
+    });
+    await processInstallerDeliveryOutbox(client, { dependencies: duplicate.dependencies, limit: 1 });
+    expect(duplicateSend).not.toHaveBeenCalled();
+  });
+
+  it("sends the env recipient list and never puts the customer on the envelope", async () => {
+    vi.stubEnv("INSTALLER_PACKET_RECIPIENTS", "shop@installers.example, office@installers.example");
+    vi.stubEnv("RESEND_API_KEY", "test-key");
+    expect(installerPacketRecipients()).toEqual(["shop@installers.example", "office@installers.example"]);
+    const customerForm = {
+      ...form,
+      customer_snapshot: { ...form.customer_snapshot, email: "jane@customer.example" },
+      meta: {
+        customer_balance: installerBalance.calculateInstallerCustomerBalance({
+          contractId: form.quote_id,
+          contractTotal: 200,
+          contractSignedAt: "2026-09-19T12:00:00.000Z",
+          payments: [{ amount: 100 }],
+          creditsIn: [],
+          creditsOut: [],
+        }),
+      },
+    };
+    vi.spyOn(installerForms, "ensureInstallerForm").mockResolvedValue(customerForm);
+    vi.spyOn(installerBalance, "refreshInstallerCustomerBalance").mockResolvedValue(customerForm);
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: "env-recipients" }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const h = harness({ claims: [claim()] });
+    delete h.dependencies.prepareBase;
+    delete h.dependencies.send;
+    const formQuery = { select: () => formQuery, eq: () => formQuery, maybeSingle: async () => ({ data: customerForm, error: null }) };
+    const result = await processInstallerDeliveryOutbox({ from: () => formQuery } as never, { dependencies: h.dependencies, limit: 1 });
+    expect(result.errors).toEqual([]);
+    const request = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(request.to).toEqual(["shop@installers.example", "office@installers.example"]);
+    expect(request.cc).toBeUndefined();
+    expect(request.bcc).toBeUndefined();
+    expect(JSON.stringify({ to: request.to, cc: request.cc, bcc: request.bcc })).not.toContain("jane@customer.example");
+    expect(request.html).not.toMatch(/\/quote\//i);
+    expect(request.text).not.toMatch(/\/quote\//i);
+    expect(request.html).toContain("/installer-form/");
+  });
+
+  it("blocks a packet whose configured recipients include the customer", async () => {
+    vi.stubEnv("INSTALLER_PACKET_RECIPIENTS", "jane@customer.example,mtsinstallations@gmail.com");
+    const customerForm = {
+      ...form,
+      customer_snapshot: { ...form.customer_snapshot, email: "Jane@Customer.example" },
+      meta: {
+        customer_balance: installerBalance.calculateInstallerCustomerBalance({
+          contractId: form.quote_id,
+          contractTotal: 200,
+          contractSignedAt: "2026-09-19T12:00:00.000Z",
+          payments: [],
+          creditsIn: [],
+          creditsOut: [],
+        }),
+      },
+    };
+    vi.spyOn(installerForms, "ensureInstallerForm").mockResolvedValue(customerForm);
+    vi.spyOn(installerBalance, "refreshInstallerCustomerBalance").mockResolvedValue(customerForm);
+    const h = harness();
+    delete h.dependencies.prepareBase;
+    const formQuery = { select: () => formQuery, eq: () => formQuery, maybeSingle: async () => ({ data: customerForm, error: null }) };
+    await processInstallerDeliveryOutbox({ from: () => formQuery } as never, { dependencies: h.dependencies, limit: 1 });
+    expect(h.send).not.toHaveBeenCalled();
+    expect(h.updates.at(-1)?.patch).toMatchObject({ status: "blocked" });
   });
 
   it("freezes the base packet before sending and records the accepted provider ID", async () => {
@@ -164,7 +276,7 @@ describe("installer delivery outbox runtime", () => {
     expect(result).toMatchObject({ processed: 1, pending: 0, blocked: 0, errors: [] });
     expect(h.updates[0].patch).toMatchObject({ payload, idempotency_key: payload.idempotencyKey, form_id: form.id });
     expect(h.send).toHaveBeenCalledWith(expect.objectContaining({
-      to: "wcbot@mail.grokbot.com",
+      to: packetRecipients,
       from: "805 Shutters <805@805shutters.com>",
     }));
     expect(h.recordAccepted).toHaveBeenCalledWith(expect.anything(), form, expect.anything(), expect.objectContaining({ id: "resend-accepted-1" }), expect.any(String));
@@ -216,7 +328,7 @@ describe("installer delivery outbox runtime", () => {
   });
 
   it("delivers a newly queued handoff version without rebuilding or resending the base packet", async () => {
-    const handoffPayload = { ...payload, subject: "Canonical handoff", idempotencyKey: "handoff-hash-key" };
+    const handoffPayload = { ...handoffEnvelope, idempotencyKey: "handoff-hash-key" };
     const prepareHandoff = vi.fn(async () => ({ form, payload: handoffPayload }));
     const prepareBase = vi.fn(async () => ({ form, payload }));
     const h = harness({
