@@ -10,9 +10,14 @@ import {
   type InstallerFormRow,
 } from "./installer-forms";
 import { pendingInstallationHandoffDeliveryState } from "./installation-handoff";
+import { DEFAULT_INSTALLER_PACKET_RECIPIENTS } from "./installer-delivery-outbox";
 
-it("routes signed-contract installer packets to the approved Grok inbox", () => {
+it("keeps the technical-measure handoff on its existing inbox", () => {
   expect(INSTALLER_FORM_RECIPIENT).toBe("wcbot@mail.grokbot.com");
+  expect(DEFAULT_INSTALLER_PACKET_RECIPIENTS).toEqual([
+    "mtsinstallations@gmail.com",
+    "mtsshutters@mail.grokbot.com",
+  ]);
 });
 
 describe("installer COD adjustment", () => {

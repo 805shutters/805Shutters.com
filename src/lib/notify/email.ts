@@ -25,7 +25,7 @@ export function isResendConfigured(): boolean {
 }
 
 export async function sendEmail(input: {
-  to: string | null | undefined;
+  to: string | readonly string[] | null | undefined;
   cc?: string[];
   subject: string;
   html: string;
@@ -35,8 +35,10 @@ export async function sendEmail(input: {
   idempotencyKey?: string;
   signal?: AbortSignal;
 }): Promise<EmailResult> {
-  const to = (input.to || "").trim();
-  if (!to) return { sent: false, skipped: "no recipient email" };
+  const to = (Array.isArray(input.to) ? input.to : [input.to || ""])
+    .map((recipient) => String(recipient || "").trim())
+    .filter(Boolean);
+  if (to.length === 0) return { sent: false, skipped: "no recipient email" };
   if (!isResendConfigured()) return { sent: false, skipped: "resend not configured" };
 
   try {
@@ -49,7 +51,7 @@ export async function sendEmail(input: {
       },
       body: JSON.stringify({
         from: input.from || resendFromAddress(),
-        to: [to],
+        to,
         ...(input.cc?.length ? { cc: input.cc } : {}),
         subject: input.subject,
         html: input.html,

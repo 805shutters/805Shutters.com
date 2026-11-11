@@ -16,16 +16,23 @@ import type { InstallationHandoffDeliveryState } from "@/lib/crm/installation-ha
 
 export const INSTALLER_FORM_FROM = "805 Shutters <805@805shutters.com>";
 export const INSTALLER_FORM_CC = "mtsinstallations@gmail.com";
+export const DEFAULT_INSTALLER_PACKET_RECIPIENTS = [
+  "mtsinstallations@gmail.com",
+  "mtsshutters@mail.grokbot.com",
+] as const;
 const BASE_VERSION = "base-v1";
 const BASE_RETRY_MINUTES = 5;
+const EMAIL_PATTERN = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
 
 type InstallerOutboxKind = "base_packet" | "installation_handoff";
 type InstallerOutboxStatus = "pending" | "processing" | "retry" | "uncertain" | "accepted" | "sent" | "blocked";
 
 export type FrozenInstallerEmail = {
-  to: typeof INSTALLER_FORM_RECIPIENT;
-  // Retained for historical frozen payload typing; new packets use the native To only.
-  cc?: [typeof INSTALLER_FORM_CC];
+  to: string | readonly string[];
+  // Historical handoff payloads may carry the previous installer CC.
+  // A new base packet leaves this empty.
+  cc?: readonly string[];
+  bcc?: readonly string[];
   from: typeof INSTALLER_FORM_FROM;
   subject: string;
   html: string;
@@ -86,12 +93,46 @@ function installerUrl(token: string) {
 
 class FrozenPayloadError extends Error {}
 
-function assertFrozenPayload(payload: FrozenInstallerEmail) {
+export function installerPacketRecipients(): string[] {
+  const configured = process.env.INSTALLER_PACKET_RECIPIENTS?.trim();
+  const source = configured || DEFAULT_INSTALLER_PACKET_RECIPIENTS.join(",");
+  const recipients = [...new Set(source.split(",").map((item) => item.trim().toLowerCase()).filter(Boolean))];
+  if (recipients.length === 0 || recipients.some((recipient) => !EMAIL_PATTERN.test(recipient))) {
+    throw new FrozenPayloadError("Installer packet recipients are not configured.");
+  }
+  return recipients;
+}
+
+function recipientList(value: FrozenInstallerEmail["to"] | null | undefined): string[] {
+  return (Array.isArray(value) ? value : [value || ""]).map((item) => item.trim()).filter(Boolean);
+}
+
+function sameRecipients(actual: readonly string[], expected: readonly string[]) {
+  return actual.length === expected.length && actual.every((item, index) => item === expected[index]);
+}
+
+function envelopeRecipient(claim: InstallerOutboxClaim) {
+  const recipients = recipientList(claim.payload?.to);
+  if (recipients.length > 0) return recipients.join(",");
+  return claim.kind === "base_packet" ? installerPacketRecipients().join(",") : INSTALLER_FORM_RECIPIENT;
+}
+
+function assertFrozenPayload(payload: FrozenInstallerEmail, kind: InstallerOutboxKind) {
+  const to = recipientList(payload.to);
+  const cc = payload.cc || [];
+  const bcc = payload.bcc || [];
+  const baseDestination = kind === "base_packet"
+    && sameRecipients(to, installerPacketRecipients())
+    && cc.length === 0
+    && bcc.length === 0;
+  const handoffDestination = kind === "installation_handoff"
+    && payload.to === INSTALLER_FORM_RECIPIENT
+    && bcc.length === 0
+    && (cc.length === 0 || (cc.length === 1 && cc[0] === INSTALLER_FORM_CC));
+  const quoteLink = /\/quote\//i.test(payload.html) || /\/quote\//i.test(payload.text);
   if (
-    payload.to !== INSTALLER_FORM_RECIPIENT ||
-    (payload.cc !== undefined && (
-      !Array.isArray(payload.cc) || payload.cc.length !== 1 || payload.cc[0] !== INSTALLER_FORM_CC
-    )) ||
+    (!baseDestination && !handoffDestination) ||
+    quoteLink ||
     payload.from !== INSTALLER_FORM_FROM ||
     !payload.idempotencyKey ||
     !payload.subject ||
@@ -106,8 +147,33 @@ function assertFrozenPayload(payload: FrozenInstallerEmail) {
 
 function expectedIdempotencyKey(claim: InstallerOutboxClaim, formId: string) {
   return claim.kind === "base_packet"
-    ? `805-installer-form-${formId}-${BASE_VERSION}-${INSTALLER_FORM_RECIPIENT}`
+    ? `805-installer-form-${formId}-${BASE_VERSION}-${installerPacketRecipients().join(",")}`
     : `805-installer-handoff-${formId}-${claim.version_key.slice(0, 24)}-${INSTALLER_FORM_RECIPIENT}`;
+}
+
+export async function sendInstallerPacketEmail(payload: FrozenInstallerEmail): Promise<EmailResult> {
+  const cc = payload.cc || [];
+  const bcc = payload.bcc || [];
+  const to = recipientList(payload.to);
+  const historicalHandoffCopy = to.length === 1
+    && to[0] === INSTALLER_FORM_RECIPIENT
+    && cc.length === 1
+    && cc[0] === INSTALLER_FORM_CC
+    && bcc.length === 0;
+  if (bcc.length > 0 || (cc.length > 0 && !historicalHandoffCopy)) {
+    throw new FrozenPayloadError("The installer packet cannot copy any address.");
+  }
+  return sendEmail({
+    to,
+    ...(historicalHandoffCopy ? { cc: [INSTALLER_FORM_CC] } : {}),
+    from: payload.from,
+    subject: payload.subject,
+    html: payload.html,
+    text: payload.text,
+    attachments: payload.attachments,
+    idempotencyKey: payload.idempotencyKey,
+    signal: AbortSignal.timeout(120_000),
+  });
 }
 
 async function defaultClaim(supabase: SupabaseClient, quoteId?: string) {
@@ -153,8 +219,16 @@ async function defaultPrepareBase(
   const balanced = await refreshInstallerCustomerBalance(supabase, form) as InstallerFormRow;
   const url = installerUrl(balanced.public_token);
   const message = buildInstallerFormEmail(balanced, url);
+  const recipients = installerPacketRecipients();
+  const customerEmail = balanced.customer_snapshot.email?.trim().toLowerCase() || "";
+  if (customerEmail && recipients.includes(customerEmail)) {
+    throw new FrozenPayloadError("The installer packet cannot be addressed to the customer.");
+  }
+  if (/\/quote\//i.test(message.html) || /\/quote\//i.test(message.text) || /\/quote\//i.test(url)) {
+    throw new FrozenPayloadError("The installer packet cannot include a quote link.");
+  }
   const payload: FrozenInstallerEmail = {
-    to: INSTALLER_FORM_RECIPIENT,
+    to: recipients,
     from: INSTALLER_FORM_FROM,
     subject: message.subject,
     html: message.html,
@@ -164,9 +238,9 @@ async function defaultPrepareBase(
       content: buildInstallerFormPdf(balanced, url).toString("base64"),
       contentType: "application/pdf",
     }],
-    idempotencyKey: `805-installer-form-${balanced.id}-${BASE_VERSION}-${INSTALLER_FORM_RECIPIENT}`,
+    idempotencyKey: `805-installer-form-${balanced.id}-${BASE_VERSION}-${recipients.join(",")}`,
   };
-  assertFrozenPayload(payload);
+  assertFrozenPayload(payload, "base_packet");
   return { form: balanced, payload };
 }
 
@@ -208,7 +282,7 @@ async function defaultPrepareHandoff(
     ],
     idempotencyKey: `805-installer-handoff-${prepared.id}-${handoff.sha256.slice(0, 24)}-${INSTALLER_FORM_RECIPIENT}`,
   };
-  assertFrozenPayload(payload);
+  assertFrozenPayload(payload, "installation_handoff");
   return { form: prepared, payload };
 }
 
@@ -287,7 +361,7 @@ async function defaultRecordAccepted(
   const patch = {
     status: workflowStatus(current, "sent"),
     sent_at: at,
-    email_recipient: INSTALLER_FORM_RECIPIENT,
+    email_recipient: envelopeRecipient(claim),
     email_message_id: result.id,
     email_error: null,
     meta: {
@@ -362,7 +436,7 @@ const defaults: InstallerDeliveryDependencies = {
   discoverHandoff: discoverAndEnqueueInstallerHandoff,
   recordFormFailure: defaultRecordFormFailure,
   recordAccepted: defaultRecordAccepted,
-  send: (payload) => sendEmail({ ...payload, signal: AbortSignal.timeout(120_000) }),
+  send: (payload) => sendInstallerPacketEmail(payload),
   stats: defaultStats,
   now: () => new Date().toISOString(),
 };
@@ -471,7 +545,7 @@ export async function processInstallerDeliveryOutbox(
         : await (claim.kind === "base_packet" ? dependencies.prepareBase : dependencies.prepareHandoff)(supabase, claim);
       form = prepared.form;
       lastForm = form;
-      assertFrozenPayload(prepared.payload);
+      assertFrozenPayload(prepared.payload, claim.kind);
       if (
         claim.payload &&
         (

@@ -22,29 +22,25 @@ const SALE_RECORDED_QUOTE_STATUSES = new Set([
 ]);
 
 /**
- * The installer packet belongs to the recorded sale, not to an optional
- * customer/shop notification. Later lifecycle statuses remain eligible so an
- * explicit retry can repair a handoff that was missed while entering `sold`.
+ * The installer packet belongs to the recorded sale. A missing signature,
+ * a shop-notification flag, or a later lifecycle status does not remove it.
+ * The database trigger creates the single queue row; this helper only asks
+ * the worker to send that row.
  */
 export function quoteRequiresInstallerDelivery(
   quote: SoldQuoteInstallerCandidate,
 ): boolean {
   const meta = quote.meta || {};
+  const status = String(quote.status || "").toLowerCase();
   const fixtureName = /(^|[^a-z])(test|fixture|sample|demo)([^a-z]|$)/i.test(quote.customer_name || "");
   const excluded = Boolean(
     quote.archived_at ||
-    String(quote.status || "").toLowerCase() === "archived" ||
+    status === "archived" ||
+    status === "lost" ||
     meta.historical_recordkeeping_only === true ||
-    meta.no_external_notification === true ||
-    meta.no_installer_form === true ||
     fixtureName,
   );
-  const saleRecorded = SALE_RECORDED_QUOTE_STATUSES.has(String(quote.status || "").toLowerCase());
-  // Some callers intentionally pass only {id,status}. Let the service-role RPC
-  // establish signature truth from the durable quote instead of suppressing a
-  // legitimate immediate repair because the projection was partial.
-  const signatureKnownMissing = Object.prototype.hasOwnProperty.call(quote, "signed_at") && !quote.signed_at;
-  return Boolean(!excluded && quote.id && saleRecorded && !signatureKnownMissing);
+  return Boolean(!excluded && quote.id && SALE_RECORDED_QUOTE_STATUSES.has(status));
 }
 
 /**
