@@ -1,5 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { bookingThankYouPath, handOffBooking } from "@/lib/booking/browser-receipt";
+
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { losAngelesDateString } from "@/lib/booking/availability";
@@ -61,6 +64,7 @@ function trackingContext() {
 
 export function ConsultationBooking({ active = true, className = "", heading,
   showClose = false, onClose, onDone }: BookingCalendarProps) {
+  const router = useRouter();
   const [requestMode, setRequestMode] = useState(false);
   const [month, setMonth] = useState(() => losAngelesDateString().slice(0, 7));
   const [availability, setAvailability] = useState<Availability | null>(null);
@@ -280,11 +284,14 @@ export function ConsultationBooking({ active = true, className = "", heading,
         if (response.status === 409) setRefresh(n => n + 1);
         throw new Error(result.message || "We couldn’t finish booking. Please try again.");
       }
+      if (!requestMode) {
+        const eventId = handOffBooking(result, { variant:"standard", ...selection, dateLabel:dateLabel(selection.date),
+          timeLabel:timeLabel(selection.time), address, followUpRequested });
+        trackBookingEvent({eventId, jobId:result.jobId, productTypes, windowCount, followUpRequested, ...trackingContext()});
+        router.replace(bookingThankYouPath);
+      }
       setBookedFollowUp(followUpRequested);
       setComplete(true);
-      // The outbox is asynchronous. Queued or provider-accepted messages are not delivery proof.
-      if (!requestMode) trackBookingEvent({ eventId: result.eventId || result.leadId, jobId: result.jobId, productTypes, windowCount,
-        followUpRequested, ...trackingContext() });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "We couldn’t finish booking. Please try again.");
     } finally {

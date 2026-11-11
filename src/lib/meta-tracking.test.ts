@@ -41,3 +41,16 @@ it("uses the booking landing campaign even when an older campaign is in session 
   history.replaceState(null, "", "/book-consultation/?utm_source=test&utm_medium=cpc&utm_campaign=verify&utm_content=roman-book-now");
   expect(getLeadAttribution()).toMatchObject({ utm_source:"test",utm_medium:"cpc",utm_campaign:"verify",utm_content:"roman-book-now" });
 });
+
+it("emits one Google booking and one configured Ads conversion per saved booking, independent of the URL", () => {
+  vi.stubEnv("NEXT_PUBLIC_GOOGLE_ADS_ID","AW-123"); vi.stubEnv("NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL","example");
+  const gtag = vi.fn(); window.gtag = gtag;
+  try {
+    history.replaceState(null,"","/booking-thank-you/?lead_id=made-up");
+    trackBookingEvent({});
+    expect(gtag).not.toHaveBeenCalled();
+    for (const id of ["same-booking","same-booking","second-booking"]) trackBookingEvent({eventId:id});
+    expect(gtag.mock.calls.filter(c=>c[1]==="booking_confirmed").map(c=>c[2].transaction_id)).toEqual(["same-booking","second-booking"]);
+    expect(gtag.mock.calls.filter(c=>c[1]==="conversion").map(c=>c[2])).toEqual(["same-booking","second-booking"].map(transaction_id=>({transaction_id,value:1,currency:"USD",send_to:"AW-123/example"})));
+  } finally { delete window.gtag; }
+});

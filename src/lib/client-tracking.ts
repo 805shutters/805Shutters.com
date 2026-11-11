@@ -241,13 +241,21 @@ export function trackBookingStep(params: BookingStepParams) {
   });
 }
 
+const countedBookings = new Set<string>();
+
 export function trackBookingEvent(params: BookingEventParams = {}) {
   if (typeof window === "undefined") {
     return;
   }
 
   const eventId = params.eventId;
-  if (!eventId) return; // Only a confirmed, saved booking is a conversion.
+  if (!eventId || countedBookings.has(eventId)) return;
+  const key = "805.counted-booking:" + eventId;
+  try {
+    if (window.sessionStorage.getItem(key)) return;
+    window.sessionStorage.setItem(key, "1");
+  } catch { /* Memory still protects the current document when storage is disabled. */ }
+  countedBookings.add(eventId);
   const pagePath = params.pagePath || window.location.pathname;
   const productTypes = productInterestLabel(params.productTypes);
   const eventParams = {
@@ -262,9 +270,10 @@ export function trackBookingEvent(params: BookingEventParams = {}) {
     ...attributionEventParams(params)
   };
 
-  window.gtag?.("event", "generate_lead", {
-    ...eventParams,
-    send_to: googleAdsSendTo(process.env.NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL)
+  window.gtag?.("event", "booking_confirmed", { ...eventParams, transaction_id: eventId });
+  const destination = googleAdsSendTo(process.env.NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL);
+  if(destination) window.gtag?.("event", "conversion", {
+    send_to: destination, value: 1, currency: "USD", transaction_id: eventId
   });
 
   metaPixel(
@@ -291,4 +300,10 @@ export function trackBookingEvent(params: BookingEventParams = {}) {
     has_job_id: Boolean(params.jobId),
     ...attributionEventParams(params)
   });
+}
+
+// An SMS handoff, a submitted text request and AI usage have different meanings.
+// No names, phone numbers, chat content or form values belong in these events.
+export function trackAsk805(action: "sms_open" | "text_form_open" | "text_request_accepted" | "ai_open" | "ai_answer", source = "widget") {
+  window.gtag?.("event", "ask805_" + action, { source, page_path: window.location.pathname });
 }

@@ -4,6 +4,8 @@ import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { BookingCalendar } from "./BookingCalendar";
 
+const replace = vi.hoisted(()=>vi.fn());
+vi.mock("next/navigation",()=>({useRouter:()=>({replace})}));
 vi.mock("@/lib/client-tracking", () => ({ getLeadAttribution: () => ({}), trackBookingEvent: vi.fn(), trackBookingStep: vi.fn() }));
 vi.mock("@/components/address/AddressAutocomplete", () => ({
   AddressAutocomplete: ({ onResolved }: { onResolved: (address: { fullAddress: string }) => void }) =>
@@ -369,7 +371,7 @@ it("shows offered times as regular booking within the request picker and recheck
   ];
   const fetchMock = vi.fn().mockImplementation(async (url: string) => url.includes('availability')
     ? ok(available(url.includes('mode=request') ? { days: [{ date: '2026-09-28', day: 28, available: true, slots: requestSlots }] }
-      : { addressChecked: url.includes('address=') })) : ok({ leadId: 'test', jobId: 'test' }));
+      : { addressChecked: url.includes('address=') })) : ok({ eventId: 'test', leadId: 'test', jobId: 'test' }));
   const { host, click } = await mount(fetchMock);
   await click('28');
   expect(host.querySelector('.consultation-booking__duration-note')?.textContent).toContain('30 minutes to an hour and a half');
@@ -394,6 +396,7 @@ it("shows offered times as regular booking within the request picker and recheck
   await act(async () => host.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
   expect(fetchMock.mock.calls.filter(([url]) => url === '/api/booking/')).toHaveLength(1);
   expect(fetchMock.mock.calls.filter(([url]) => url === '/api/booking/time-request/')).toHaveLength(0);
+  expect(replace).toHaveBeenLastCalledWith('/booking-thank-you/');
   expect(host.textContent).toContain('Appointment confirmed');
 });
 
@@ -439,8 +442,9 @@ it.each([true, false])("submits and retains follow-up choice %s across a failed 
   expect(requests).toHaveLength(2);
   expect(requests[0]).toMatchObject({ followUpRequested });
   expect(requests[1]).toEqual(requests[0]);
-  fetchMock.mockResolvedValue(ok({ leadId: 'test', jobId: 'test' }));
+  fetchMock.mockResolvedValue(ok({ eventId: 'test', leadId: 'test', jobId: 'test' }));
   await send();
+  expect(replace).toHaveBeenLastCalledWith('/booking-thank-you/');
   expect(host.textContent).toContain('Appointment confirmed');
   expect(host.textContent).toContain('Jessica will be there.');
   expect(host.textContent).toContain('Monday, September 28');

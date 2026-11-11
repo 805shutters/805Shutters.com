@@ -24,7 +24,8 @@ export function LeadForm({
     setState("submitting");
     setMessage("");
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const attribution = getLeadAttribution();
     const payload = {
       ...Object.fromEntries(formData.entries()),
@@ -53,7 +54,7 @@ export function LeadForm({
         pagePath: window.location.pathname,
         ...attribution
       });
-      event.currentTarget.reset();
+      form.reset();
       window.setTimeout(() => {
         const leadParam = result.id ? `?lead_id=${encodeURIComponent(result.id)}` : "";
         window.location.assign(`/thank-you/${leadParam}`);

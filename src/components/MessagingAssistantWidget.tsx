@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
-import { getLeadAttribution } from "@/lib/client-tracking";
+import { getLeadAttribution, trackAsk805 } from "@/lib/client-tracking";
 
 type WidgetMessage = {
   id: string;
@@ -24,7 +24,7 @@ type AssistantResponse = {
 
 type AssistantView = "closed" | "choices" | "chat" | "text" | "text-sent";
 
-const textQuestionHref = `sms:+18058069344?&body=${encodeURIComponent(
+const textQuestionHref = `sms:+18058069344?body=${encodeURIComponent(
   "Hi 805 Shutters, I have a question: "
 )}`;
 
@@ -65,7 +65,10 @@ export function MessagingAssistantWidget() {
   const open = view !== "closed";
 
   useEffect(() => {
+    const openText = () => { trackAsk805("text_form_open", "header"); setView("text"); };
+    window.addEventListener("805:open-text-request", openText);
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(window.navigator.userAgent));
+    return () => window.removeEventListener("805:open-text-request", openText);
   }, []);
 
   useEffect(() => {
@@ -125,6 +128,7 @@ export function MessagingAssistantWidget() {
           content: body.reply || "I could not find a reliable answer for that yet."
         }
       ]);
+      trackAsk805("ai_answer");
       setLinks(body.links || []);
       setSuggestions(body.suggestions?.length ? body.suggestions : starterSuggestions);
     } catch (submitError) {
@@ -167,6 +171,7 @@ export function MessagingAssistantWidget() {
         throw new Error(body.message || "We could not send your message right now.");
       }
 
+      trackAsk805("text_request_accepted");
       setView("text-sent");
       setTextBody("");
     } catch (submitError) {
@@ -207,7 +212,7 @@ export function MessagingAssistantWidget() {
           <div className="assistant-choice-panel__body">
             <div className="assistant-choice-list" aria-label="Ask 805 options">
               {isMobile ? (
-                <a className="assistant-choice assistant-choice--text" href={textQuestionHref}>
+                <a className="assistant-choice assistant-choice--text" href={textQuestionHref} onClick={() => trackAsk805("sms_open")}>
                   <span className="assistant-choice__icon" aria-hidden="true">
                     <PhoneIcon />
                   </span>
@@ -218,7 +223,7 @@ export function MessagingAssistantWidget() {
                   <ArrowIcon />
                 </a>
               ) : (
-                <button type="button" className="assistant-choice assistant-choice--text" onClick={() => setView("text")}>
+                <button type="button" className="assistant-choice assistant-choice--text" onClick={() => {trackAsk805("text_form_open"); setView("text");}}>
                   <span className="assistant-choice__icon" aria-hidden="true">
                     <PhoneIcon />
                   </span>
@@ -230,7 +235,7 @@ export function MessagingAssistantWidget() {
                 </button>
               )}
 
-              <button type="button" className="assistant-choice" onClick={() => setView("chat")}>
+              <button type="button" className="assistant-choice" onClick={() => {trackAsk805("ai_open"); setView("chat");}}>
                 <span className="assistant-choice__icon" aria-hidden="true">
                   <SparkIcon />
                 </span>
@@ -322,7 +327,7 @@ export function MessagingAssistantWidget() {
               text you back at {textPhone.trim()} shortly.
             </p>
             <p>Need us sooner? Call or text (805) 806-9344.</p>
-            <button type="button" className="assistant-text-submit" onClick={() => setView("chat")}>
+            <button type="button" className="assistant-text-submit" onClick={() => {trackAsk805("ai_open"); setView("chat");}}>
               Ask the AI assistant while you wait
             </button>
           </div>
