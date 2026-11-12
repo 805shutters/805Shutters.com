@@ -154,7 +154,7 @@ beforeAll(async () => {
 }, 30000);
 beforeEach(async () => {
   await db.exec(
-    "truncate booking_travel_buffer_exceptions,booking_outbox,booking_requests,booking_route_protections,crm_quotes,crm_calendar_events,crm_jobs,leads,sales_805_appointments,crm_availability_slots cascade;",
+    "truncate booking_manual_travel_waivers,booking_manual_override_log,booking_travel_buffer_exceptions,booking_outbox,booking_requests,booking_route_protections,crm_quotes,crm_calendar_events,crm_jobs,leads,sales_805_appointments,crm_availability_slots cascade;",
   );
 });
 afterAll(() => db.close());
@@ -538,7 +538,7 @@ describe("booking database authority", () => {
     ).rejects.toThrow(/BOOKING_TRAVEL/);
 
     await db.exec(
-      "truncate booking_travel_buffer_exceptions,booking_outbox,booking_requests,booking_route_protections,crm_quotes,crm_calendar_events,crm_jobs,leads,sales_805_appointments,crm_availability_slots cascade;",
+      "truncate booking_manual_travel_waivers,booking_manual_override_log,booking_travel_buffer_exceptions,booking_outbox,booking_requests,booking_route_protections,crm_quotes,crm_calendar_events,crm_jobs,leads,sales_805_appointments,crm_availability_slots cascade;",
     );
     pair = await protectedPair();
     moved = {
@@ -891,7 +891,241 @@ describe("atomic staff cancellations and reschedules", () => {
     expect(row.status).toBe('scheduled');
     expect(new Date(row.start_at).toISOString()).toBe(candidateVisit(date,'14:00','',5).start_at);
   });
+});
 
+async function commitOverride(
+  time = "11:00",
+  key = randomUUID(),
+  extra: {
+    revision?: string;
+    hash?: string;
+    event?: Record<string, unknown>;
+    proofs?: unknown[];
+    effects?: unknown[];
+    flag?: boolean | null;
+    by?: string | null;
+    reason?: string | null;
+  } = {},
+) {
+  const event = {
+    ...candidateVisit(date, time, "123 Main St", 5),
+    ...extra.event,
+  };
+  const proof = {
+    eventId: event.id,
+    signature: eventSignature(event),
+    checkedAt: new Date().toISOString(),
+    previous: null,
+    next: null,
+  };
+  return db.query<{ result: Record<string, unknown> }>(
+    "select public.booking_commit_manual_override($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) result",
+    [
+      key,
+      extra.hash || "override-hash",
+      extra.revision || (await snapshot()).revision,
+      JSON.stringify(lead),
+      JSON.stringify(job),
+      JSON.stringify(event),
+      JSON.stringify(extra.proofs || [proof]),
+      JSON.stringify(
+        extra.effects || [
+          { kind: "google_calendar", payload: {} },
+          { kind: "customer_sms", payload: {} },
+        ],
+      ),
+      extra.flag === undefined ? true : extra.flag,
+      extra.by === undefined ? "Mike Shepard" : extra.by,
+      extra.reason === undefined
+        ? "Owner ordered this consultation despite the route recheck."
+        : extra.reason,
+    ],
+  );
+}
+
+describe("explicit manual booking override", () => {
+  it("books through the normal commit when travel buffer or route recheck would refuse, and writes the audit log", async () => {
+    await publish();
+    await commit();
+    await expect(commit("11:00")).rejects.toThrow(/BOOKING_ROUTE_RECHECK/);
+    const saved = await commitOverride("11:00");
+    expect(saved.rows[0].result.assignedTo).toBe("Jessica");
+    const jobs = await db.query<{ customer_name: string }>(
+      "select customer_name from crm_jobs order by created_at",
+    );
+    expect(jobs.rows).toHaveLength(2);
+    const log = await db.query<{
+      event_id: string;
+      override_by: string;
+      override_reason: string;
+      created_at: string;
+    }>(
+      "select event_id, override_by, override_reason, created_at from booking_manual_override_log",
+    );
+    expect(log.rows[0]).toMatchObject({
+      event_id: saved.rows[0].result.calendarEventId,
+      override_by: "Mike Shepard",
+      override_reason:
+        "Owner ordered this consultation despite the route recheck.",
+    });
+    expect(new Date(log.rows[0].created_at).valueOf()).not.toBeNaN();
+    expect(
+      (
+        await db.query<{ n: number }>(
+          "select count(*)::int n from booking_outbox where kind='google_calendar'",
+        )
+      ).rows[0].n,
+    ).toBe(1);
+  });
+
+  it("still blocks a normal booking, a missing flag, and an overlapping override", async () => {
+    await publish();
+    await commit();
+    await expect(
+      commitOverride("11:00", randomUUID(), { flag: false }),
+    ).rejects.toThrow(/BOOKING_ROUTE_RECHECK/);
+    await expect(
+      commitOverride("11:00", randomUUID(), { flag: null }),
+    ).rejects.toThrow(/BOOKING_ROUTE_RECHECK/);
+    await expect(commitOverride("10:30")).rejects.toThrow(/BOOKING_CONFLICT/);
+    expect(
+      (
+        await db.query<{ n: number }>(
+          "select count(*)::int n from booking_manual_override_log",
+        )
+      ).rows[0].n,
+    ).toBe(0);
+    expect(
+      (await db.query<{ n: number }>("select count(*)::int n from crm_jobs"))
+        .rows[0].n,
+    ).toBe(1);
+  });
+
+  it("rejects a forged payload, a blank who or why, and a service-role attempt to plant the grant", async () => {
+    await publish();
+    await expect(
+      commit("10:00", randomUUID(), {
+        event: { meta: { windowCount: 5, manual_override: true } },
+      }),
+    ).rejects.toThrow(/client-forged/);
+    await expect(
+      commitOverride("10:00", randomUUID(), {
+        event: { meta: { windowCount: 5, override_reason: "forged" } },
+      }),
+    ).rejects.toThrow(/client-forged/);
+    await commit();
+    await expect(
+      commitOverride("11:00", randomUUID(), { by: "   ", reason: "Owner said so" }),
+    ).rejects.toThrow(/who and why/);
+    await expect(
+      commitOverride("11:00", randomUUID(), { by: "Mike Shepard", reason: " " }),
+    ).rejects.toThrow(/who and why/);
+    await db.exec("set role service_role");
+    try {
+      await expect(
+        db.exec(
+          "insert into booking_private.override_grants(nonce, override_by, override_reason, txid) values (gen_random_uuid(), 'Mike Shepard', 'forged', txid_current())",
+        ),
+      ).rejects.toThrow(/permission denied/);
+    } finally {
+      await db.exec("reset role");
+    }
+    const event = candidateVisit(date, "11:00", "123 Main St", 5);
+    const proof = {
+      eventId: event.id,
+      signature: eventSignature(event),
+      checkedAt: new Date().toISOString(),
+      previous: null,
+      next: null,
+    };
+    await expect(
+      db.query(
+        "select public.booking_commit($1,$2,$3,$4,$5,$6,$7,$8) from (select set_config('booking.override_nonce', gen_random_uuid()::text, true)) planted",
+        [
+          randomUUID(),
+          "planted-hash",
+          (await snapshot()).revision,
+          JSON.stringify(lead),
+          JSON.stringify(job),
+          JSON.stringify(event),
+          JSON.stringify([proof]),
+          JSON.stringify([{ kind: "google_calendar", payload: {} }]),
+        ],
+      ),
+    ).rejects.toThrow(/BOOKING_ROUTE_RECHECK/);
+    expect(
+      (
+        await db.query<{ n: number }>(
+          "select count(*)::int n from booking_manual_override_log",
+        )
+      ).rows[0].n,
+    ).toBe(0);
+    expect(
+      (await db.query<{ n: number }>("select count(*)::int n from crm_jobs"))
+        .rows[0].n,
+    ).toBe(1);
+  });
+
+  it("waives the extra 15-minute buffer and still enforces the daily appointment limit", async () => {
+    await publish();
+    const previous = candidateVisit(date, "08:00", "Previous Test Address", 5);
+    const next = candidateVisit(date, "12:00", "Next Test Address", 5);
+    for (const visit of [previous, next]) {
+      await db.query(
+        "insert into crm_calendar_events(id,title,start_at,end_at,assigned_to,event_type,location) values($1,'neighbor',$2,$3,'Jessica','sales_consult',$4)",
+        [visit.id, visit.start_at, visit.end_at, visit.location],
+      );
+    }
+    const event = candidateVisit(date, "10:00", "123 Main St", 5);
+    const proof = {
+      eventId: event.id,
+      signature: eventSignature(event),
+      checkedAt: new Date().toISOString(),
+      previous: {
+        id: previous.id,
+        signature: eventSignature(previous),
+        departureAt: previous.end_at,
+        seconds: 45 * 60 + 1,
+      },
+      next: {
+        id: next.id,
+        signature: eventSignature(next),
+        departureAt: event.end_at,
+        seconds: 45 * 60,
+      },
+    };
+    await expect(
+      commit("10:00", randomUUID(), { event, proofs: [proof] }),
+    ).rejects.toThrow(/BOOKING_TRAVEL/);
+    const saved = await commitOverride("10:00", randomUUID(), {
+      event,
+      proofs: [proof],
+    });
+    expect(saved.rows[0].result.calendarEventId).toBe(event.id);
+    expect(
+      (
+        await db.query<{ event_id: string }>(
+          "select event_id from booking_manual_override_log",
+        )
+      ).rows[0].event_id,
+    ).toBe(event.id);
+    const filler = candidateVisit(date, "15:00", "Mike address", 5);
+    await db.query(
+      "insert into crm_calendar_events(id,title,start_at,end_at,assigned_to,event_type,location) values($1,'full',$2,$3,'Mike','sales_consult',$4)",
+      [filler.id, filler.start_at, filler.end_at, filler.location],
+    );
+    await expect(commitOverride("16:00")).rejects.toThrow(/BOOKING_FULL/);
+    expect(
+      (
+        await db.query<{ n: number }>(
+          "select count(*)::int n from booking_manual_override_log",
+        )
+      ).rows[0].n,
+    ).toBe(1);
+  });
+});
+
+describe("atomic staff cancellation access", () => {
   it("rejects stale cancellation, missing actor, and direct public access", async () => {
     const { event } = await protectedPair();
     const previous = (await db.query<{ e: unknown }>('select to_jsonb(e) e from crm_calendar_events e where id=$1',[event.id])).rows[0].e;

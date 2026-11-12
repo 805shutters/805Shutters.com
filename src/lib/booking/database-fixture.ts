@@ -31,6 +31,7 @@ export function bookingDatabaseFixture(beforeAuthority = "") {
     ${read("20260926182740_consultation_time_requests.sql")}
     ${read("20260927194921_meta_booking_launch.sql")}
     ${read("20260928223000_atomic_staff_calendar_changes.sql")}
+    ${read("20261112182519_manual_booking_protection_override.sql")}
     grant all on public.crm_technical_measure_forms to service_role;
     grant all on public.leads,public.crm_jobs,public.crm_quotes,public.crm_calendar_events,public.crm_availability_slots,public.sales_805_appointments to service_role;`;
 }
