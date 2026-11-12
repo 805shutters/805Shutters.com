@@ -40,6 +40,7 @@ vi.mock("@/lib/booking/travel", async (original) => ({
 }));
 import { POST as requestPOST } from "@/app/api/booking/time-request/route";
 import { POST } from "@/app/api/booking/route";
+import { POST as staffOverridePOST } from "@/app/api/crm/booking/override/route";
 import { GET as publicGET } from "@/app/api/booking/availability/route";
 import { GET as staffGET } from "@/app/api/crm/availability/route";
 const db = new PGlite();
@@ -87,7 +88,7 @@ beforeAll(async () => {
 }, 30000);
 beforeEach(async () => {
   await db.exec(
-    "truncate booking_outbox,booking_requests,booking_route_protections,crm_quotes,crm_calendar_events,crm_jobs,leads,sales_805_appointments,crm_availability_slots cascade;",
+    "truncate booking_manual_travel_waivers,booking_manual_override_log,booking_outbox,booking_requests,booking_route_protections,crm_quotes,crm_calendar_events,crm_jobs,leads,sales_805_appointments,crm_availability_slots cascade;",
   );
   state.after.mockClear();
   state.client = client;
@@ -458,6 +459,66 @@ it("does not queue an owner alert for an unavailable Meta appointment", async ()
   expect(response.status).toBe(409);
   expect((await db.query("select * from booking_outbox")).rows).toHaveLength(0);
 });
+it("rejects a public forged override and lets an authenticated staff override book, log, and queue calendar sync", async () => {
+  await publish();
+  const forged = await submit({
+    ...base,
+    manual_override: true,
+    override_by: "Mike Shepard",
+    override_reason: "Owner ordered it",
+    idempotencyKey: randomUUID(),
+  });
+  expect(forged.status).toBe(400);
+  expect((await forged.json()).message).toContain("public booking form");
+  expect((await db.query<{ n: number }>("select count(*)::int n from leads")).rows[0].n).toBe(0);
+
+  const blank = await staffOverridePOST(new NextRequest("http://localhost/api/crm/booking/override", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...base, manual_override: true, override_by: " ", override_reason: "Owner ordered it", idempotencyKey: randomUUID() }),
+  }));
+  expect(blank.status).toBe(400);
+  const missing = await staffOverridePOST(new NextRequest("http://localhost/api/crm/booking/override", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...base, idempotencyKey: randomUUID() }),
+  }));
+  expect(missing.status).toBe(403);
+
+  expect((await submit({ ...base, idempotencyKey: randomUUID() })).status).toBe(200);
+  const revision = (await db.query<{ result: { revision: string } }>("select booking_schedule_snapshot('2035-10') result")).rows[0].result.revision;
+  const booked = await staffOverridePOST(new NextRequest("http://localhost/api/crm/booking/override", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...base,
+      name: "Steve Geldman",
+      phone: "8055550199",
+      time: "11:00",
+      revision,
+      manual_override: true,
+      override_by: "Mike Shepard",
+      override_reason: "Owner ordered this consultation despite the route recheck.",
+      idempotencyKey: randomUUID(),
+    }),
+  }));
+  const body = await booked.json();
+  expect(booked.status).toBe(200);
+  expect(body.assignedTo).toBe("Jessica");
+  expect(state.after).toHaveBeenCalled();
+  const jobs = await db.query<{ customer_name: string }>("select customer_name from crm_jobs");
+  expect(jobs.rows.map((row) => row.customer_name).sort()).toEqual(["Local Test", "Steve Geldman"]);
+  const log = await db.query<{ event_id: string; override_by: string; override_reason: string }>("select event_id, override_by, override_reason from booking_manual_override_log");
+  expect(log.rows).toEqual([{
+    event_id: body.calendarEventId,
+    override_by: "Mike Shepard",
+    override_reason: "Owner ordered this consultation despite the route recheck.",
+  }]);
+  expect((await db.query<{ n: number }>("select count(*)::int n from booking_outbox where kind='google_calendar'")).rows[0].n).toBeGreaterThan(0);
+  const blocked = await submit({ ...base, name: "Another Customer", phone: "8055550188", time: "12:00", idempotencyKey: randomUUID() });
+  expect(blocked.status).toBe(409);
+});
+
 it("does not queue a Meta owner alert for a regular website booking", async () => {
   await publish();
   expect((await submit({ ...base, idempotencyKey: randomUUID() })).status).toBe(200);
