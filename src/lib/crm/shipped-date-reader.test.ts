@@ -378,7 +378,7 @@ describe("shipped date settlement", () => {
   });
 
   it("limits the quote write function to received_at and manufacturer_order_ref", () => {
-    const sql = readFileSync("supabase/migrations/20261114200000_shipped_date_reader.sql", "utf8");
+    const sql = readFileSync("supabase/migrations/20261114200100_shipped_date_reader.sql", "utf8");
     const fn = sql.slice(sql.indexOf("create function public.apply_crm_quote_shipped_date"), sql.indexOf("revoke all on function public.apply_crm_quote_shipped_date"));
     expect(fn).toContain("received_at = p_received_at");
     expect(fn).toContain("manufacturer_order_ref = p_manufacturer_order_ref");

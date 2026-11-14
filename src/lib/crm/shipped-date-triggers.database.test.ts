@@ -63,7 +63,7 @@ beforeAll(async () => {
   const hold = inHouse.slice(inHouse.indexOf("create function public.hold_in_house_plan_evidence()"), inHouse.indexOf("create trigger in_house_receipt_changed"));
   await db.exec(hold);
   await db.exec("create trigger in_house_total_changed after update on crm_quotes for each row execute function hold_in_house_plan_evidence()");
-  const shipped = readFileSync("supabase/migrations/20261114200000_shipped_date_reader.sql", "utf8");
+  const shipped = readFileSync("supabase/migrations/20261114200100_shipped_date_reader.sql", "utf8");
   const apply = shipped.slice(shipped.indexOf("create function public.apply_crm_quote_shipped_date"), shipped.indexOf("revoke all on function public.apply_crm_quote_shipped_date"));
   const contacts = shipped.slice(shipped.indexOf("create or replace function public.crm_queue_google_contact()"));
   await db.exec(apply);
