@@ -43,13 +43,6 @@ import { sendAppointmentConfirmation } from "@/lib/booking/confirmation-message"
 import { isBookingDeliveryEnabled } from "@/lib/booking/delivery-config";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import {
-  deleteSyncedGoogleCalendarEvents,
-  GoogleCalendarDeleteResult,
-  GoogleCalendarSyncResult,
-  syncAppointmentToGoogleCalendars,
-  rescheduleSyncedGoogleCalendarEvents
-} from "@/lib/google/calendar";
-import {
   bookingEndIso,
   losAngelesDateString,
   losAngelesTimeString,
@@ -2695,40 +2688,7 @@ export async function createCrmCalendarEvent(
     }
   }
 
-  // Best-effort mirror to Google Calendar (service account + domain-wide
-  // delegation). Non-blocking: never throws. Persists the created Google event
-  // ids back onto the row when any calendar syncs.
-  let googleCalendarSync: GoogleCalendarSyncResult = { synced: false, results: [] };
-  try {
-    googleCalendarSync = await syncAppointmentToGoogleCalendars({
-      summary: title,
-      description: optionalText(payload.notes) || undefined,
-      location: optionalText(payload.location) || linkedJob?.address || undefined,
-      startAt,
-      endAt,
-      timeZone: "America/Los_Angeles"
-    });
-
-    if (googleCalendarSync.synced) {
-      const googleCalendarEventIds: Record<string, string> = {};
-      const googleCalendarHtmlLinks: Record<string, string> = {};
-      for (const result of googleCalendarSync.results) {
-        if (result.eventId) {
-          googleCalendarEventIds[result.calendar] = result.eventId;
-          if (result.htmlLink) googleCalendarHtmlLinks[result.calendar] = result.htmlLink;
-        }
-      }
-      await supabase
-        .from("crm_calendar_events")
-        .update({
-          meta: { ...(data.meta || {}), googleCalendarEventIds, googleCalendarHtmlLinks }
-        })
-        .eq("id", data.id);
-    }
-  } catch (error) {
-    console.warn("[crm] google calendar sync error", error);
-  }
-
+  // The calendar trigger queues booking_outbox. The booking worker writes Google.
   const assignedSalespersonSms = await sendCalendarAssignmentSms({
     assignedTo,
     title,
@@ -2761,8 +2721,7 @@ export async function createCrmCalendarEvent(
       jobId: payload.job_id || null,
       assignedSalespersonSms,
       customerConfirmation,
-      googleCalendarSynced: googleCalendarSync.synced,
-      googleCalendarSync: googleCalendarSync.results
+      googleCalendarSync: "queued"
     }
   });
 
@@ -2831,10 +2790,6 @@ export async function rescheduleCrmCalendarEvent(
   }
 
   const linkedJob = await calendarLinkedJob(supabase, data as CrmCalendarEvent);
-  const googleCalendarSync = await rescheduleSyncedGoogleCalendarEvents(
-    objectMeta(objectMeta(existing.meta).googleCalendarEventIds),
-    { startAt, endAt },
-  );
 
   const rescheduledSalespersonSms = await sendCalendarAssignmentSms({
     action: "rescheduled",
@@ -2859,7 +2814,7 @@ export async function rescheduleCrmCalendarEvent(
     metadata: {
       jobId: existing.job_id || null,
       rescheduledSalespersonSms,
-      googleCalendarSync,
+      googleCalendarSync: "queued",
       adminScheduleOverride: true,
       adminScheduleOverrideReason: "staff_manual_reschedule",
     }
@@ -2911,13 +2866,6 @@ export async function cancelCrmCalendarEvent(
   }
   const linkedJob = await calendarLinkedJob(supabase, data as CrmCalendarEvent);
 
-  let googleCalendarDelete: GoogleCalendarDeleteResult = { deleted: false, results: [], skipped: "no-google-event-ids" };
-  try {
-    googleCalendarDelete = await deleteSyncedGoogleCalendarEvents(objectMeta(objectMeta(existing.meta).googleCalendarEventIds));
-  } catch (error) {
-    console.warn("[crm] google calendar delete error", error);
-  }
-
   const canceledSalespersonSms = await sendCalendarAssignmentSms({
     action: "canceled",
     assignedTo: existing.assigned_to,
@@ -2938,9 +2886,7 @@ export async function cancelCrmCalendarEvent(
     after: data,
     metadata: {
       jobId: existing.job_id || null,
-      googleCalendarDeleted: googleCalendarDelete.deleted,
-      googleCalendarDeleteSkipped: googleCalendarDelete.skipped || null,
-      googleCalendarDelete: googleCalendarDelete.results,
+      googleCalendarSync: "queued",
       canceledSalespersonSms
     }
   });

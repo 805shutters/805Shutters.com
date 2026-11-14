@@ -33,8 +33,9 @@ it('atomic booking saves one CRM appointment, attributes it to the agent, and qu
  expect((await db.query<{n:number}>('select count(*)::int n from crm_calendar_events')).rows[0].n).toBe(1);
  const event=(await db.query<{notes:string;meta:{bookedVia:string;bookingSource:string}}>('select notes,meta from crm_calendar_events')).rows[0];
  expect(event.notes).toContain('via agent');expect(event.meta).toMatchObject({bookedVia:'agent',bookingSource:'805_phone'});
- const notices=(await db.query<{kind:string;status:string;payload:{recipient:string;bookedVia:string}}>('select kind,status,payload from booking_outbox order by kind')).rows;
- expect(notices.map(row=>[row.kind,row.status,row.payload.recipient,row.payload.bookedVia])).toEqual([['agent_staff_sms_jessica','pending','Jessica','agent'],['agent_staff_sms_mike','pending','Mike','agent']]);
+ const notices=(await db.query<{kind:string;status:string;payload:{recipient?:string;bookedVia?:string;sync?:string;action?:string}}>('select kind,status,payload from booking_outbox order by kind')).rows;
+ expect(notices.filter(row=>row.kind.startsWith('agent_staff')).map(row=>[row.kind,row.status,row.payload.recipient,row.payload.bookedVia])).toEqual([['agent_staff_sms_jessica','pending','Jessica','agent'],['agent_staff_sms_mike','pending','Mike','agent']]);
+ expect(notices.filter(row=>row.kind==='google_calendar').map(row=>[row.kind,row.status,row.payload.sync,row.payload.action])).toEqual([['google_calendar','pending','reconcile','upsert']]);
  expect((await db.query<{n:number}>("select count(*)::int n from booking_outbox where kind in ('customer_sms','customer_email')")).rows[0].n).toBe(0);
  const state=(await db.query<{body:any,revision:number}>("select body,revision from voice_805_state where id='production'")).rows[0];
  expect(state.body.entities.call[f.id].booking.verified).toBe(true);expect(Number(state.revision)).toBe(1);

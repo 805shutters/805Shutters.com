@@ -184,7 +184,10 @@ describe("booking database authority", () => {
     const rows = await db.query<{ counts: number[] }>(
       "select array[(select count(*)::int from leads),(select count(*)::int from crm_jobs),(select count(*)::int from crm_calendar_events),(select count(*)::int from crm_quotes),(select count(*)::int from booking_outbox)] counts",
     );
-    expect(rows.rows[0].counts).toEqual([1, 1, 1, 1, 1]);
+    expect(rows.rows[0].counts).toEqual([1, 1, 1, 1, 2]);
+    expect(
+      (await db.query<{ kind: string }>("select kind from booking_outbox order by kind")).rows.map((row) => row.kind),
+    ).toEqual(["customer_sms", "google_calendar"]);
   });
   it("replays a request once and rejects changed payloads", async () => {
     await publish();
@@ -198,12 +201,8 @@ describe("booking database authority", () => {
       /BOOKING_KEY_REUSED/,
     );
     expect(
-      (
-        await db.query<{ n: number }>(
-          "select count(*)::int n from booking_outbox",
-        )
-      ).rows[0].n,
-    ).toBe(1);
+      (await db.query<{ kind: string }>("select kind from booking_outbox order by kind")).rows.map((row) => row.kind),
+    ).toEqual(["customer_sms", "google_calendar"]);
   });
   it("rejects stale calendar revisions after closing hours", async () => {
     await publish();
@@ -972,10 +971,10 @@ describe("explicit manual booking override", () => {
     expect(
       (
         await db.query<{ n: number }>(
-          "select count(*)::int n from booking_outbox where kind='google_calendar'",
+          "select count(*)::int n from booking_outbox where kind='google_calendar' and payload->>'sync'='reconcile'",
         )
       ).rows[0].n,
-    ).toBe(1);
+    ).toBe(2);
   });
 
   it("still blocks a normal booking, a missing flag, and an overlapping override", async () => {
