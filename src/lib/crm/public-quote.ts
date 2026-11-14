@@ -1560,6 +1560,7 @@ async function syncSignedQuoteArtifacts(
       generatedAt: signedAt,
       customerId: customer?.id || null,
       customerName,
+      sideMark: quote.side_mark,
       customerPhone: quote.customer_phone || jobRow?.phone || null,
       customerEmail: quote.customer_email || jobRow?.email || null,
       jobsiteAddress: pub.customerAddress || jobRow?.address || null,

@@ -146,6 +146,7 @@ export type TechnicalMeasureForm = {
     phone: string | null;
     address: string | null;
     city: string | null;
+    sideMark?: string | null;
   };
   quote_snapshot: { quoteNumber: string | null; signedAt: string | null; adjustments: Record<string, unknown> };
   baseline_total: number;
@@ -556,12 +557,14 @@ export async function ensureTechnicalMeasureForm(
   ));
   const lineProvenance = expandedLines.map(({ instance }) => instance);
 
+  const storedSideMark = typeof built.side_mark === "string" ? built.side_mark.trim() : "";
   const customerSnapshot = {
     name: job.customer_name || built.customer_name || "Customer",
     email: built.customer_email || job.email || null,
     phone: built.customer_phone || job.phone || null,
     address: built.customer_address || job.address || null,
     city: job.city || null,
+    ...(storedSideMark ? { sideMark: storedSideMark } : {}),
   };
   const quoteSnapshot = { quoteNumber: built.quote_number, signedAt: built.signed_at, adjustments: parseAdjustments(built.meta) };
   const { data: form, error } = await supabase.from("crm_technical_measure_forms").insert({

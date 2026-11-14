@@ -679,6 +679,7 @@ function buildQuoteRow(
     customerName: quote.customer_name || entry?.customer_name || "Linked job",
     customerPhone: cleanOptionalText(quote.customer_phone) || (entry ? entryCustomerPhone(entry) : null),
     quoteNumber: quote.quote_number,
+    sideMark: quote.side_mark ?? null,
     soldDate,
     total,
     // The deposit actually configured on the quote (deposit_required), not a

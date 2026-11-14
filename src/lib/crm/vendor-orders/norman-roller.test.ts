@@ -106,6 +106,13 @@ describe("Norman Roller saved-draft plan", () => {
     });
   });
 
+  it("uses a stored quote side mark when the measure captured one", () => {
+    const measured = form();
+    measured.customer_snapshot = { ...measured.customer_snapshot, sideMark: "Customer 805-A1B" };
+    const plan = buildNormanRollerDraftPlan(measured, profile, new Date("2026-07-22T18:00:00.000Z"));
+    expect(plan.header?.sideMark).toBe("Customer 805-A1B");
+  });
+
   it("requires an actually submitted technical measure", () => {
     const draft = { ...form(), status: "draft" as const, submitted_at: null };
     const plan = buildNormanRollerDraftPlan(draft, profile);
