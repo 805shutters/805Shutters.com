@@ -1,4 +1,6 @@
-import { extractShippingNotice, applyShippingNotice } from './shipping-email';
+import { extractShippingNotice, applyShippingNotice, shippingOrderReferences } from './shipping-email';
+import { SHIPPING_VENDOR_GMAIL_TERMS, shippedDateWritesEnabled } from './shipped-date-config';
+import { settleShippingNoticeDates } from './shipped-date-reader';
 import { extractPdfTextBuffer as parsePdfText } from "./pdf-text";
 import { applyOrderEmailProduct } from "./apply-order-email-product";
 import { productOrderCosts } from "./product-order-cost";
@@ -157,7 +159,7 @@ function orderRecipientQuery(mailbox: string) {
 }
 
 function defaultQuery(mailbox: string) {
-  return `in:inbox ${orderRecipientQuery(mailbox)} newer_than:30d -label:Processed (from:normanusa.com OR from:orders@onyxshutters.com OR from:lotusblind.com OR subject:"Lotus & Windoware")`;
+  return `in:inbox ${orderRecipientQuery(mailbox)} newer_than:30d -label:Processed ${SHIPPING_VENDOR_GMAIL_TERMS}`;
 }
 
 export function customerOrderCogsQuery(mailbox: string, customerName: string, days = 14) {
@@ -169,7 +171,7 @@ export function customerOrderCogsQuery(mailbox: string, customerName: string, da
     .filter((token) => token.length > 1)
     .map((token) => `"${token.replace(/"/g, "")}"`)
     .join(" ");
-  const vendorTerms = `(from:normanusa.com OR from:orders@onyxshutters.com OR from:lotusblind.com OR subject:"Lotus & Windoware")`;
+  const vendorTerms = SHIPPING_VENDOR_GMAIL_TERMS;
   return `in:anywhere ${orderRecipientQuery(mailbox)} newer_than:${safeDays}d ${vendorTerms}${nameTerms ? ` ${nameTerms}` : ""}`;
 }
 
@@ -1160,12 +1162,13 @@ type OrderCogsEmailRecord = {
   raw?: Record<string, unknown>;
   gmail_message_id?: string;
   processed_at?: string | null;
+  sent_at?: string | null;
 };
 
 async function loadOrderCogsEmailRecord(supabase: CrmSupabaseClient, gmailMessageId: string) {
   const { data, error } = await supabase
     .from("crm_order_cogs_emails")
-    .select("id,applied_at,match_status,raw")
+    .select("id,applied_at,match_status,raw,sent_at")
     .eq("gmail_message_id", gmailMessageId)
     .maybeSingle();
   if (error) throw new CrmAuthError(502, "Existing invoice evidence could not be loaded; retry before applying COGS.");
@@ -1180,6 +1183,12 @@ function shouldSkipOrderCogsMessage(record: OrderCogsEmailRecord | null, autoApp
   if (!autoApply) return true;
   if (record.match_status === "skipped" && recordMeta(record.raw).emailKind === "non_order") return true;
   return Boolean(record.applied_at && record.match_status === "matched");
+}
+
+function needsShippedDateReplay(record: OrderCogsEmailRecord | null) {
+  const raw = recordMeta(record?.raw);
+  if (raw.emailKind !== "shipping" || !raw.shipping || typeof raw.shipping !== "object") return false;
+  return shippedDateWritesEnabled() ? raw.shippedDateSettled !== true : raw.shippedDateProposalLogged !== true;
 }
 
 function resolveOrderCogsAutoApply(options: ProcessOrderCogsOptions) {
@@ -1321,6 +1330,23 @@ export async function processOrderCogsInbox(
     try {
       existingRecord = await loadOrderCogsEmailRecord(supabase, listed.id);
       if (shouldSkipOrderCogsMessage(existingRecord, autoApply) && (!productAutoApply || recordMeta(existingRecord?.raw).productCompletionVerified === true)) {
+        if (productAutoApply && needsShippedDateReplay(existingRecord)) {
+          const raw = recordMeta(existingRecord?.raw);
+          const dates = await settleShippingNoticeDates(supabase, raw.shipping as Parameters<typeof settleShippingNoticeDates>[1], {
+            mailbox,
+            messageId: listed.id,
+            sentAt: existingRecord?.sent_at || null,
+          });
+          const { error: dateError } = await supabase.from("crm_order_cogs_emails").update({
+            raw: {
+              ...raw,
+              shippedDateSettled: dates.writesEnabled,
+              shippedDateProposalLogged: raw.shippedDateProposalLogged === true || !dates.writesEnabled,
+              shippedDateOutcomes: dates.outcomes,
+            },
+          }).eq("gmail_message_id", listed.id);
+          if (dateError) throw new CrmAuthError(502, "Shipping date result could not be saved on the email log.");
+        }
         result.processed += 1;
         result.skipped += 1;
         if (archiveEnabled && accessToken) {
@@ -1355,12 +1381,15 @@ export async function processOrderCogsInbox(
           raw: { emailKind: "shipping", shipping, productCompletionVerified: false },
         } satisfies Omit<CrmOrderCogsEmail,"id"|"created_at"|"updated_at">;
         await insertOrderCogsRecord(supabase,audit);
-        const outcomes = await applyShippingNotice(supabase,shipping,source,actor);
+        const outcomes = shipping.lotusUnshippedProducts
+          ? shippingOrderReferences(shipping).map(reference => ({ reference, status: "needs_review" as const, reason: "Lotus notice lists product that has not shipped yet." }))
+          : await applyShippingNotice(supabase, shipping, source, actor);
+        const dates = await settleShippingNoticeDates(supabase, shipping, source);
         const complete = outcomes.every(outcome=>outcome.status === "matched");
         const status = outcomes.some(outcome=>outcome.status === "error") ? "error" : complete ? "matched" : "needs_review";
         const saved = await insertOrderCogsRecord(supabase,{...audit,match_status:status,
           match_reason:complete ? "All shipment product updates verified." : "One or more shipment references require review; see individual outcomes.",
-          applied_at:complete?now:audit.applied_at,raw:{...audit.raw,outcomes,productCompletionVerified:complete}});
+          applied_at:complete?now:audit.applied_at,raw:{...audit.raw,outcomes,productCompletionVerified:complete,shippedDateSettled:dates.writesEnabled,shippedDateProposalLogged:!dates.writesEnabled,shippedDateOutcomes:dates.outcomes}});
         records.push(saved); result.processed += 1;
         if(status === "matched") result.matched += 1;
         else if(status === "error") result.errors += 1;

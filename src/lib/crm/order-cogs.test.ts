@@ -383,7 +383,7 @@ describe("extractLotusOrderCogs", () => {
 describe("customerOrderCogsQuery", () => {
   it("searches the selected mailbox, recent date range, vendors, and every customer-name token", () => {
     expect(customerOrderCogsQuery("805shutters@gmail.com", "Jack Plasmyer", 14)).toBe(
-      'in:anywhere {to:805shutters@gmail.com to:805@805shutters.com} newer_than:14d (from:normanusa.com OR from:orders@onyxshutters.com OR from:lotusblind.com OR subject:"Lotus & Windoware") "Jack" "Plasmyer"'
+      'in:anywhere {to:805shutters@gmail.com to:805@805shutters.com} newer_than:14d (from:normanusa.com OR from:orders@onyxshutters.com OR from:lotusblind.com OR subject:"Lotus & Windoware" OR subject:"Lotus Blind Order Fulfillment Notification") "Jack" "Plasmyer"'
     );
   });
 });
