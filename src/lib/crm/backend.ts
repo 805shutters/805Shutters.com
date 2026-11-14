@@ -22,6 +22,13 @@ import {
   sumBookkeepingRows
 } from "@/lib/crm/bookkeeping";
 import { buildCommissionSummary } from "@/lib/crm/commissions";
+import {
+  canonicalQuoteNumber,
+  isNewFormatQuoteId,
+  nextAutomaticSideMark,
+  sideMarkForNewQuote,
+  sideMarkIsFrozen,
+} from "@/lib/crm/quote-id";
 import { buildCustomerFiles } from "@/lib/crm/customer-files";
 import { buildClosedSalesReport, buildDashboardSummaryMetrics } from "@/lib/crm/dashboard-metrics";
 import { getMeasureNeededMeta } from "@/lib/crm/measure-needed-state";
@@ -613,21 +620,21 @@ async function fetchCrmJob(supabase: CrmSupabaseClient, jobId: string): Promise<
 }
 
 async function nextCrmQuoteNumber(supabase: CrmSupabaseClient) {
-  const { data, error } = await supabase
-    .from("crm_quotes")
-    .select("quote_number")
-    .ilike("quote_number", "805-%")
-    .limit(5000);
+  const { data, error } = await supabase.rpc("allocate_805_quote_id", { p_source: "crm_quote" });
+  if (error || typeof data !== "string" || !isNewFormatQuoteId(data)) {
+    throw new CrmAuthError(502, error?.message || "A new 805 quote ID could not be issued.");
+  }
+  return data;
+}
 
-  if (error) return null;
-
-  const max = ((data as Array<{ quote_number: string | null }>) || []).reduce((highest, row) => {
-    const match = String(row.quote_number || "").match(/^805-(\d+)$/i);
-    if (!match) return highest;
-    return Math.max(highest, Number(match[1]) || 0);
-  }, 1000);
-
-  return `805-${max + 1}`;
+async function claimNewQuoteNumber(supabase: CrmSupabaseClient, quoteNumber: string) {
+  const { data, error } = await supabase.rpc("claim_805_quote_id", {
+    p_quote_number: quoteNumber,
+    p_source: "crm_quote",
+  });
+  if (error || data !== quoteNumber) {
+    throw new CrmAuthError(409, error?.message || `Quote ID ${quoteNumber} is already issued.`);
+  }
 }
 
 function isMissingAvailabilityColumn(error: { code?: string; message?: string } | null | undefined) {
@@ -1955,7 +1962,10 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     fulfillment: {scopes:verifiedFulfillmentScopes,lines:fulfillmentLinesResult.data||[],movements:productMovementsResult.data||[],visits:serviceVisitsResult.data||[]} as unknown as FulfillmentData,
     installerOutcomes: safeInstallerOutcomes, ownedActions: (ownedActionsResult.error ? [] : ownedActionsResult.data || []) as unknown as import("./owned-actions").OwnedAction[], sourceHealth,
     jobs,
-    quotes: quotes.map((quote) => ({ ...quote, customer_name: jobNames.get(quote.job_id) })),
+    quotes: quotes.map((quote) => ({
+      ...quote,
+      customer_name: quote.customer_name || jobNames.get(quote.job_id),
+    })),
     events,
     customers,
     products,
@@ -3109,11 +3119,22 @@ export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Recor
   const balancePaid = toMoney(payload.balance_paid);
   const paymentType = normalizePaymentType(optionalText(payload.payment_type)) || "other";
   const now = new Date().toISOString();
-  const quoteNumber = optionalText(payload.quote_number) || (await nextCrmQuoteNumber(supabase));
+  const requestedNumber = optionalText(payload.quote_number);
+  const quoteNumber = requestedNumber
+    ? canonicalQuoteNumber(requestedNumber)
+    : await nextCrmQuoteNumber(supabase);
+  if (requestedNumber && isNewFormatQuoteId(quoteNumber)) {
+    await claimNewQuoteNumber(supabase, quoteNumber);
+  }
+  const customerName = optionalText(payload.customer_name) || linkedJob.customer_name;
+  const sideMark = sideMarkForNewQuote(customerName, quoteNumber, optionalText(payload.side_mark));
 
   const record = {
     job_id: jobId,
     quote_number: quoteNumber,
+    customer_name: customerName,
+    side_mark: sideMark.sideMark,
+    side_mark_overridden: sideMark.overridden,
     status,
     quote_total: quoteTotal,
     materials_cost: toMoney(payload.materials_cost),
@@ -3420,6 +3441,39 @@ export async function updateCrmQuote(
     "balance_paid_target"
   ].some((key) => Object.prototype.hasOwnProperty.call(payload, key));
   const hasPaymentPatch = toMoney(payload.payment_amount) > 0;
+
+  if (typeof patch.quote_number === "string") {
+    const nextNumber = canonicalQuoteNumber(patch.quote_number, existing.quote_number);
+    if (nextNumber !== existing.quote_number && isNewFormatQuoteId(nextNumber)) {
+      await claimNewQuoteNumber(supabase, nextNumber);
+    }
+    patch.quote_number = nextNumber;
+  }
+
+  const submittedName = optionalText(payload.customer_name);
+  const storedName = optionalText(existing.customer_name);
+  if (submittedName && storedName && submittedName !== storedName) {
+    patch.customer_name = submittedName;
+  }
+  const manualSideMark = hasPayloadKey(payload, "side_mark");
+  if (manualSideMark) {
+    const nextSideMark = optionalText(payload.side_mark);
+    if (nextSideMark !== optionalText(existing.side_mark)) {
+      patch.side_mark = nextSideMark;
+      patch.side_mark_overridden = true;
+    }
+  } else {
+    const automaticSideMark = nextAutomaticSideMark({
+      customerName: submittedName || storedName || "",
+      quoteNumber: (typeof patch.quote_number === "string" ? patch.quote_number : existing.quote_number) || "",
+      existingSideMark: existing.side_mark ?? null,
+      overridden: existing.side_mark_overridden === true,
+      frozen: sideMarkIsFrozen(existing),
+      nameChanged: Boolean(submittedName && storedName && submittedName !== storedName),
+      numberChanged: typeof patch.quote_number === "string" && patch.quote_number !== existing.quote_number,
+    });
+    if (automaticSideMark !== undefined) patch.side_mark = automaticSideMark;
+  }
 
   if (!Object.keys(patch).length && !hasEntryOnlyBookkeepingPatch && !hasPaymentPatch && !hasPaymentTargetAdjustment) {
     throw new CrmAuthError(400, "No supported quote fields provided.");

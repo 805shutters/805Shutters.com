@@ -125,6 +125,7 @@ export type OnyxPacketContext = {
   generatedAt: string;
   customerId: string | null;
   customerName: string;
+  sideMark?: string | null;
   customerPhone: string | null;
   customerEmail: string | null;
   jobsiteAddress: string | null;
@@ -703,7 +704,7 @@ export function buildOnyxAgentOrderPacket(
     },
     header: {
       materialCategory: definition.portalMaterial,
-      sideMark: context.customerName,
+      sideMark: context.sideMark?.trim() || context.customerName,
       poNumber: context.quoteNumber,
       rushOrder: sourceLines.some((line) =>
         booleanValue(line.values.details.rush_order) === true

@@ -9,6 +9,7 @@ import { remapQuoteV2RevisionOperations } from "@mts/lib/quoteV2RevisionOperatio
 import { currentQuoteLineIds, refreshQuoteV2Rows } from "@mts/lib/quoteV2RowRefresh";
 import { createDraftPricingRecovery, draftPricingRecoveryRequest } from "@mts/lib/quoteDraftPricingRecovery";
 import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
+import { buildSideMark, sideMarkIsFrozen } from "@/lib/crm/quote-id";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -2335,6 +2336,13 @@ export function QuoteBuilder({
     );
   }
 
+  const customerNamePatch = (customerName: string): Partial<SalesQuote> => {
+    const keepAutomaticMark = !quote || quote.side_mark_overridden === true || sideMarkIsFrozen(quote) || serverOwnedV2;
+    return {
+      customer_name: customerName,
+      ...(keepAutomaticMark ? {} : { side_mark: buildSideMark(customerName, quote.quote_number) }),
+    };
+  };
   const quoteLetterColor = quote?.quote_letter ? getQuoteColor(quote.quote_letter) : null;
   const copySourceItem = copySourceItemId
     ? lineItems.find((item) => item.id === copySourceItemId) ?? null
@@ -2369,13 +2377,11 @@ export function QuoteBuilder({
                       className="h-8"
                       autoFocus
                       onBlur={(e) => {
-                        updateQuote.mutate({ customer_name: e.target.value });
+                        updateQuote.mutate(customerNamePatch(e.target.value));
                       }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
-                          updateQuote.mutate({
-                            customer_name: (e.target as HTMLInputElement).value,
-                          });
+                          updateQuote.mutate(customerNamePatch((e.target as HTMLInputElement).value));
                           setEditingName(false);
                         }
                       }}
@@ -2419,6 +2425,18 @@ export function QuoteBuilder({
                         }
                       }}
                     />
+                    <Input
+                      defaultValue={quote?.side_mark || ""}
+                      placeholder="Side mark"
+                      aria-label="Side mark"
+                      className="h-8"
+                      onBlur={(e) =>
+                        updateQuote.mutate({
+                          side_mark: e.target.value.trim() || null,
+                          side_mark_overridden: true,
+                        })
+                      }
+                    />
                     <button
                       type="button"
                       onClick={() => setEditingName(false)}
@@ -2432,13 +2450,19 @@ export function QuoteBuilder({
                     type="button"
                     className="quote-header-customer group grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-left shadow-sm transition hover:border-slate-500 hover:shadow-md"
                     onClick={() => setEditingName(true)}
-                    aria-label={`Customer ${quote?.customer_name || "not named"}. Phone ${
+                    aria-label={`Customer ${quote?.customer_name || "not named"}. Quote ${
+                      quote?.quote_number || "unnumbered"
+                    }. Side mark ${quote?.side_mark || "not set"}. Phone ${
                       quote?.customer_phone || "not provided"
                     }. Address ${quote?.customer_address || "not provided"}. Click to edit.`}
                     title="Customer details — click to edit"
                   >
                     <span className="min-w-0 truncate text-sm font-black text-slate-950">
                       {quote?.customer_name || "Add Customer"}
+                    </span>
+                    <span className="col-span-2 truncate text-xs font-semibold text-slate-600">
+                      {quote?.quote_number || "No quote ID"}
+                      {quote?.side_mark ? ` · ${quote.side_mark}` : ""}
                     </span>
                     <Pencil className="h-3.5 w-3.5 text-slate-400 transition group-hover:text-slate-700" />
                     <span className="col-span-2 flex min-w-0 items-center gap-1.5 text-xs font-semibold text-slate-600">

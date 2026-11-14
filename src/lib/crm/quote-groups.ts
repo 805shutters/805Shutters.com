@@ -1,4 +1,5 @@
 import { quoteFixedCustomerCharges } from "./quote-money";
+import { isNewFormatQuoteId, sideMarkForNewQuote } from "@/lib/crm/quote-id";
 // Whole-quote versions ("Quote A / Quote B / Quote C").
 // Sibling crm_quotes sharing quote_group_id are alternative whole quotes the
 // customer compares and picks one of. Conservative bookkeeping: alternative
@@ -381,12 +382,17 @@ export async function createQuoteVersion(
   const copyCurrent = options.copyCurrent ?? true;
 
   // Ensure the source belongs to a group (and is labeled "A").
+  const sourceIsNewFormat = isNewFormatQuoteId(source.quote_number || "");
   let groupId = source.quote_group_id;
   if (!groupId) {
     groupId = randomUUID();
     const { error: groupErr } = await supabase
       .from("crm_quotes")
-      .update({ quote_group_id: groupId, quote_label: source.quote_label || "A" })
+      .update(
+        sourceIsNewFormat
+          ? { quote_group_id: groupId }
+          : { quote_group_id: groupId, quote_label: source.quote_label || "A" },
+      )
       .eq("id", source.id);
     if (groupErr) throw new CrmAuthError(502, "Could not start a quote group.");
   }
@@ -397,12 +403,35 @@ export async function createQuoteVersion(
   const usedLabels = (await listQuoteVersions(supabase, source.id)).map((s) => s.label);
   let label = nextLabel(usedLabels);
   let createdId: string | null = null;
+  let issuedQuoteNumber: string | null = null;
   for (let attempt = 0; attempt < 4 && !createdId; attempt += 1) {
+    if (sourceIsNewFormat && !issuedQuoteNumber) {
+      const issued = await supabase.rpc("allocate_805_quote_id", { p_source: "crm_quote_version" });
+      if (issued.error || typeof issued.data !== "string") {
+        throw new CrmAuthError(502, issued.error?.message || "A new 805 quote ID could not be issued.");
+      }
+      issuedQuoteNumber = issued.data;
+      label = issued.data;
+    }
+    const customerName = source.customer_name || "";
+    const quoteNumber = sourceIsNewFormat
+      ? issuedQuoteNumber
+      : source.quote_number
+        ? `${source.quote_number}-${label}`
+        : null;
+    const sideMark = quoteNumber ? sideMarkForNewQuote(customerName, quoteNumber) : null;
     const { data, error } = await supabase
       .from("crm_quotes")
       .insert({
         job_id: source.job_id,
-        quote_number: source.quote_number ? `${source.quote_number}-${label}` : null,
+        quote_number: quoteNumber,
+        ...(sourceIsNewFormat
+          ? {
+              customer_name: customerName || null,
+              side_mark: sideMark?.sideMark ?? null,
+              side_mark_overridden: sideMark?.overridden ?? false,
+            }
+          : {}),
         status: "draft",
         quote_total: copyCurrent ? Number(source.quote_total) || 0 : 0,
         materials_cost: copyCurrent ? Number(source.materials_cost) || 0 : 0,
@@ -415,7 +444,7 @@ export async function createQuoteVersion(
         customer_phone: source.customer_phone || null,
         customer_address: source.customer_address || null,
         quote_group_id: groupId,
-        quote_label: label,
+        quote_label: sourceIsNewFormat ? null : label,
         notes: source.notes || null,
         meta: cloneQuoteMeta(source, actor, label),
       })
@@ -426,6 +455,7 @@ export async function createQuoteVersion(
       break;
     }
     if (error && (error as { code?: string }).code === "23505") {
+      if (sourceIsNewFormat) throw new CrmAuthError(409, "That new quote ID was already used.");
       // Label taken by a concurrent insert — recompute against the latest siblings.
       usedLabels.push(label);
       const fresh = (await listQuoteVersions(supabase, source.id)).map((s) => s.label);

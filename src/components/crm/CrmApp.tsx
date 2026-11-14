@@ -9149,6 +9149,7 @@ function buildDrillFieldPatch(event: FormEvent<HTMLFormElement>, entry: DrillEnt
             status: formString(formData, "quote_status") || row.status,
             sold_by: soldByOwner || undefined,
             quote_number: formString(formData, "quote_number"),
+            side_mark: formString(formData, "side_mark"),
             quote_total: total,
             materials_cost: cogs,
             sold_at: soldDate || null
@@ -9254,6 +9255,10 @@ function DrillDetailEditForm({
             <label>
               Quote / Job
               <input name="quote_number" defaultValue={row?.quoteNumber || ""} disabled={!isQuoteRow} />
+            </label>
+            <label>
+              Side mark
+              <input name="side_mark" defaultValue={row?.sideMark || ""} disabled={!isQuoteRow} aria-label="Side mark" />
             </label>
             <label>
               Product
