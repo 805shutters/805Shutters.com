@@ -198,6 +198,76 @@ export async function createCalendarEvent(
   return { id: data.id, htmlLink: data.htmlLink };
 }
 
+export class GoogleCalendarEventMissingError extends Error {
+  constructor(calendarId: string, eventId: string) {
+    super(`Google Calendar event ${eventId} is gone on ${calendarId}`);
+    this.name = "GoogleCalendarEventMissingError";
+  }
+}
+
+/** Replace the schedule, title, notes, and location of an existing event. No guests. */
+export async function updateCalendarEvent(
+  accessToken: string,
+  calendarId: string,
+  eventId: string,
+  input: GoogleCalendarEventInput,
+): Promise<GoogleCalendarEvent> {
+  const timeZone = input.timeZone || process.env.GOOGLE_CALENDAR_TIME_ZONE || DEFAULT_TIME_ZONE;
+  const payload = {
+    summary: input.summary,
+    description: input.description ?? "",
+    location: input.location ?? "",
+    start: { dateTime: input.startAt, timeZone },
+    end: { dateTime: input.endAt, timeZone },
+  };
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?sendUpdates=none`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000),
+    },
+  );
+  const data = (await res.json().catch(() => ({}))) as {
+    id?: string;
+    htmlLink?: string;
+    error?: { message?: string };
+    message?: string;
+  };
+  if (res.status === 404 || res.status === 410) throw new GoogleCalendarEventMissingError(calendarId, eventId);
+  if (!res.ok || !data.id) {
+    const message = data.error?.message || data.message || `HTTP ${res.status}`;
+    throw new Error(`Google Calendar update failed for ${calendarId}: ${message}`);
+  }
+  return { id: data.id, htmlLink: data.htmlLink };
+}
+
+/**
+ * Update the stored Google event when its id is still on the calendar.
+ * A 404/410 means that id is already gone, so a replacement is created once.
+ */
+export async function saveCalendarEvent(
+  accessToken: string,
+  calendarId: string,
+  input: GoogleCalendarEventInput,
+  existingEventId?: string,
+): Promise<GoogleCalendarEvent & { created: boolean }> {
+  if (existingEventId) {
+    try {
+      const updated = await updateCalendarEvent(accessToken, calendarId, existingEventId, input);
+      return { ...updated, created: false };
+    } catch (error) {
+      if (!(error instanceof GoogleCalendarEventMissingError)) throw error;
+    }
+  }
+  const created = await createCalendarEvent(accessToken, calendarId, input);
+  return { ...created, created: true };
+}
+
 /** Delete an event (used by cleanup / smoke tests). Best-effort. */
 export async function deleteCalendarEvent(
   accessToken: string,
