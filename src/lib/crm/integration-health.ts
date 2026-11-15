@@ -5,21 +5,33 @@ export type IntegrationProcessor = typeof PROCESSORS[number];
 export type IntegrationHealth = { processor: IntegrationProcessor; state: "unknown" | "running" | "succeeded" | "failed" | "unavailable"; lastAttemptAt: string | null; lastSuccessAt: string | null };
 
 /** Append-only operational evidence. Never persist tokens, mail bodies or provider errors. */
-export async function observeIntegration<T>(supabase: SupabaseClient | null, processor: IntegrationProcessor, operation: () => Promise<T>, succeeded: (result: T) => boolean = () => true): Promise<T> {
+export async function observeIntegration<T>(
+  supabase: SupabaseClient | null,
+  processor: IntegrationProcessor,
+  operation: () => Promise<T>,
+  succeeded: (result: T) => boolean = () => true,
+  summarize?: (result: T) => Record<string, number>,
+): Promise<T> {
   const runId = crypto.randomUUID();
-  async function record(state: "running" | "succeeded" | "failed") {
+  async function record(state: "running" | "succeeded" | "failed", summary?: Record<string, number>) {
     if (!supabase) return;
     try {
       const { error } = await supabase.from("crm_activity_events").insert({
         actor_email: "system", entity_type: "system", entity_id: runId,
-        action: `${processor}.${state}`, metadata: { processor, runId, state },
+        action: `${processor}.${state}`, metadata: { ...summary, processor, runId, state },
       });
       if (error) console.warn("Integration health could not be recorded", processor, state);
     } catch { console.warn("Integration health could not be recorded", processor, state); }
   }
   await record("running");
-  try { const result = await operation(); await record(succeeded(result) ? "succeeded" : "failed"); return result; }
-  catch (error) { await record("failed"); throw error; }
+  try {
+    const result = await operation();
+    await record(succeeded(result) ? "succeeded" : "failed", summarize?.(result));
+    return result;
+  } catch (error) {
+    await record("failed");
+    throw error;
+  }
 }
 
 export async function loadIntegrationHealth(supabase: SupabaseClient): Promise<IntegrationHealth[]> {
