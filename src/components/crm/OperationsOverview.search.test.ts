@@ -53,8 +53,8 @@ describe('search across all job statuses', () => {
     await render(fixture);
     const buttons = () => [...host.querySelectorAll<HTMLButtonElement>('[aria-label="Job status queues"] button')];
     const choose = async (label: string) => act(async () => buttons().find(button => button.querySelector('span')?.textContent === label)!.click());
-    expect(buttons().map(button => button.querySelector('span')?.textContent)).toEqual(['Upcoming quotes', 'Pending quotes', 'Measures needed', 'Need to order', 'Active jobs']);
-    expect(buttons().map(button => button.querySelector('strong')?.textContent)).toEqual(['1', '1', '1', '0', '2']);
+    expect(buttons().map(button => button.querySelector('span')?.textContent)).toEqual(['Upcoming quotes', 'Pending quotes', 'Need to order', 'Active jobs']);
+    expect(buttons().map(button => button.querySelector('strong')?.textContent)).toEqual(['1', '1', '2', '2']);
     await choose('Upcoming quotes'); expect(host.textContent).toContain('Future consultation'); expect(cards()).toEqual([]);
     await choose('Pending quotes'); expect(host.textContent).toContain('Past consultation'); expect(host.textContent).not.toContain('Future consultation');
     expect(host.textContent).not.toContain('Stale consultation');
@@ -64,10 +64,10 @@ describe('search across all job statuses', () => {
     expect(host.textContent).toContain('Past consultation');
     expect(host.textContent).not.toContain('Stale consultation');
     await render(fixture);
-    await choose('Measures needed'); expect(cards()).toEqual(['Job status for Measure customer']);
-    await choose('Need to order'); expect(host.textContent).toContain('No jobs match');
+    await choose('Need to order');
+    expect(cards().sort()).toEqual(['Job status for Measure customer', 'Job status for Open customer']);
     await search('John Charamonte'); expect(cards()).toEqual(['Job status for John Charamonte']);
-    expect(buttons().map(button => button.querySelector('strong')?.textContent)).toEqual(['1', '1', '1', '0', '2']);
+    expect(buttons().map(button => button.querySelector('strong')?.textContent)).toEqual(['1', '1', '2', '2']);
     await choose('Active jobs'); expect(cards().sort()).toEqual(['Job status for Measure customer', 'Job status for Open customer']);
     expect(action).not.toHaveBeenCalled();
   });

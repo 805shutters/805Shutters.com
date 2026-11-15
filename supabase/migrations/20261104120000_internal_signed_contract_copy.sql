@@ -17,7 +17,8 @@ create table public.crm_internal_signed_contract_copy_outbox (
   status text not null default 'pending' check (
     status in ('pending','processing','retry','uncertain','accepted','blocked')
   ),
-  recipient text not null default 'wcbot+805@mail.grokbot.com',
+  recipient text not null default 'wcbot+805@mail.grokbot.com'
+    check (recipient = 'wcbot+805@mail.grokbot.com'),
   signed_snapshot jsonb not null,
   customer_signature text not null,
   contract_signed_at timestamptz not null,
@@ -35,7 +36,16 @@ create table public.crm_internal_signed_contract_copy_outbox (
   unique (contract_id),
   unique (idempotency_key),
   check ((payload is null and idempotency_key is null) or (payload is not null and nullif(idempotency_key,'') is not null)),
-  check (status <> 'accepted' or (nullif(trim(provider_message_id),'') is not null and provider_accepted_at is not null))
+  check (status <> 'accepted' or (nullif(trim(provider_message_id),'') is not null and provider_accepted_at is not null)),
+  check (
+    payload is null
+    or (
+      jsonb_typeof(payload->'to') = 'string'
+      and payload->>'to' = 'wcbot+805@mail.grokbot.com'
+      and not (payload ? 'cc')
+      and not (payload ? 'bcc')
+    )
+  )
 );
 
 create index crm_internal_signed_contract_copy_ready_idx
@@ -64,6 +74,8 @@ declare
   signature text;
   contract_number text;
 begin
+  -- A failure in this copy must not roll back the signature or the customer email.
+  begin
   -- Quotes, unsigned files, and repeat edits do not enqueue.
   -- Only the official signed snapshot (the same gate as the customer copy) does.
   if new.signed_at is null
@@ -88,6 +100,9 @@ begin
   then return new; end if;
 
   snapshot := coalesce(new.meta->'contract_snapshot', '{}'::jsonb);
+  if lower(trim(coalesce(snapshot->>'customerEmail', ''))) = 'wcbot+805@mail.grokbot.com' then
+    return new;
+  end if;
   signature := trim(coalesce(snapshot->>'customerSignature', ''));
   contract_number := coalesce(
     nullif(trim(q.quote_number), ''),
@@ -96,11 +111,16 @@ begin
   );
 
   insert into public.crm_internal_signed_contract_copy_outbox(
-    contract_id, quote_id, contract_number, signed_snapshot, customer_signature, contract_signed_at
+    contract_id, quote_id, contract_number, recipient, signed_snapshot, customer_signature, contract_signed_at
   ) values (
-    new.id, new.quote_id, contract_number, snapshot, signature, new.signed_at
+    new.id, new.quote_id, contract_number, 'wcbot+805@mail.grokbot.com', snapshot, signature, new.signed_at
   ) on conflict (contract_id) do nothing;
   return new;
+  exception
+    when others then
+      raise warning 'internal signed-contract copy was not queued: %', sqlerrm;
+      return new;
+  end;
 end; $$;
 
 create trigger crm_customer_contracts_enqueue_internal_signed_copy

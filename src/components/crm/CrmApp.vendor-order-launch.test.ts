@@ -43,11 +43,12 @@ describe("CRM vendor-order launch workflow", () => {
     expect(source).toContain("onVendorOrderPacket(entry.vendorOrderTask");
   });
 
-  it("opens View Measure in the desktop CRM measure workspace", () => {
-    expect(source).toContain('window.open(`/crm/measure/${measureFormId}`');
-    expect(source).toContain('href={`/crm/measure/${savedForm.id}`}');
-    expect(source).not.toContain('window.open(`/crm/technical-measures/${measureFormId}`');
-    expect(source).not.toContain('href={`/crm/technical-measures/${savedForm.id}`}');
+  it("does not offer measure request, measured, or open-measure actions", () => {
+    expect(source).not.toContain('window.open(`/crm/measure/${measureFormId}`');
+    expect(source).not.toContain('href={`/crm/measure/${savedForm.id}`}');
+    expect(source).not.toContain('label: "Measure Needed"');
+    expect(source).not.toContain('label: "Open Measure"');
+    expect(source).not.toContain('label: "Measured"');
   });
 
   it("shows the selected Ready to Order customer's saved measure in a desktop split pane", () => {

@@ -67,24 +67,25 @@ describe("quote type on the customer document", () => {
 });
 
 describe("signed contract technical measure decision", () => {
-  it("requires a remeasure when neither the quote nor job has a decision", () => {
-    expect(technicalMeasureDecisionForSignedQuote({ meta: {} }, { meta: {} })).toBe("needed");
+  it("does not require a remeasure when neither the quote nor job has a decision", () => {
+    expect(technicalMeasureDecisionForSignedQuote({ meta: {} }, { meta: {} })).toBe("not_needed");
   });
 
-  it("requires a remeasure even when the linked job is missing", () => {
-    expect(technicalMeasureDecisionForSignedQuote({ meta: {} }, null)).toBe("needed");
+  it("does not require a remeasure when the linked job is missing", () => {
+    expect(technicalMeasureDecisionForSignedQuote({ meta: {} }, null)).toBe("not_needed");
   });
 
-  it.each(["needed", "not_needed"] as const)("honors the saved quote decision: %s", (status) => {
+  it("ignores a stored needed decision on the quote", () => {
     expect(technicalMeasureDecisionForSignedQuote(
-      { meta: { measure_needed: { status } } },
-      { meta: { measure_needed: { status: status === "needed" ? "not_needed" : "needed" } } },
-    )).toBe(status);
+      { meta: { measure_needed: { status: "needed" } } },
+      { meta: { measure_needed: { status: "needed" } } },
+    )).toBe("not_needed");
   });
 
-  it("honors an explicit job waiver when the quote has no decision", () => {
+  it("keeps an explicit not-needed decision", () => {
     expect(technicalMeasureDecisionForSignedQuote(
-      { meta: {} }, { meta: { measure_needed: { status: "not_needed" } } },
+      { meta: { measure_needed: { status: "not_needed" } } },
+      { meta: {} },
     )).toBe("not_needed");
   });
 });
@@ -271,7 +272,7 @@ describe("signed SMS copy", () => {
   it("contract share message uses the requested 805 Shutters copy", () => {
     const msg = buildQuoteShareSms("https://www.805shutters.com/quote/test-token");
     expect(msg).toBe(
-      "805 Shutters: Thank you for the opportunity to cover your windows. Your contract is ready to review and approve:\n\nContract: https://www.805shutters.com/quote/test-token\n\nOfficial contact: 805Shutters.com | 805-590-8050"
+      "805 Shutters: Thank you for the opportunity to cover your windows. Your contract is ready to review and approve:\n\nContract: https://www.805shutters.com/quote/test-token\n\nOfficial contact: 805Shutters.com | 805-806-9344"
     );
     expect(msg).not.toContain("attached quote");
   });
@@ -287,7 +288,7 @@ describe("signed SMS copy", () => {
     expect(msg).toContain("Zelle");
     expect(msg).toContain("#payment");
     expect(msg).toContain("3 monthly payments");
-    expect(msg).toContain("Verify this request at 805Shutters.com or 805-590-8050");
+    expect(msg).toContain("Verify this request at 805Shutters.com or 805-806-9344");
   });
 
   it("shop message has the requested sale fields", () => {
@@ -297,17 +298,18 @@ describe("signed SMS copy", () => {
         "Customer Name: Jane Smith",
         "Total Sale Amount: $4,250.00",
         "Deposit Amount: $2,125.00",
-        "Technical Measure: Needed",
       ].join("\n")
     );
+    expect(msg).not.toContain("Technical Measure");
+    expect(msg).not.toContain("Measure Form");
   });
-  it("shop message can flag technical measure needed", () => {
-    const msg = buildSignedShopSms("Jane Smith", 4250, 2125, { technicalMeasure: "needed" });
-    expect(msg).toContain("Technical Measure: Needed");
-  });
-  it("honors an explicit technical measure waiver in the shop message", () => {
-    expect(buildSignedShopSms("Jane Smith", 4250, 2125, { technicalMeasure: "not_needed" }))
-      .toContain("Technical Measure: Not Needed");
+  it("omits technical measure and the measure form from the shop message", () => {
+    const msg = buildSignedShopSms("Jane Smith", 4250, 2125, {
+      technicalMeasure: "needed",
+      measureFormUrl: "https://805shutters.com/crm/technical-measures/form-id",
+    });
+    expect(msg).not.toContain("Technical Measure");
+    expect(msg).not.toContain("Measure Form");
   });
   it("primary shop recipient gets customer phone and address", () => {
     const msg = buildSignedShopSmsForRecipient(SOLD_QUOTE_CONTACT_SMS_RECIPIENT, "Jane Smith", 4250, 2125, {
@@ -320,18 +322,18 @@ describe("signed SMS copy", () => {
         "Customer Name: Jane Smith",
         "Total Sale Amount: $4,250.00",
         "Deposit Amount: $2,125.00",
-        "Technical Measure: Needed",
         "Customer Phone: 805-555-1212",
         "Customer Address: 123 Main St, Ventura, CA",
       ].join("\n")
     );
+    expect(msg).not.toContain("Technical Measure");
   });
-  it("primary shop recipient gets the technical measure form", () => {
+  it("primary shop recipient does not get the technical measure form", () => {
     const msg = buildSignedShopSmsForRecipient(SOLD_QUOTE_CONTACT_SMS_RECIPIENT, "Jane Smith", 4250, 2125, {
       technicalMeasure: "needed",
       measureFormUrl: "https://805shutters.com/crm/technical-measures/form-id",
     });
-    expect(msg).toContain("Measure Form: https://805shutters.com/crm/technical-measures/form-id");
+    expect(msg).not.toContain("Measure Form");
   });
   it("other shop recipients do not get the technical measure form", () => {
     const msg = buildSignedShopSmsForRecipient("805-555-0400", "Jane Smith", 4250, 2125, {
@@ -363,7 +365,7 @@ describe("signed SMS copy", () => {
   it("customer message thanks them by name", () => {
     const message = buildSignedCustomerSms("Jane");
     expect(message).toContain("Jane");
-    expect(message).toContain("805Shutters.com | 805-590-8050");
+    expect(message).toContain("805Shutters.com | 805-806-9344");
   });
 });
 

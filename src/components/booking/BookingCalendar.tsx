@@ -1,5 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { bookingThankYouPath, handOffBooking } from "@/lib/booking/browser-receipt";
+
 import {
   ChangeEvent,
   FormEvent,
@@ -183,6 +186,7 @@ function CommercialBookingCalendar({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const router = useRouter();
   const [complete, setComplete] = useState(false);
   const [selectedProductTypes, setSelectedProductTypes] = useState<string[]>(
     [],
@@ -503,14 +507,18 @@ function CommercialBookingCalendar({
         }
         throw new Error(body.message || "Appointment could not be booked.");
       }
+      const eventId = handOffBooking(body, { variant:"commercial", date:selectedDate, time:selectedTime,
+        dateLabel:formatSelectedDate(selectedDate), timeLabel:selectedDay?.slots.find(slot=>slot.time===selectedTime)?.label || selectedTime,
+        address:serviceAddress.trim(), followUpRequested });
       trackBookingEvent({
-        eventId: typeof body.eventId === "string" ? body.eventId : body.leadId,
+        eventId,
         jobId: typeof body.jobId === "string" ? body.jobId : undefined,
         productTypes: selectedProductTypes,
         windowCount: selectedWindowCount,
         followUpRequested,
         ...trackingContext,
       });
+      router.replace(bookingThankYouPath);
       setComplete(true);
       setMessage(confirmationMessage(body));
     } catch (error) {

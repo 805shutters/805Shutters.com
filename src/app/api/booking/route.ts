@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { after, NextRequest, NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   bookingEndIso,
   bookingDurationForWindowCount,
@@ -16,7 +17,11 @@ import {
   scheduleError,
   validateServiceAddress,
 } from "@/lib/booking/scheduling";
-import { googleDriveEstimator } from "@/lib/booking/travel";
+import { eventSignature, googleDriveEstimator } from "@/lib/booking/travel";
+import {
+  failManualBooking,
+  publicPayloadCarriesOverride,
+} from "@/lib/booking/manual-override";
 import {
   bookingEffectKinds,
   processBookingOutbox,
@@ -110,11 +115,21 @@ function formatDuration(minutes: number) {
     : `${minutes} minutes`;
 }
 
-async function submit(request: NextRequest) {
+export async function submitConsultation(
+  supabase: SupabaseClient | null,
+  request: NextRequest,
+  payload: BookingPayload,
+  authorizedOverride?: { overrideBy: string; overrideReason: string },
+) {
   if (process.env.VERCEL_ENV === "preview" &&
       (!process.env.NEXT_PUBLIC_SUPABASE_URL || new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname === "evuxqsaucmvgyuvjpqlo.supabase.co"))
     throw new BookingError(503, "Preview booking requires an isolated preview database.");
-  const payload = (await request.json()) as BookingPayload;
+  if (!authorizedOverride && publicPayloadCarriesOverride(payload)) {
+    throw new BookingError(
+      400,
+      "A manual override cannot be requested from the public booking form.",
+    );
+  }
   const date = clean(payload.date);
   const time = clean(payload.time);
   const name = clean(payload.name);
@@ -177,7 +192,6 @@ async function submit(request: NextRequest) {
     );
   }
 
-  const supabase = getSupabaseServiceClient();
   if (!supabase) {
     return NextResponse.json(
       {
@@ -214,6 +228,13 @@ async function submit(request: NextRequest) {
         ...(payload.variant ? { variant } : {}),
         pagePath,
         attribution,
+        ...(authorizedOverride
+          ? {
+              manualOverride: true,
+              overrideBy: authorizedOverride.overrideBy,
+              overrideReason: authorizedOverride.overrideReason,
+            }
+          : {}),
       }),
     )
     .digest("hex");
@@ -390,7 +411,11 @@ async function submit(request: NextRequest) {
       googleDriveEstimator(now),
       now,
     );
-    if (checked.reason) {
+    const travelOverride =
+      Boolean(authorizedOverride) &&
+      (checked.reason === "driving_time" ||
+        checked.reason === "missing_information");
+    if (checked.reason && !travelOverride) {
       const { data: completed } = await supabase
         .from("booking_requests")
         .select("request_hash,response")
@@ -400,27 +425,72 @@ async function submit(request: NextRequest) {
         return NextResponse.json(completed.response, {
           headers: { "Cache-Control": "no-store" },
         });
+      if (authorizedOverride && checked.reason === "appointment_conflict") {
+        throw new BookingError(409, "That time overlaps another appointment.");
+      }
+      if (
+        authorizedOverride &&
+        (checked.reason === "closed_hours" ||
+          checked.reason === "daily_limit" ||
+          checked.reason === "past" ||
+          checked.reason === "notice")
+      ) {
+        throw new BookingError(
+          409,
+          "That time is outside a published bookable opening.",
+        );
+      }
       throw new BookingError(
         409,
         "That time no longer fits Jessica's availability and driving time. Please choose another.",
       );
     }
-    const { data, error } = await supabase.rpc("booking_commit", {
+    const proofs = travelOverride
+      ? [
+          {
+            eventId,
+            signature: eventSignature(eventRecord),
+            checkedAt: new Date().toISOString(),
+            previous: null,
+            next: null,
+          },
+        ]
+      : checked.proofs;
+    const effects = [
+      ...(isSyntheticBookingVerification(email, phone)
+        ? []
+        : [
+            ...bookingEffectKinds,
+            ...(metaSource ? ["meta_booking_sms"] : []),
+          ]
+      ).map((kind) => ({
+        kind,
+        payload: effectDetails,
+      })),
+      { kind: "meta_schedule", payload: metaSchedule },
+    ];
+    const commitArgs = {
       p_key: idempotencyKey,
       p_hash: requestHash,
       p_revision: snapshot.revision,
       p_lead: leadRecord,
       p_job: jobRecord,
       p_event: eventRecord,
-      p_proofs: checked.proofs,
-      p_effects: [...(isSyntheticBookingVerification(email, phone) ? [] : [...bookingEffectKinds, ...(metaSource ? ["meta_booking_sms"] : [])]).map((kind) => ({
-        kind,
-        payload: effectDetails,
-      })), { kind: "meta_schedule", payload: metaSchedule }],
-    });
+      p_proofs: proofs,
+      p_effects: effects,
+    };
+    const { data, error } = authorizedOverride
+      ? await supabase.rpc("booking_commit_manual_override", {
+          ...commitArgs,
+          p_manual_override: true,
+          p_override_by: authorizedOverride.overrideBy,
+          p_override_reason: authorizedOverride.overrideReason,
+        })
+      : await supabase.rpc("booking_commit", commitArgs);
     if (error?.message?.includes("BOOKING_STALE") && attempt === 0) continue;
     if (error) {
       console.error("Booking transaction failed", { requestId: idempotencyKey, code: error.code || "DB_ERROR" });
+      if (authorizedOverride) failManualBooking(error);
       scheduleError(error);
     }
     if (!data?.leadId || data.eventId !== data.leadId) {
@@ -446,7 +516,18 @@ async function submit(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    return await submit(request);
+    const payload = (await request.json()) as BookingPayload;
+    if (publicPayloadCarriesOverride(payload)) {
+      throw new BookingError(
+        400,
+        "A manual override cannot be requested from the public booking form.",
+      );
+    }
+    return await submitConsultation(
+      getSupabaseServiceClient(),
+      request,
+      payload,
+    );
   } catch (error) {
     if (!(error instanceof BookingError) || error.status >= 500)
       console.error("Booking submission failed", { code: error instanceof BookingError ? `HTTP_${error.status}` : "UNEXPECTED_ERROR" });

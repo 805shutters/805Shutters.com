@@ -1,0 +1,102 @@
+From: "Orders Lotus (orders@lotusblind.com)" <system@sent-via.netsuite.com>
+To: 805@805shutters.com
+Cc: 
+Subject: Lotus Blind Order Fulfillment Notification – #18289
+Date: 2026-07-31T18:51:25Z
+Gmail-Message-Id: 19fb98456f2a73a1
+Gmail-Thread-Id: 19fb98456f2a73a1
+Labels: IMPORTANT,CATEGORY_UPDATES
+Body-Truncated: False
+
+===== TEXT BODY (whitespace-collapsed) =====
+LOTUS TEST
+
+96
+
+On 07/31/2026, your Order # SO287277, Your Purchase Order # #18289 was shipped.
+
+Billed To Customer Name: 1213316 California Homes dba 805 Shutters
+
+Shipping Address:
+
+Addressee: OFFICE
+
+Address: 150 Wood Road, Suite D
+
+Attn: OFFICE
+
+City St Zip: Camarillo CA 93010
+
+The following items were shipped:
+
+Item
+
+Part No.
+
+Description
+
+Qty
+
+UOM
+
+Notes
+
+AMX59108AL
+
+-
+
+1 Inch Aluminum Blind 59 x 108 Alabaster Cordless
+
+2
+
+EA
+
+Your carrier and shipping numbers are below:
+
+Parcel
+
+Carrier: FedEx
+
+Tracking #: 875170258261
+Tracking #: 875170258261
+Tracking #: 875170258261 (https://www.fedex.com/wtrk/track/?action=track&tracknumbers=875170258261)
+
+Tracking Details (https://www.fedex.com/wtrk/track/?action=track&tracknumbers=875170258261)
+
+-->
+
+Your freight amount for this shipment is $0
+
+The following items have not shipped yet:
+
+Item
+
+Part No.
+
+Description
+
+Qty
+
+UOM
+
+Notes
+
+FREIGHT Freight
+
+-
+
+FREIGHT CHARGE
+
+1
+
+EA
+
+Attachments:
+
+Packing List (Attached as File)
+
+Thank you for your order!
+
+orders@lotusblind.com
+
+The content of this message is confidential. If you have received it by mistake, please inform us and then delete the message. It is forbidden to copy, forward, or in any way reveal the contents of this message to anyone.

@@ -121,7 +121,7 @@ describe.skipIf(!enabled)("real Postgres concurrent schedule writes", () => {
     ]);
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     expect(sql("select count(*) from leads;")).toBe("1");
-    expect(sql("select count(*) from booking_outbox;")).toBe("1");
+    expect(sql("select count(*) from booking_outbox;")).toBe("2");
   });
   it("serializes fixed-hour residential bookings without window counts", async () => {
     const revision = sql("select revision from booking_schedule_state;");

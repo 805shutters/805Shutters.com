@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     const health = await getCustomerEmailMonitor(db);
     return NextResponse.json({ ...health, processed: result.processed, errorCount: result.errors.length,
       internalCopyProcessed: internal.processed, internalCopyErrorCount: internal.errors.length },
-      { status: health.ok && result.errors.length === 0 && internal.errors.length === 0 ? 200 : 503 });
+      { status: health.ok && result.errors.length === 0 ? 200 : 503 });
   } catch {
     return NextResponse.json({ message: "Customer email worker or health check failed" }, { status: 503 });
   }

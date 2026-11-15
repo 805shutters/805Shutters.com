@@ -32,7 +32,7 @@ describe("installer form sold-path delivery", () => {
     expect(installerForms).toContain('status: "pending_delivery"');
     expect(installerOutbox).toContain("claim.payload");
     expect(installerOutbox).toContain("claim.idempotency_key !== prepared.payload.idempotencyKey");
-    expect(installerOutbox).toContain("`805-installer-form-${balanced.id}-${BASE_VERSION}-${INSTALLER_FORM_RECIPIENT}`");
+    expect(installerOutbox).toContain("`805-installer-form-${balanced.id}-${BASE_VERSION}-${recipients.join(\",\")}`");
     expect(installerMigration).toContain("unique (quote_id, kind, version_key)");
     expect(installerMigration).toContain("first_send_attempt_at <= now() - interval '24 hours'");
   });

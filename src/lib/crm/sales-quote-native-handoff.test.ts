@@ -46,10 +46,15 @@ describe("native quote staff actions", () => {
     expect(mocks.notify).toHaveBeenCalledOnce();
     expect(result.crmQuote.id).toBe("native-contract");
   });
-  it("requires the technical measure decision before attempting a sale", async () => {
-    await expect(markSalesQuoteSold(database(), quote.id, actor, { expectedRevision: 17, acknowledgedTotal: 3160.24 }))
-      .rejects.toThrow("Choose whether a technical measure is needed");
-    expect(mocks.sell).not.toHaveBeenCalled();
+  it("marks sold without a technical measure decision and stores not_needed", async () => {
+    const db = database();
+    await markSalesQuoteSold(db, quote.id, actor, { expectedRevision: 17, acknowledgedTotal: 3160.24 });
+    expect(mocks.sell).toHaveBeenCalledWith(db, quote, actor, expect.objectContaining({ measureDecision: "not_needed" }));
+  });
+  it("turns a stored needed decision into not_needed before the sale", async () => {
+    const db = database();
+    await markSalesQuoteSold(db, quote.id, actor, { measureDecision: "needed", expectedRevision: 17, acknowledgedTotal: 3160.24 });
+    expect(mocks.sell).toHaveBeenCalledWith(db, quote, actor, expect.objectContaining({ measureDecision: "not_needed" }));
   });
   it("opens native in-person signing without historical mutation or sending notifications", async () => {
     const db = database();

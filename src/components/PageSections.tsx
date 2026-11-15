@@ -7,7 +7,6 @@ import { LeadForm } from "./LeadForm";
 import { ServiceGrid } from "./ServiceGrid";
 import { TrackedPhoneLink } from "./TrackedPhoneLink";
 import { AppointmentBooking } from "./booking/AppointmentBooking";
-import { CrmHomeLogin } from "./crm/CrmHomeLogin";
 import { HomeHeroCarousel, type HomeHeroSlide } from "./HomeHeroCarousel";
 import { LazyVideo } from "./LazyVideo";
 import { SitePage, homeHeroImage, site } from "@/lib/site-data";
@@ -1047,11 +1046,14 @@ export function PageSections({ page }: { page: SitePage }) {
       <CityServiceLinks path={page.path} />
 
       {activePage.form ? (
-        <section className="form-band">
+        <section className="form-band" id={activePage.path === "/contact/" ? "email-805" : undefined}>
           <div className="content-wrap form-layout">
             <div>
               <p className="eyebrow">Start here</p>
               <h2>Request Your Free Consultation</h2>
+              {activePage.path === "/contact/" && (
+                <p>Email <a href={site.emailHref}>{site.email}</a> or use the form below.</p>
+              )}
               <p>
                 Send the project details and {isCommercialMode ? "805 Commercial" : "805 Shutters"} will follow up. Prefer to talk now?{" "}
                 <TrackedPhoneLink location={`${activePage.path} form copy`}>Call {site.phone}</TrackedPhoneLink>.
@@ -1570,7 +1572,6 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
         </>
       ) : null}
 
-      <CrmHomeLogin />
     </>
   );
 }

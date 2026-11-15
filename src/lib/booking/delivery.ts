@@ -9,6 +9,7 @@ import { sendSms } from "@/lib/notify/twilio";
 import { sendAppointmentConfirmation } from "./confirmation-message";
 import { salesRepSmsNumberForName, sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import { syncAppointmentToGoogleCalendars } from "@/lib/google/calendar";
+import { applyQueuedGoogleCalendarSync } from "@/lib/google/calendar-sync";
 import { syncSelfBookingCustomerDetails } from "./customer-snapshot";
 import { isBookingDeliveryEnabled } from "./delivery-config";
 import { sendMetaScheduleEvent } from "./meta-schedule";
@@ -653,6 +654,46 @@ export async function processBookingOutbox(
           const { error: retryError } = await supabase.from("booking_outbox")
             .update({ status: "pending", last_error: code }).eq("id", item.id).eq("status", "processing");
           if (retryError) throw retryError;
+        }
+        continue;
+      }
+      // CRM calendar changes are reconciled here. Legacy booking rows that
+      // predate the trigger still use the create-only path below.
+      if (effect.kind === "google_calendar" && effect.payload?.sync === "reconcile") {
+        try {
+          const outcome = await applyQueuedGoogleCalendarSync(supabase, effect.payload);
+          const { data: current, error: currentError } = await supabase
+            .from("booking_outbox")
+            .select("payload")
+            .eq("id", item.id)
+            .maybeSingle();
+          if (currentError) throw currentError;
+          const claimedToken = String(effect.payload.syncToken || "");
+          const currentToken = String((current?.payload as { syncToken?: string } | null)?.syncToken || "");
+          if (claimedToken && currentToken && claimedToken !== currentToken) {
+            const { error: reopenError } = await supabase.from("booking_outbox").update({
+              status: "pending",
+              last_error: null,
+            }).eq("id", item.id);
+            if (reopenError) throw reopenError;
+            continue;
+          }
+          const { error: saveError } = await supabase.from("booking_outbox").update({
+            status: outcome.status,
+            last_error: outcome.lastError,
+            ...(outcome.completed ? { completed_at: new Date().toISOString() } : {}),
+            payload: {
+              ...effect.payload,
+              googleCalendarEventIds: outcome.eventIds,
+              googleCalendarHtmlLinks: outcome.htmlLinks,
+            },
+          }).eq("id", item.id).eq("status", "processing");
+          if (saveError) throw saveError;
+        } catch (error) {
+          await supabase.from("booking_outbox").update({
+            status: "pending",
+            last_error: error instanceof Error ? error.message.slice(0, 500) : "Google Calendar sync failed",
+          }).eq("id", item.id).eq("status", "processing");
         }
         continue;
       }

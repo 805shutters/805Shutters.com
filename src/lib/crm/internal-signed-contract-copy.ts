@@ -4,8 +4,7 @@ import type { SignedContractSnapshot } from "@/lib/crm/public-quote";
 import { buildSignedContractPdf } from "./signed-contract-pdf";
 import { ContractContentError, validateSignedContractSnapshot } from "./signed-contract-snapshot";
 
-export const DEFAULT_INTERNAL_SIGNED_CONTRACT_COPY_RECIPIENT = "wcbot+805@mail.grokbot.com";
-export const INTERNAL_SIGNED_CONTRACT_COPY_EMAIL_ENV = "INTERNAL_SIGNED_CONTRACT_COPY_EMAIL";
+export const INTERNAL_SIGNED_CONTRACT_COPY_RECIPIENT = "wcbot+805@mail.grokbot.com";
 export const INTERNAL_SIGNED_CONTRACT_COPY_FROM = "805 Shutters <805@805shutters.com>";
 
 const CONTRACT_NUMBER = /^805-\d{4,}$/;
@@ -72,9 +71,9 @@ function emailAddress(value: unknown) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized) ? normalized : "";
 }
 
-export function internalSignedContractCopyRecipient(source = process.env[INTERNAL_SIGNED_CONTRACT_COPY_EMAIL_ENV]) {
-  const configured = emailAddress(source);
-  return configured || DEFAULT_INTERNAL_SIGNED_CONTRACT_COPY_RECIPIENT;
+/** The only address this copy may use. It is not configurable. */
+export function internalSignedContractCopyRecipients(): readonly [typeof INTERNAL_SIGNED_CONTRACT_COPY_RECIPIENT] {
+  return [INTERNAL_SIGNED_CONTRACT_COPY_RECIPIENT];
 }
 
 function escapeHtml(value: unknown) {
@@ -113,9 +112,9 @@ async function prepareCopy(claim: InternalSignedContractCopyClaim): Promise<Froz
   if (oneLine(snapshot.quote.quoteNumber) !== contractNumber) {
     throw new ContractContentError("The signed contract number does not match the signed snapshot.");
   }
-  const recipient = internalSignedContractCopyRecipient();
+  const [recipient] = internalSignedContractCopyRecipients();
   const customer = emailAddress(snapshot.customerEmail);
-  if (!recipient || recipient === customer) {
+  if (recipient !== INTERNAL_SIGNED_CONTRACT_COPY_RECIPIENT || recipient === customer) {
     throw new ContractContentError("The internal signed-contract copy has no separate recipient.");
   }
   const subject = internalSignedContractCopySubject(contractNumber, snapshot.customerName);
@@ -142,18 +141,21 @@ async function prepareCopy(claim: InternalSignedContractCopyClaim): Promise<Froz
 
 function assertFrozenPayload(payload: FrozenInternalSignedContractCopy, claim: InternalSignedContractCopyClaim) {
   const customer = emailAddress(claim.signed_snapshot?.customerEmail);
-  const expectedTo = claim.payload ? emailAddress(claim.recipient) : internalSignedContractCopyRecipient();
+  const [recipient] = internalSignedContractCopyRecipients();
   const contractNumber = oneLine(claim.contract_number);
-  const extra = payload as FrozenInternalSignedContractCopy & { cc?: unknown; bcc?: unknown };
+  const extra = payload as FrozenInternalSignedContractCopy & { cc?: unknown; bcc?: unknown; recipients?: unknown };
   if (
-    payload.to !== expectedTo ||
+    recipient !== INTERNAL_SIGNED_CONTRACT_COPY_RECIPIENT ||
+    payload.to !== recipient ||
     payload.to === customer ||
+    emailAddress(claim.recipient) !== recipient ||
     payload.from !== INTERNAL_SIGNED_CONTRACT_COPY_FROM ||
     payload.subject !== internalSignedContractCopySubject(contractNumber, claim.signed_snapshot.customerName) ||
     !payload.subject.includes(contractNumber) ||
     payload.idempotencyKey !== expectedIdempotencyKey(claim) ||
     extra.cc != null ||
     extra.bcc != null ||
+    extra.recipients != null ||
     payload.attachments.length !== 1 ||
     payload.attachments[0].contentType !== "application/pdf" ||
     !payload.attachments[0].filename.includes(contractNumber) ||
@@ -189,7 +191,20 @@ const defaults: InternalSignedContractCopyDependencies = {
   claim: defaultClaim,
   update: defaultUpdate,
   prepare: prepareCopy,
-  send: (payload, timeoutMs = SEND_BUDGET_MS) => sendEmail({ ...payload, signal: AbortSignal.timeout(timeoutMs) }),
+  send: (payload, timeoutMs = SEND_BUDGET_MS) => {
+    const [recipient] = internalSignedContractCopyRecipients();
+    if (payload.to !== recipient) return Promise.resolve({ sent: false, error: "The internal signed-contract copy recipient is not allowed." });
+    return sendEmail({
+      to: recipient,
+      from: payload.from,
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text,
+      attachments: payload.attachments,
+      idempotencyKey: payload.idempotencyKey,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  },
   now: () => new Date().toISOString(),
 };
 

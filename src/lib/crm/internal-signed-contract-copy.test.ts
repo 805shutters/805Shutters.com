@@ -5,8 +5,8 @@ import { randomUUID } from "node:crypto";
 import { customerContractTerms } from "./customer-contract-terms";
 import { CUSTOMER_SIGNED_CONTRACT_SUBJECT } from "./customer-signed-contract-email";
 import {
-  DEFAULT_INTERNAL_SIGNED_CONTRACT_COPY_RECIPIENT,
-  INTERNAL_SIGNED_CONTRACT_COPY_EMAIL_ENV,
+  INTERNAL_SIGNED_CONTRACT_COPY_RECIPIENT,
+  internalSignedContractCopyRecipients,
   internalSignedContractCopySubject,
   processInternalSignedContractCopyOutbox,
   type FrozenInternalSignedContractCopy,
@@ -21,7 +21,8 @@ vi.mock("./signed-contract-pdf", () => ({
 const db = new PGlite();
 const customerMigration = readFileSync("supabase/migrations/20260916214940_customer_signed_contract_email_outbox.sql", "utf8");
 const internalMigration = readFileSync("supabase/migrations/20261104120000_internal_signed_contract_copy.sql", "utf8");
-const originalRecipient = process.env[INTERNAL_SIGNED_CONTRACT_COPY_EMAIL_ENV];
+const RECIPIENT_ENV = "INTERNAL_SIGNED_CONTRACT_COPY_EMAIL";
+const originalRecipient = process.env[RECIPIENT_ENV];
 
 beforeAll(async () => {
   await db.exec(`
@@ -49,18 +50,26 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  delete process.env[INTERNAL_SIGNED_CONTRACT_COPY_EMAIL_ENV];
+  delete process.env[RECIPIENT_ENV];
   vi.clearAllMocks();
   await db.exec("truncate crm_internal_signed_contract_copy_outbox, crm_customer_signed_contract_email_outbox, crm_customer_contracts, crm_quotes, crm_jobs cascade");
 });
 
 afterAll(() => {
-  if (originalRecipient === undefined) delete process.env[INTERNAL_SIGNED_CONTRACT_COPY_EMAIL_ENV];
-  else process.env[INTERNAL_SIGNED_CONTRACT_COPY_EMAIL_ENV] = originalRecipient;
+  if (originalRecipient === undefined) delete process.env[RECIPIENT_ENV];
+  else process.env[RECIPIENT_ENV] = originalRecipient;
   return db.close();
 });
 
-function snapshot(quoteId: string, signedAt: string, quoteNumber: string) {
+function recipientList(message: { to?: unknown; cc?: unknown; bcc?: unknown; recipients?: unknown }) {
+  return [message.to, message.cc, message.bcc, message.recipients].flatMap((value) => {
+    if (Array.isArray(value)) return value.map((item) => String(item).trim().toLowerCase());
+    if (value == null || value === "") return [];
+    return [String(value).trim().toLowerCase()];
+  });
+}
+
+function snapshot(quoteId: string, signedAt: string, quoteNumber: string, customerEmail = "jane@example.com") {
   return {
     schema: "805_signed_quote_contract_v1",
     signedAt,
@@ -69,7 +78,7 @@ function snapshot(quoteId: string, signedAt: string, quoteNumber: string) {
     customerName: "Jane Customer",
     customerAddress: "123 Main Street, Camarillo, CA",
     customerPhone: "805-555-0101",
-    customerEmail: "jane@example.com",
+    customerEmail,
     customerEmailDelivery: "enabled",
     business: { name: "805 Shutters", phone: "805-806-9344", website: "805shutters.com", email: "805@805shutters.com" },
     quote: { id: quoteId, quoteNumber },
@@ -92,26 +101,27 @@ function snapshot(quoteId: string, signedAt: string, quoteNumber: string) {
   };
 }
 
-async function insertJobAndQuote(input: { quoteNumber: string; signedAt?: string | null; status?: string }) {
+async function insertJobAndQuote(input: { quoteNumber: string; signedAt?: string | null; status?: string; customerEmail?: string }) {
   const jobId = randomUUID();
   const quoteId = randomUUID();
-  await db.query("insert into crm_jobs(id, customer_name, email) values ($1, $2, $3)", [jobId, "Jane Customer", "jane@example.com"]);
+  const customerEmail = input.customerEmail || "jane@example.com";
+  await db.query("insert into crm_jobs(id, customer_name, email) values ($1, $2, $3)", [jobId, "Jane Customer", customerEmail]);
   await db.query(
     "insert into crm_quotes(id, job_id, status, quote_number, signed_at, customer_email, customer_signature) values ($1, $2, $3, $4, $5, $6, $7)",
-    [quoteId, jobId, input.status || "sold", input.quoteNumber, input.signedAt ?? null, "jane@example.com", "Jane Customer"],
+    [quoteId, jobId, input.status || "sold", input.quoteNumber, input.signedAt ?? null, customerEmail, "Jane Customer"],
   );
-  return { jobId, quoteId };
+  return { jobId, quoteId, customerEmail };
 }
 
-async function insertSigned(quoteNumber: string) {
+async function insertSigned(quoteNumber: string, customerEmail = "jane@example.com") {
   const signedAt = new Date(Date.now() + 60_000).toISOString();
-  const { jobId, quoteId } = await insertJobAndQuote({ quoteNumber, signedAt });
+  const { jobId, quoteId } = await insertJobAndQuote({ quoteNumber, signedAt, customerEmail });
   const contractId = randomUUID();
   await db.query(
     "insert into crm_customer_contracts(id, job_id, quote_id, title, status, signed_at, total_amount, external_source, external_id, meta) values ($1, $2, $3, 'Contract', 'sold', $4, 1200, 'crm_quote', $5, $6)",
-    [contractId, jobId, quoteId, signedAt, `contract:${quoteId}`, JSON.stringify({ contract_snapshot: snapshot(quoteId, signedAt, quoteNumber) })],
+    [contractId, jobId, quoteId, signedAt, `contract:${quoteId}`, JSON.stringify({ contract_snapshot: snapshot(quoteId, signedAt, quoteNumber, customerEmail) })],
   );
-  return { quoteId, contractId, signedAt };
+  return { quoteId, contractId, signedAt, customerEmail };
 }
 
 async function customerRows() {
@@ -144,7 +154,7 @@ async function applyPatch(claim: InternalSignedContractCopyClaim, patch: Record<
   if (!updated.affectedRows) throw new Error("Internal signed-contract copy lease was lost.");
 }
 
-async function drain(send: InternalSignedContractCopyDependencies["send"]) {
+async function drain(send: InternalSignedContractCopyDependencies["send"], now = "2026-11-04T20:00:00.000Z") {
   return processInternalSignedContractCopyOutbox({} as never, {
     limit: 5,
     deadlineMs: 90_000,
@@ -154,7 +164,7 @@ async function drain(send: InternalSignedContractCopyDependencies["send"]) {
       )).rows[0]?.result ?? null,
       update: async (_db, claim, patch) => { await applyPatch(claim, patch as Record<string, unknown>); },
       send,
-      now: () => "2026-11-04T20:00:00.000Z",
+      now: () => now,
     },
   });
 }
@@ -182,8 +192,8 @@ describe("internal signed-contract copy", () => {
     await insertSigned("805-0201");
     await insertSigned("805-0202");
     expect(await internalRows()).toEqual([
-      { contract_number: "805-0201", recipient: DEFAULT_INTERNAL_SIGNED_CONTRACT_COPY_RECIPIENT, status: "pending" },
-      { contract_number: "805-0202", recipient: DEFAULT_INTERNAL_SIGNED_CONTRACT_COPY_RECIPIENT, status: "pending" },
+      { contract_number: "805-0201", recipient: INTERNAL_SIGNED_CONTRACT_COPY_RECIPIENT, status: "pending" },
+      { contract_number: "805-0202", recipient: INTERNAL_SIGNED_CONTRACT_COPY_RECIPIENT, status: "pending" },
     ]);
     const customerBefore = await customerRows();
     expect(customerBefore).toHaveLength(2);
@@ -201,11 +211,12 @@ describe("internal signed-contract copy", () => {
       internalSignedContractCopySubject("805-0202", "Jane Customer"),
     ]);
     for (const message of messages) {
-      const copy = message as FrozenInternalSignedContractCopy & { cc?: unknown; bcc?: unknown };
-      expect(copy.to).toBe("wcbot+805@mail.grokbot.com");
-      expect(copy.to).not.toBe("jane@example.com");
+      const copy = message as FrozenInternalSignedContractCopy & { cc?: unknown; bcc?: unknown; recipients?: unknown };
+      expect(recipientList(copy)).toEqual(["wcbot+805@mail.grokbot.com"]);
+      expect(recipientList(copy)).not.toContain("jane@example.com");
       expect(copy.cc).toBeUndefined();
       expect(copy.bcc).toBeUndefined();
+      expect(copy.recipients).toBeUndefined();
       expect(copy.subject).not.toBe(CUSTOMER_SIGNED_CONTRACT_SUBJECT);
       expect(copy.subject).toMatch(/805-020[12]/);
       expect(copy.text).not.toMatch(/\/quote\//);
@@ -229,19 +240,91 @@ describe("internal signed-contract copy", () => {
     expect(await customerRows()).toEqual(customerBefore);
   });
 
-  it("uses the configured internal recipient without copying the customer", async () => {
-    process.env[INTERNAL_SIGNED_CONTRACT_COPY_EMAIL_ENV] = "wcbot+review@mail.grokbot.com";
+  it("sends the copy only to the internal address, even when other addresses are configured", async () => {
+    const previousSignedQuoteEmail = process.env.CRM_SIGNED_QUOTE_EMAIL;
+    process.env[RECIPIENT_ENV] = "jane@example.com, other@example.com";
+    process.env.CRM_SIGNED_QUOTE_EMAIL = "mike@example.com";
+    try {
+    expect(internalSignedContractCopyRecipients()).toEqual(["wcbot+805@mail.grokbot.com"]);
     await insertSigned("805-0303");
     const customerBefore = await customerRows();
+    expect(customerBefore.map((row) => row.recipient)).toEqual(["jane@example.com"]);
+    expect(JSON.stringify(customerBefore)).not.toContain("wcbot+805@mail.grokbot.com");
     const send = vi.fn<InternalSignedContractCopyDependencies["send"]>(acceptedSend("configured-provider"));
     await drain(send);
     expect(send).toHaveBeenCalledTimes(1);
-    const message = send.mock.calls[0]?.[0];
-    expect(message?.to).toBe("wcbot+review@mail.grokbot.com");
-    expect(message?.subject).toContain("805-0303");
-    expect(message?.to).not.toBe(customerBefore[0]?.recipient);
+    const message = send.mock.calls[0]?.[0] as FrozenInternalSignedContractCopy & { cc?: unknown; bcc?: unknown };
+    expect(recipientList(message)).toEqual(["wcbot+805@mail.grokbot.com"]);
+    expect(recipientList(message)).not.toContain(String(customerBefore[0]?.recipient));
+    expect(message.subject).toContain("805-0303");
     await drain(send);
     expect(send).toHaveBeenCalledTimes(1);
     expect(await customerRows()).toEqual(customerBefore);
+    await expect(db.query(
+      "update crm_internal_signed_contract_copy_outbox set recipient = $1",
+      ["jane@example.com"],
+    )).rejects.toThrow();
+    await expect(db.query(
+      "update crm_internal_signed_contract_copy_outbox set recipient = $1",
+      ["wcbot+805@mail.grokbot.com,jane@example.com"],
+    )).rejects.toThrow();
+    await expect(db.query(
+      "update crm_internal_signed_contract_copy_outbox set payload = $1::jsonb, idempotency_key = $2",
+      [JSON.stringify({ to: "other@example.com", cc: ["jane@example.com"] }), "not-allowed"],
+    )).rejects.toThrow();
+    expect(await customerRows()).toEqual(customerBefore);
+    } finally {
+      if (previousSignedQuoteEmail === undefined) delete process.env.CRM_SIGNED_QUOTE_EMAIL;
+      else process.env.CRM_SIGNED_QUOTE_EMAIL = previousSignedQuoteEmail;
+    }
+  });
+
+  it("does not queue a copy when the customer address is the internal inbox", async () => {
+    await insertSigned("805-0304", INTERNAL_SIGNED_CONTRACT_COPY_RECIPIENT);
+    expect(await internalRows()).toEqual([]);
+    const customer = await customerRows();
+    expect(customer.map((row) => row.recipient)).toEqual([INTERNAL_SIGNED_CONTRACT_COPY_RECIPIENT]);
+    const send = vi.fn<InternalSignedContractCopyDependencies["send"]>(acceptedSend("should-not-send"));
+    const result = await drain(send);
+    expect(result.processed).toBe(0);
+    expect(send).not.toHaveBeenCalled();
+    expect(await customerRows()).toEqual(customer);
+  });
+
+  it("keeps the signed contract and the customer email when the copy cannot be queued", async () => {
+    await db.exec(`
+      create or replace function public.fail_internal_signed_contract_copy()
+      returns trigger language plpgsql as $$ begin raise exception 'forced internal copy failure'; end; $$;
+      drop trigger if exists fail_internal_signed_contract_copy on public.crm_internal_signed_contract_copy_outbox;
+      create trigger fail_internal_signed_contract_copy
+      before insert on public.crm_internal_signed_contract_copy_outbox
+      for each row execute function public.fail_internal_signed_contract_copy();
+    `);
+    try {
+      await insertSigned("805-0404");
+      const contracts = await db.query<{ id: string }>("select id from crm_customer_contracts");
+      expect(contracts.rows).toHaveLength(1);
+      const customer = await customerRows();
+      expect(customer).toHaveLength(1);
+      expect(customer[0]?.recipient).toBe("jane@example.com");
+      expect(JSON.stringify(customer)).not.toContain("wcbot+805@mail.grokbot.com");
+      expect(await internalRows()).toEqual([]);
+    } finally {
+      await db.exec(`
+        drop trigger if exists fail_internal_signed_contract_copy on public.crm_internal_signed_contract_copy_outbox;
+        drop function if exists public.fail_internal_signed_contract_copy();
+      `);
+    }
+  });
+
+  it("keeps the customer email when sending the copy fails", async () => {
+    await insertSigned("805-0505");
+    const customerBefore = await customerRows();
+    const result = await drain(async () => { throw new Error("provider down"); }, new Date().toISOString());
+    expect(result.errors).toEqual(["provider down"]);
+    expect(await customerRows()).toEqual(customerBefore);
+    expect(await internalRows()).toEqual([
+      { contract_number: "805-0505", recipient: "wcbot+805@mail.grokbot.com", status: "uncertain" },
+    ]);
   });
 });
