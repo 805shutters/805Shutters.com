@@ -182,8 +182,6 @@ describe("dashboard summary metrics", () => {
         "depositCollected",
         "depositNeeded",
         "depositNeededAmount",
-        "measureNeeded",
-        "measureScheduled",
         "missingCogs",
         "needsOrder",
         "openBalance",
@@ -203,23 +201,11 @@ describe("dashboard summary metrics", () => {
     expect(summary).not.toHaveProperty("payoffLeft");
   });
 
-  it("keeps required measures visible after ordering", () => {
+  it("does not count technical measures on the sales summary", () => {
     const summary = buildDashboardSummaryMetrics({
       jobs: [
         job({ id: "needs-measure", meta: { measure_needed: { status: "needed" } } }),
-        job({
-          id: "scheduled-measure",
-          meta: {
-            measure_needed: {
-              status: "needed",
-              schedule_status: "scheduled",
-              scheduled_start_at: "2026-07-30T17:00:00.000Z"
-            }
-          }
-        }),
         job({ id: "ordered-measure", status: "ordered", meta: { measure_needed: { status: "needed" } } }),
-        job({ id: "measured", meta: { measure_needed: { status: "measured" } } }),
-        job({ id: "unflagged", meta: {} })
       ],
       quotes: [],
       rows: [],
@@ -227,8 +213,8 @@ describe("dashboard summary metrics", () => {
       orderCogsEmails: []
     });
 
-    expect(summary.measureNeeded).toBe(2);
-    expect(summary.measureScheduled).toBe(1);
+    expect(summary).not.toHaveProperty("measureNeeded");
+    expect(summary).not.toHaveProperty("measureScheduled");
   });
 
   it("counts Sold Jobs from CRM job lifecycle statuses, not bookkeeping rows", () => {

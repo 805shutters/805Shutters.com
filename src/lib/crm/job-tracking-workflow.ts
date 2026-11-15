@@ -2,10 +2,10 @@ import {verifyOperationalCloseout} from "./closeout-readiness";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
-import { getMeasureNeededMeta, objectMeta } from "@/lib/crm/measure-needed-state";
+import { objectMeta } from "@/lib/crm/measure-needed-state";
 
 export const jobTrackingStages = [
-  "scheduled", "need_follow_up", "sold_need_deposit", "need_measure", "need_to_order",
+  "scheduled", "need_follow_up", "sold_need_deposit", "need_to_order",
   "ordered", "shipped", "balance_needed", "complete", "lost", "archived"
 ] as const;
 
@@ -96,13 +96,6 @@ export async function updateJobTrackingStage(
   const job = jobId ? await fetchRecord(supabase, "crm_jobs", jobId) : null;
 
   if (input.stage === "complete" || (["archived","lost"].includes(input.stage) && quote && ["sold","ordered","received","installed","paid"].includes(quote.status||""))) await verifyOperationalCloseout(supabase,{quoteId:quoteId,jobId:jobId,bookkeepingEntryId:input.bookkeepingEntryId},actor.email,input.managerException);
-
-  if (input.stage === "ordered" && job) {
-    const measure = getMeasureNeededMeta(job.meta);
-    if (measure.status === "needed" || measure.form_status === "draft" || measure.form_status === "awaiting_signature") {
-      throw new CrmAuthError(409, "Submit the required technical measure before marking this job ordered.");
-    }
-  }
 
   // Do not choose a quote by customer name or latest-date heuristics. A job-only
   // request writes the job marker, while a linked entry follows its exact quote.

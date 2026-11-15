@@ -73,7 +73,11 @@ async function setup(page: Page, includeLegacy = false, duplicateName = false) {
     if (url.pathname.endsWith("/square-payment-link")) return route.fulfill({ json: { amount: body.expectedAmount, recipient: body.expectedRecipient, url: "https://square.link/test-only", email: { sent: true } } });
     if (url.pathname === "/api/crm/job-tracking/stage") {
       if (body.stage === "complete" && !body.managerException) return route.fulfill({status:409,json:{message:"Closeout needs verified completion of every purchased order, resolved service, and settled balances."}});
-      if (body.stage === "ordered" && body.jobId === records.jobs[1].id) return route.fulfill({ status: 409, json: { message: "Submit the required technical measure before marking this job ordered." } });
+      if (body.stage === "ordered" && body.jobId === records.jobs[1].id) {
+        const quote = records.quotes.find((item) => item.job_id === body.jobId);
+        if (quote) quote.meta = { ...quote.meta, job_tracking: { stage: body.stage } };
+        return route.fulfill({ json: { auditRecorded: true } });
+      }
       const quote = records.quotes.find((item) => item.id === body.quoteId);
       if (quote) quote.meta = { ...quote.meta, job_tracking: { stage: body.stage } };
       return route.fulfill({ json: { auditRecorded: true } });
@@ -172,7 +176,8 @@ test("full local tracking workflow: filters, sorting, edits, receipts and Square
   await page.getByRole("button", { name: /Change stage for Jordan/ }).click();
   await page.getByRole("radio", { name: "Ordered", exact: true }).check();
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
-  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("required technical measure");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(writes.at(-1)?.body).toMatchObject({ stage: "ordered", jobId: id(2) });
 });
 
 test("imported job uses its own Square ledger and editable verified contact", async ({ page }) => {

@@ -126,6 +126,7 @@ async function reserveNativeSalesQuote(db: SupabaseClient, quote: Row, actor: { 
       payloads.push({ quoteId: member.id, revision: member.quote_v2_revision, payload });
     }
   }
+  request.measureDecision = "not_needed";
   const { data: saved, error } = await db.rpc("reserve_native_quote_selection_delivery", {
     p_delivery_mode: options.deliveryMode || null, p_previous_request_key: options.previousDeliveryKey || null,
     p_quote_id: quote.id, p_actor_id: actor.userId, p_expected_revision: options.expectedRevision,

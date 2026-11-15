@@ -6,7 +6,7 @@ import { type ActiveJobsSnapshot } from "@/lib/crm/active-jobs";
 import { shipmentDateLabel, type ShipmentEvidence } from "@/lib/crm/shipment-evidence";
 import { installationCost } from "@/lib/crm/installation-estimate";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, BriefcaseBusiness, CalendarDays, Check, ChevronRight, Circle, FileClock, FileText, LoaderCircle, PackagePlus, Ruler, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, BriefcaseBusiness, CalendarDays, Check, ChevronRight, Circle, FileClock, FileText, LoaderCircle, PackagePlus, Search, Trash2 } from "lucide-react";
 import { canDeleteCustomerFile } from "@/lib/crm/customer-file-deletion";
 import { monthlyGrossSales, monthlySalesAverage } from "@/lib/crm/monthly-sales";
 import { weeklySalesAverage } from "@/lib/crm/weekly-sales-average";
@@ -261,7 +261,7 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
   const paymentPanel = paymentSelection && <InHousePayments key={`${paymentSelection.planId}:${paymentSelection.number}`} planId={paymentSelection.planId} initialInstallmentNumber={paymentSelection.number} initiallyOpen onChanged={paymentChanged} />;
   return <section className={`${styles.workspace}${condensed ? ` ${styles.condensedWorkspace}` : ""}`} aria-label="Job status" aria-busy={busy}>
     <div className={styles.statusQueues} aria-label="Job status queues">
-      {jobStatusQueues.map((queue, index) => { const Icon = [CalendarDays, FileClock, Ruler, PackagePlus, BriefcaseBusiness][index]; return <button type="button" className={styles.statusQueue} key={queue.id} disabled={loadingAll} aria-pressed={!searchQuery && filter === queue.id} onClick={() => void selectFilter(queue.id)}><span className={styles.statusQueueLabel}><Icon size={16} aria-hidden="true" />{queue.label}</span><strong>{queues ? queues[queue.id].length : "—"}</strong><small>{queue.context}</small></button>; })}
+      {jobStatusQueues.map((queue, index) => { const Icon = [CalendarDays, FileClock, PackagePlus, BriefcaseBusiness][index]; return <button type="button" className={styles.statusQueue} key={queue.id} disabled={loadingAll} aria-pressed={!searchQuery && filter === queue.id} onClick={() => void selectFilter(queue.id)}><span className={styles.statusQueueLabel}><Icon size={16} aria-hidden="true" />{queue.label}</span><strong>{queues ? queues[queue.id].length : "—"}</strong><small>{queue.context}</small></button>; })}
     </div>
     <CustomerEmailStatus compact />
     <div className={styles.toolbar}><nav aria-label="Job status filters">{jobStatusFilters.map(({id, label, description}) => <button type="button" key={id} title={description} disabled={loadingAll} aria-pressed={filter === id} onClick={() => void selectFilter(filter === id ? "active" : id)}>{label}</button>)}</nav><div className={styles.viewOptions} role="radiogroup" aria-label="Job view"><label className={styles.densityToggle}><input type="radio" name="job-view" checked={!condensed} onChange={() => changeDensity(false)} />Card view</label><label className={styles.densityToggle}><input type="radio" name="job-view" checked={condensed} onChange={() => changeDensity(true)} />List view</label></div><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search all jobs" value={search} onChange={event => setSearch(event.target.value)} /></label></div>

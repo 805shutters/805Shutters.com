@@ -68,6 +68,7 @@ async function fetchJob(supabase: CrmSupabaseClient, jobId: string): Promise<Crm
   return data as CrmJob;
 }
 
+// Retired with in-app measure requests. The payload stays here and is never called.
 async function ensureMtsMeasureCard(job: CrmJob): Promise<MtsMeasureCardResult> {
   const mts = getMtsClient();
   if (!mts) {
@@ -153,59 +154,17 @@ async function ensureMtsMeasureCard(job: CrmJob): Promise<MtsMeasureCardResult> 
 export async function requestMeasureNeededForJob(
   supabase: CrmSupabaseClient,
   jobId: string,
-  actor: CrmActor,
-  source = "manual"
+  _actor: CrmActor,
+  _source = "manual"
 ) {
-  const existing = await fetchJob(supabase, jobId);
-  const currentMeasure = getMeasureNeededMeta(existing.meta);
-  const now = new Date().toISOString();
-
-  const requestedMeta = mergeMeasureMeta(existing.meta, {
-    status: "needed",
-    requested_at: currentMeasure.requested_at || now,
-    requested_by: currentMeasure.requested_by || actor.email,
-    request_source: currentMeasure.request_source || source,
-    measured_at: null,
-    measured_by: null,
-    last_mts_sync_attempt_at: now
-  });
-
-  const { data: flagged, error: flagError } = await supabase
-    .from("crm_jobs")
-    .update({
-      meta: requestedMeta,
-      next_action: "Technical measure needed"
-    })
-    .eq("id", jobId)
-    .select("*")
-    .maybeSingle();
-  if (flagError || !flagged) throw new CrmAuthError(502, "Measure-needed status could not be saved.");
-
-  const mtsResult = await ensureMtsMeasureCard(flagged as CrmJob);
-  const finalMeta = mergeMeasureMeta((flagged as CrmJob).meta, {
-    mts_job_id: mtsResult.jobId || currentMeasure.mts_job_id || null,
-    mts_job_number: mtsResult.jobNumber || currentMeasure.mts_job_number || null,
-    mts_sync_status: mtsResult.status,
-    mts_sync_error: mtsResult.status === "error" || mtsResult.status === "skipped" ? mtsResult.message || null : null,
-    last_mts_sync_attempt_at: now
-  });
-
-  const { data: finalJob, error: finalError } = await supabase
-    .from("crm_jobs")
-    .update({ meta: finalMeta })
-    .eq("id", jobId)
-    .select("*")
-    .maybeSingle();
-  if (finalError || !finalJob) throw new CrmAuthError(502, "MTS measure-card status could not be saved.");
-
-  await recordCrmActivity(supabase, actor, {
-    entityType: "job",
-    entityId: jobId,
-    action: "measure_needed.request",
-    metadata: { source, mts: mtsResult }
-  });
-
-  return { job: finalJob as CrmJob, mts: mtsResult };
+  const job = await fetchJob(supabase, jobId);
+  return {
+    job,
+    mts: {
+      status: "skipped" as const,
+      message: "Technical measure requests are no longer used.",
+    },
+  };
 }
 
 export async function markMeasureNotNeededForJob(
