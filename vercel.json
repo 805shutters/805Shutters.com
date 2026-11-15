@@ -13,28 +13,12 @@
       "schedule": "*/10 * * * *"
     },
     {
-      "path": "/api/cron/square-contract-reminders",
-      "schedule": "* * * * *"
-    },
-    {
       "path": "/api/cron/google-contacts/",
       "schedule": "*/5 * * * *"
     },
     {
       "path": "/api/cron/overdue-alerts",
       "schedule": "13 17 * * *"
-    },
-    {
-      "path": "/api/cron/stale-quotes",
-      "schedule": "19 17 * * *"
-    },
-    {
-      "path": "/api/cron/payment-plan-reminders",
-      "schedule": "35 17 * * *"
-    },
-    {
-      "path": "/api/cron/commercial-campaigns",
-      "schedule": "5 18 * * 1-5"
     },
     {
       "path": "/api/cron/indexnow",
