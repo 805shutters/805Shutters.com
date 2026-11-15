@@ -8,6 +8,7 @@ import {
   type MultiOrderReceivedAt,
   type NormanShipDate,
 } from "./shipped-date-config";
+import { fuzzyReviewReason, suggestFuzzyNames, type FuzzyNamePerson } from "./fuzzy-name";
 import { shippingOrderReferences, type ShippingNotice } from "./shipping-notice";
 
 export type ShippedDateManufacturer = ShippingNotice["manufacturer"];
@@ -72,6 +73,8 @@ export type NoticeRow = {
 export type ShippedDateStore = {
   findQuoteCandidates(orderRef: string, purchaseOrder: string | null): Promise<QuoteCandidate[]>;
   findBookkeeping(orderRef: string): Promise<BookkeepingCandidate[]>;
+  /** Sold-or-later 805 customer and contract-signer names. Fuzzy fallback only. */
+  listSoldNameCandidates(): Promise<FuzzyNamePerson[]>;
   upsertNotice(notice: NoticeRow): Promise<void>;
   listNotices(orderRefs: string[]): Promise<StoredNotice[]>;
   upsertReview(row: ReviewRow): Promise<void>;
@@ -284,6 +287,11 @@ export async function settleShippingNoticeDates(
     return { writesEnabled, outcomes: [] };
   }
   const outcomes: ShippedDateLineOutcome[] = [];
+  let soldNameCatalog: FuzzyNamePerson[] | null = null;
+  const soldNames = async () => {
+    if (!soldNameCatalog) soldNameCatalog = await store.listSoldNameCandidates();
+    return soldNameCatalog;
+  };
   if (notice.lotusUnshippedProducts) {
     for (const reference of shippingOrderReferences(notice)) {
       const row = reviewRow({
@@ -345,6 +353,32 @@ export async function settleShippingNoticeDates(
     if (match.kind === "unique") {
       ready.push({ line, quote: match.quote });
       continue;
+    }
+    if (match.kind === "none") {
+      const sidemark = notice.sideMarks?.[line.reference];
+      const suggestions = sidemark ? suggestFuzzyNames(sidemark, await soldNames()) : [];
+      if (suggestions.length) {
+        const one = suggestions.length === 1 ? suggestions[0] : null;
+        const row: ReviewRow = {
+          dedupeKey: `fuzzy_name|${notice.manufacturer}|${line.reference}`,
+          manufacturer: notice.manufacturer,
+          orderRef: line.reference,
+          poNumber: line.purchaseOrder,
+          mailboxEmail: source.mailbox,
+          gmailMessageId: source.messageId,
+          quoteId: one?.quoteId ?? null,
+          quoteNumber: one?.quoteNumber ?? null,
+          reason: "no_match",
+          detail: fuzzyReviewReason(suggestions),
+          proposedReceivedAt: null,
+          proposedManufacturerOrderRef: null,
+          status: "open",
+        };
+        await store.upsertReview(row);
+        logEvent("review", { reason: row.detail, orderRef: line.reference, suggestedQuoteId: row.quoteId, messageId: source.messageId });
+        outcomes.push(outcomeFromReview(row));
+        continue;
+      }
     }
     const row = reviewForMatch(match, notice.manufacturer, line, source);
     await store.upsertReview(row);
@@ -579,6 +613,50 @@ export function createSupabaseShippedDateStore(db: SupabaseClient): ShippedDateS
       for (const row of rows) seen.set(row.id, mapQuote(row));
       return [...seen.values()];
     },
+    async listSoldNameCandidates() {
+      const quoteStatuses = ["sold", "ordered", "received", "installed", "invoiced", "paid"];
+      const jobStatuses = ["sold", "ordered", "installed", "invoiced", "closed"];
+      const [quotesResult, jobsResult] = await Promise.all([
+        db.from("crm_quotes")
+          .select("id,job_id,quote_number,status,customer_printed_name")
+          .in("status", quoteStatuses)
+          .limit(2000),
+        db.from("crm_jobs")
+          .select("id,customer_name,status")
+          .in("status", jobStatuses)
+          .limit(2000),
+      ]);
+      if (quotesResult.error || jobsResult.error) throw new Error("Sold name lookup for a shipping notice failed.");
+      const jobs = new Map((jobsResult.data || []).map(job => [String(job.id), job as { id: string; customer_name: string | null; status: string | null }]));
+      const quotedJobs = new Set<string>();
+      const people: FuzzyNamePerson[] = [];
+      for (const quote of (quotesResult.data || []) as Array<{ id: string; job_id: string | null; quote_number: string | null; status: string | null; customer_printed_name: string | null }>) {
+        const quoteNumber = quote.quote_number?.trim() || null;
+        if (quoteNumber && !quoteNumber.toLowerCase().startsWith("805")) continue;
+        if (quote.job_id) quotedJobs.add(quote.job_id);
+        const job = quote.job_id ? jobs.get(quote.job_id) : undefined;
+        people.push({
+          quoteId: quote.id,
+          quoteNumber,
+          jobId: quote.job_id,
+          customerName: job?.customer_name || null,
+          signerName: quote.customer_printed_name,
+          status: quote.status,
+        });
+      }
+      for (const job of jobs.values()) {
+        if (quotedJobs.has(job.id)) continue;
+        people.push({
+          quoteId: null,
+          quoteNumber: null,
+          jobId: job.id,
+          customerName: job.customer_name,
+          signerName: null,
+          status: job.status,
+        });
+      }
+      return people;
+    },
     async findBookkeeping(orderRef) {
       if (!orderRef || /[%_,]/.test(orderRef)) return [];
       const { data, error } = await db.from("crm_quote_bookkeeping_entries")
@@ -687,6 +765,7 @@ export async function backfillStoredShippingNotices(
   const store: ShippedDateStore = writesEnabled ? live : {
     findQuoteCandidates: live.findQuoteCandidates,
     findBookkeeping: live.findBookkeeping,
+    listSoldNameCandidates: live.listSoldNameCandidates,
     listNotices: live.listNotices,
     upsertNotice: async () => undefined,
     upsertReview: async () => undefined,

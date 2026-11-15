@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { MULTI_ORDER_RECEIVED_AT, NORMAN_SHIP_DATE, SHIPPING_VENDOR_GMAIL_TERMS, SHIPPED_DATE_STATUS_POLICY, shippedDateWritesEnabled } from "./shipped-date-config";
+import type { FuzzyNamePerson } from "./fuzzy-name";
 import {
   appendManufacturerOrderRef,
   matchNoticeLine,
@@ -41,6 +42,7 @@ function noticeFrom(name: string) {
 
 class MemoryStore implements ShippedDateStore {
   quotes: QuoteCandidate[] = [];
+  names: FuzzyNamePerson[] = [];
   books: BookkeepingCandidate[] = [];
   notices: NoticeRow[] = [];
   reviews: ReviewRow[] = [];
@@ -56,6 +58,10 @@ class MemoryStore implements ShippedDateStore {
 
   async findBookkeeping(orderRef: string) {
     return this.books.filter(entry => (entry.manufacturerOrderRef || "").toLowerCase().includes(orderRef.toLowerCase()));
+  }
+
+  async listSoldNameCandidates() {
+    return this.names;
   }
 
   async upsertNotice(notice: NoticeRow) {
@@ -127,10 +133,12 @@ describe("shipping notice parsers", () => {
     expect(multi.notice.references).toEqual([
       "52608251244", "52609191394", "52609291445", "52609291448", "52609301460", "52609301462", "52610041480", "52610081490",
     ]);
+    expect(multi.notice.sideMarks?.["52609301462"]).toBe("CHE01-Mike Castile");
     expect(multi.notice.references).not.toContain("X2610230155");
     expect(shippingOrderReferences(multi.notice)).toContain("X2610230155");
     const html = noticeFrom("onyx-2026-11-10-multi-wcbot.html").notice;
     expect(html.references).toEqual(multi.notice.references);
+    expect(html.sideMarks?.["52609301462"]).toBe("CHE01-Mike Castile");
     expect(shippingOrderReferences(html)).toEqual(shippingOrderReferences(multi.notice));
     const single = noticeFrom("onyx-2026-11-12-single-wcbot.txt").notice;
     expect(single).toMatchObject({ references: ["52610301603"], shippedOn: "2026-11-12", trackingNumber: "714168" });
@@ -386,5 +394,79 @@ describe("shipped date settlement", () => {
     expect(fn.toLowerCase()).not.toContain("status");
     expect(sql).toContain("current_setting('crm.shipped_date_write', true) = 'on'");
     expect(sql).toContain("crm_shipping_review");
+  });
+});
+
+describe("fuzzy sidemark fallback", () => {
+  const source = { mailbox: "805shutters@gmail.com", messageId: "castile-notice", sentAt: "2026-11-10T18:00:00Z" };
+
+  function castileNotice(body = "Order No. 52609301462 CHE01-Mike Castile 310.514 # 24 SHIP OUT AT 11/10/2026 BY UCFS TRACKING NO. 7VWQg25k Please log in") {
+    return extractShippingNotice("Onyx Shipping Notice", body, "orders@onyxshutters.com");
+  }
+
+  it("suggests 805-0431 for CHE01-Mike Castile and does not write when the flag is on", async () => {
+    const notice = castileNotice();
+    expect(notice?.sideMarks?.["52609301462"]).toBe("CHE01-Mike Castile");
+    const store = new MemoryStore();
+    store.quotes.push(quote({ id: "quote-0431", quoteNumber: "805-0431", status: "sold" }));
+    store.names.push({
+      quoteId: "quote-0431",
+      quoteNumber: "805-0431",
+      jobId: "job-0431",
+      customerName: "Castiel",
+      signerName: "Mike Castiel",
+      status: "sold",
+    });
+    const settled = await settleShippingNoticeDates(store, notice!, source, { writesEnabled: true });
+    expect(store.writes).toHaveLength(0);
+    expect(store.quotes[0]).toMatchObject({ receivedAt: null, manufacturerOrderRef: null, status: "sold" });
+    expect(store.reviews).toEqual([expect.objectContaining({
+      quoteId: "quote-0431",
+      quoteNumber: "805-0431",
+      detail: "fuzzy_name, distance 2",
+      reason: "no_match",
+      status: "open",
+      proposedReceivedAt: null,
+      proposedManufacturerOrderRef: null,
+    })]);
+    expect(settled.outcomes[0]).toMatchObject({ action: "review", quoteId: "quote-0431", proposedReceivedAt: null, proposedManufacturerOrderRef: null });
+  });
+
+  it("does not suggest a name three edits away", async () => {
+    const store = new MemoryStore();
+    store.quotes.push(quote({ id: "quote-far", quoteNumber: "805-0999", status: "sold" }));
+    store.names.push({ quoteId: "quote-far", quoteNumber: "805-0999", jobId: null, customerName: "Cast", signerName: null, status: "sold" });
+    await settleShippingNoticeDates(store, castileNotice()!, source, { writesEnabled: true });
+    expect(store.writes).toHaveLength(0);
+    expect(store.reviews[0]?.detail).toBe("No quote has this order number, and the PO is not an exact quote number. Nothing was written.");
+    expect(store.reviews[0]?.quoteId).toBeNull();
+  });
+
+  it("lists every close name and does not write", async () => {
+    const store = new MemoryStore();
+    store.names.push(
+      { quoteId: "quote-a", quoteNumber: "805-0431", jobId: "job-a", customerName: "Castiel", signerName: null, status: "sold" },
+      { quoteId: "quote-b", quoteNumber: "805-0502", jobId: "job-b", customerName: "Castrile", signerName: null, status: "ordered" },
+    );
+    await settleShippingNoticeDates(store, castileNotice()!, source, { writesEnabled: true });
+    expect(store.writes).toHaveLength(0);
+    expect(store.reviews).toHaveLength(1);
+    expect(store.reviews[0].quoteId).toBeNull();
+    expect(store.reviews[0].detail).toContain("805-0431");
+    expect(store.reviews[0].detail).toContain("805-0502");
+    expect(store.reviews[0].detail).toContain("Castiel");
+    expect(store.reviews[0].detail).toContain("Castrile");
+    expect(store.reviews[0].detail.startsWith("fuzzy_name")).toBe(true);
+  });
+
+  it("still auto-writes an exact order number when the flag is on", async () => {
+    const store = new MemoryStore();
+    store.quotes.push(quote({ id: "quote-exact", quoteNumber: "805-0100", status: "paid", manufacturerOrderRef: "52609301462" }));
+    store.names.push({ quoteId: "quote-0431", quoteNumber: "805-0431", jobId: null, customerName: "Castiel", signerName: null, status: "sold" });
+    const settled = await settleShippingNoticeDates(store, castileNotice()!, source, { writesEnabled: true });
+    expect(settled.outcomes[0]).toMatchObject({ action: "wrote", quoteId: "quote-exact" });
+    expect(store.writes).toEqual([expect.objectContaining({ id: "quote-exact", ref: "52609301462" })]);
+    expect(store.reviews.some(row => row.detail.startsWith("fuzzy_name"))).toBe(false);
+    expect(store.quotes[0].manufacturerOrderRef).toBe("52609301462");
   });
 });
