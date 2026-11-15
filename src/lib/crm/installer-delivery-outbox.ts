@@ -3,9 +3,9 @@ import type { EmailAttachment, EmailResult } from "@/lib/notify/email";
 import { sendEmail } from "@/lib/notify/email";
 import {
   INSTALLER_FORM_RECIPIENT,
-  buildInstallerFormEmail,
-  buildInstallerFormPdf,
   ensureInstallerForm,
+  renderInstallerFormEmail,
+  renderInstallerFormPdf,
   installerFormHandoffPackage,
   installerFormInstallationHandoffState,
   prepareInstallerFormInstallationHandoff,
@@ -218,7 +218,7 @@ async function defaultPrepareBase(
   const form = await ensureInstallerForm(supabase, claim.quote_id);
   const balanced = await refreshInstallerCustomerBalance(supabase, form) as InstallerFormRow;
   const url = installerUrl(balanced.public_token);
-  const message = buildInstallerFormEmail(balanced, url);
+  const message = await renderInstallerFormEmail(supabase, balanced, url);
   const recipients = installerPacketRecipients();
   const customerEmail = balanced.customer_snapshot.email?.trim().toLowerCase() || "";
   if (customerEmail && recipients.includes(customerEmail)) {
@@ -235,7 +235,7 @@ async function defaultPrepareBase(
     text: message.text,
     attachments: [{
       filename: `805-Shutters-Installation-Form-${balanced.customer_snapshot.quoteNumber || balanced.id.slice(0, 8)}.pdf`,
-      content: buildInstallerFormPdf(balanced, url).toString("base64"),
+      content: (await renderInstallerFormPdf(supabase, balanced, url)).toString("base64"),
       contentType: "application/pdf",
     }],
     idempotencyKey: `805-installer-form-${balanced.id}-${BASE_VERSION}-${recipients.join(",")}`,
@@ -266,7 +266,7 @@ async function defaultPrepareHandoff(
     attachments: [
       {
         filename: `805-Shutters-Installation-Form-${prepared.customer_snapshot.quoteNumber || prepared.id.slice(0, 8)}.pdf`,
-        content: buildInstallerFormPdf(prepared, installerUrl(prepared.public_token)).toString("base64"),
+        content: (await renderInstallerFormPdf(supabase, prepared, installerUrl(prepared.public_token))).toString("base64"),
         contentType: "application/pdf",
       },
       {
