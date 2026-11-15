@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { customerEmailStatus, type CustomerEmailRecord } from "./customer-email-status";
+import { customerEmailNeedsAttention, type CustomerEmailRecord } from "./customer-email-status";
 const TABLE = "crm_customer_signed_contract_email_outbox";
-export const CUSTOMER_EMAIL_FIELDS = "id,kind,status,recipient,created_at,provider_accepted_at,delivery_status,delivery_checked_at,delivery_error,last_error";
+export const CUSTOMER_EMAIL_FIELDS = "id,kind,status,recipient,created_at,provider_accepted_at,delivery_status,delivery_checked_at,delivery_error,last_error,attention_resolved_at,attention_resolved_by,attention_resolved_note";
 export async function customerEmailActivation(db: SupabaseClient): Promise<string | null> {
   const { data, error } = await db.from("crm_customer_email_settings").select("enabled_from").eq("singleton", true).single();
   if (error) throw new Error("Customer email activation could not be read.");
@@ -44,6 +44,7 @@ export async function getCustomerEmailMonitor(db: SupabaseClient, now = Date.now
   if (!activation) return { ok: false, activated: false, reason: "Forward customer email delivery has not been activated.", attention: 0, stale: true };
   const [queue, heartbeat, reconciliation, provider] = await Promise.all([
     db.from(TABLE).select(CUSTOMER_EMAIL_FIELDS).gte("created_at", activation)
+      .is("attention_resolved_at", null)
       .or("delivery_status.is.null,delivery_status.not.in.(delivered,opened,clicked),delivery_error.not.is.null").order("created_at", { ascending: false }).limit(1000),
     db.from("crm_activity_events").select("created_at,action").eq("entity_type", "system")
       .eq("metadata->>processor", "customer-email").in("action", ["customer-email.succeeded", "customer-email.failed"])
@@ -53,11 +54,7 @@ export async function getCustomerEmailMonitor(db: SupabaseClient, now = Date.now
   ]);
   if (queue.error || heartbeat.error || reconciliation.error) throw new Error("Customer email health could not be read.");
   const rows = queue.data as CustomerEmailRecord[];
-  const attention = rows.filter(row => {
-    const label = customerEmailStatus(row);
-    return label.includes("attention") || label === "Delivery delayed" ||
-      (label !== "Delivered" && now - Date.parse(row.created_at) > 15 * 60000);
-  }).length;
+  const attention = rows.filter(row => customerEmailNeedsAttention(row, now)).length;
   const lastRun = heartbeat.data?.[0]?.created_at || null;
   const stale = !lastRun || now - Date.parse(lastRun) > 15 * 60000;
   const workerFailed = heartbeat.data?.[0]?.action === "customer-email.failed";
