@@ -8,6 +8,8 @@ export type ShippingNotice = {
   purchaseOrder?: string;
   /** Digit references plus Onyx X-prefix parts/remakes. Present only when that adds orders the milestone path does not use. */
   orderReferences?: string[];
+  /** Raw side mark keyed by order number. Used only after an exact order/PO match misses. */
+  sideMarks?: Record<string, string>;
   /** Lotus listed a real product under "not shipped yet". A freight-only section does not set this. */
   lotusUnshippedProducts?: boolean;
 };
@@ -15,6 +17,18 @@ export type ShippingNotice = {
 /** Order numbers for the quote-level shipped date. Product milestones keep using `references`. */
 export function shippingOrderReferences(notice: ShippingNotice) {
   return notice.orderReferences?.length ? notice.orderReferences : notice.references;
+}
+
+/** Onyx glues or spaces the dealer side mark onto each order number, ahead of the area. */
+function onyxOrderSideMarks(head: string) {
+  const flat = head.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+  const marks: Record<string, string> = {};
+  const pattern = /(?<![A-Za-z0-9])(\d{11}|X\d{10})(?!\d)\s*((?:[A-Za-z]{2,}\d+\s*-\s*)[A-Za-z].*?)(?=\s+\d+\.\d+\b)/g;
+  for (const match of flat.matchAll(pattern)) {
+    const name = match[2].replace(/\s+/g, " ").trim();
+    if (name) marks[match[1]] = name.slice(0, 120);
+  }
+  return marks;
 }
 
 function isoDate(year: string, month: string, day: string) {
@@ -80,6 +94,13 @@ export function extractShippingNotice(subject: string, body: string, from: strin
   const trackingNumber = /TRACKING\s*(?:Number|NO\.)\s*:?\s*([^\n]+?)(?:\s+https?:|\s+Please|\n|$)/i.exec(text)?.[1]?.trim();
   const purchaseOrder = norman ? normanPurchaseOrder(subject, text) : undefined;
   const orderReferences = [...references, ...xRefs.filter(ref => !references.includes(ref))];
+  const sideMarks = onyx ? onyxOrderSideMarks(head) : {};
+  if (norman) {
+    const mark = text.match(/\bSide\s*Mark\s*:\s*([^\n|]+)/i)?.[1]?.replace(/\s+/g, " ").trim();
+    if (mark) {
+      for (const reference of references) sideMarks[reference] = mark.slice(0, 120);
+    }
+  }
   return {
     manufacturer: norman ? "Norman" : "Onyx",
     references,
@@ -88,5 +109,6 @@ export function extractShippingNotice(subject: string, body: string, from: strin
     ...(trackingNumber ? { trackingNumber: trackingNumber.slice(0, 250) } : {}),
     ...(purchaseOrder ? { purchaseOrder } : {}),
     ...(orderReferences.length > references.length ? { orderReferences } : {}),
+    ...(Object.keys(sideMarks).length ? { sideMarks } : {}),
   };
 }

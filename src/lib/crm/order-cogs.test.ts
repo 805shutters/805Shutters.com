@@ -2,7 +2,7 @@ import * as gmailAccess from "./installation-invoices";
 import * as productEmailWorkflow from "./apply-order-email-product";
 import { listGmailMessages } from "./order-cogs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { customerOrderCogsQuery, extractLotusOrderCogs, extractNormanOrderCogs, extractOnyxOrderCogs, extractOrderCogsFromText, matchOrderCogs, orderCogsTelegramText, processOrderCogsInbox } from "@/lib/crm/order-cogs";
+import { customerOrderCogsQuery, extractLotusOrderCogs, extractNormanOrderCogs, extractOnyxOrderCogs, extractOrderCogsFromText, matchOrderCogs, orderCogsAssignmentLocked, orderCogsTelegramText, processOrderCogsInbox, reviewStatus } from "@/lib/crm/order-cogs";
 
 describe("recorded order reference matching", () => {
   const candidate = { source: "entry" as const, customerName: "Ashley Soto", customerEmail: null, customerPhone: null, customerAddress: null, productInterest: null, jobId: "job", quoteId: "quote", entryId: "entry", quoteNumber: null, quoteLabel: null, totalAmount: 5517.36, cogsAmount: 2424.23, soldDate: null, manufacturerName: "Norman", manufacturerOrderRef: null, manufacturerOrderUrl: null, meta: {orderCogsOrderRefs:["8880987043"]} };
@@ -200,6 +200,7 @@ class FakeSupabase {
   inserts: Array<{ table: string; row: Record<string, unknown> }> = [];
   failOrderCogsRecordWrites = false;
 
+  quotes: Array<Record<string, unknown>> = [];
   jobs: Array<Record<string, unknown>> = [
     {
       id: "job-1",
@@ -232,7 +233,7 @@ class FakeSupabase {
 
   selectRows(table: string) {
     if (table === "crm_quote_bookkeeping_entries") return this.entries;
-    if (table === "crm_quotes") return [];
+    if (table === "crm_quotes") return this.quotes;
     if (table === "crm_jobs") return this.jobs;
     if (table === "crm_order_cogs_emails") return this.records;
     return [];
@@ -1167,5 +1168,211 @@ describe("product-mode order ingestion", () => {
   it("fails visibly instead of silently losing an oversized or looping result set", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ messages: [{ id: "one" }], nextPageToken: "loop" })));
     await expect(listGmailMessages("token", "orders", 50, true)).rejects.toThrow("exceeded 20 pages");
+  });
+});
+
+describe("fuzzy name fallback and manual assignment lock", () => {
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+
+  const castileText = "Order No.: 52609301462 PO No.: Side Mark: CHE01-Mike Castile Total Area: 310.514 Grand Total: 100.00";
+
+  function person(patch: Record<string, unknown>) {
+    return {
+      source: "quote" as const,
+      customerName: "Castiel",
+      customerEmail: null,
+      customerPhone: null,
+      customerAddress: null,
+      productInterest: null,
+      jobId: "job-0431",
+      quoteId: "quote-0431",
+      entryId: null,
+      quoteNumber: "805-0431",
+      quoteLabel: null,
+      totalAmount: 1000,
+      cogsAmount: 0,
+      soldDate: "2026-10-01",
+      manufacturerName: "Onyx",
+      manufacturerOrderRef: null,
+      manufacturerOrderUrl: null,
+      meta: {},
+      status: "sold",
+      signerName: null,
+      ...patch,
+    };
+  }
+
+  it("suggests Castiel and does not allow a COGS write", () => {
+    const extraction = extractOnyxOrderCogs(castileText);
+    expect(extraction).toMatchObject({ customerName: "Mike Castile", orderNumber: "52609301462" });
+    const match = matchOrderCogs(extraction, [person({})]);
+    expect(match).toMatchObject({
+      status: "needs_review",
+      candidate: null,
+      reason: "fuzzy_name, distance 2",
+      suggestions: [expect.objectContaining({ quoteId: "quote-0431", quoteNumber: "805-0431", distance: 2 })],
+    });
+    expect(reviewStatus(extraction, match).canApply).toBe(false);
+  });
+
+  it("gives no suggestion at distance 3 and lists two close names", () => {
+    const extraction = extractOnyxOrderCogs(castileText);
+    const distant = matchOrderCogs(extraction, [person({ customerName: "Cast", quoteNumber: "805-0999" })]);
+    expect(distant.status).toBe("unmatched");
+    expect(distant.suggestions).toBeUndefined();
+    const match = matchOrderCogs(extraction, [
+      person({}),
+      person({ customerName: "Castrile", quoteId: "quote-b", quoteNumber: "805-0502", jobId: "job-b" }),
+    ]);
+    expect(match.status).toBe("needs_review");
+    expect(match.candidate).toBeNull();
+    expect(match.reason).toContain("805-0431");
+    expect(match.reason).toContain("805-0502");
+    expect(reviewStatus(extraction, match).canApply).toBe(false);
+  });
+
+  it("lets an exact order number auto-apply ahead of a fuzzy name", () => {
+    const extraction = extractOnyxOrderCogs(castileText);
+    const exact = person({
+      customerName: "Other Person",
+      quoteId: "quote-exact",
+      quoteNumber: "805-0100",
+      manufacturerOrderRef: "52609301462",
+    });
+    const match = matchOrderCogs(extraction, [exact, person({})]);
+    expect(match).toMatchObject({ status: "matched", confidence: 1, candidate: exact });
+    expect(match.suggestions).toBeUndefined();
+    expect(reviewStatus(extraction, match)).toMatchObject({ canApply: true, status: "matched" });
+  });
+
+  function onyxMailbox() {
+    vi.stubEnv("GMAIL_805_CLIENT_ID", "client");
+    vi.stubEnv("GMAIL_805_CLIENT_SECRET", "secret");
+    vi.stubEnv("GMAIL_805_REFRESH_TOKEN", "refresh");
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("oauth2.googleapis.com/token")) return jsonResponse({ access_token: "token" });
+      if (url.endsWith("/profile")) return jsonResponse({ emailAddress: "805shutters@gmail.com" });
+      if (url.includes("/messages?")) return jsonResponse({ messages: [] });
+      return jsonResponse({
+        id: "msg-castile",
+        payload: { headers: [{ name: "From", value: "orders@onyxshutters.com" }], mimeType: "text/plain", body: { data: gmailTextBody(castileText) } },
+      });
+    }));
+  }
+
+  function castileBooks() {
+    const db = new FakeSupabase();
+    db.jobs = [
+      { id: "job-0431", customer_name: "Pat Smith", status: "sold", estimated_total: 1, phone: "8055550100", email: null, address: null, product_interest: "shutters", meta: {} },
+      { id: "job-exact", customer_name: "Other Person", status: "sold", estimated_total: 1, phone: "8055550101", email: null, address: null, product_interest: "shutters", meta: {} },
+      { id: "job-fuzzy", customer_name: "Castiel", status: "sold", estimated_total: 1, phone: "8055550102", email: null, address: null, product_interest: "shutters", meta: {} },
+    ];
+    db.quotes = [
+      { id: "quote-0431", job_id: "job-0431", status: "sold", quote_number: "805-0431", quote_label: null, quote_total: 1, materials_cost: 0, customer_printed_name: "Pat Smith", manufacturer_name: "Onyx", manufacturer_order_ref: null, meta: {} },
+      { id: "quote-exact", job_id: "job-exact", status: "sold", quote_number: "805-0100", quote_label: null, quote_total: 1, materials_cost: 0, customer_printed_name: "Other Person", manufacturer_name: "Onyx", manufacturer_order_ref: "52609301462", meta: {} },
+      { id: "quote-fuzzy", job_id: "job-fuzzy", status: "sold", quote_number: "805-0444", quote_label: null, quote_total: 1, materials_cost: 0, customer_printed_name: null, manufacturer_name: "Onyx", manufacturer_order_ref: null, meta: {} },
+    ];
+    db.entries = [
+      { id: "entry-0431", quote_id: "quote-0431", job_id: "job-0431", customer_name: "Pat Smith", sold_date: "2026-10-01", total_amount: 1, cogs_amount: 0, manufacturer_name: "Onyx", manufacturer_order_ref: null, meta: {} },
+      { id: "entry-exact", quote_id: "quote-exact", job_id: "job-exact", customer_name: "Other Person", sold_date: "2026-10-01", total_amount: 1, cogs_amount: 0, manufacturer_name: "Onyx", manufacturer_order_ref: "52609301462", meta: {} },
+      { id: "entry-fuzzy", quote_id: "quote-fuzzy", job_id: "job-fuzzy", customer_name: "Castiel", sold_date: "2026-10-01", total_amount: 1, cogs_amount: 0, manufacturer_name: "Onyx", manufacturer_order_ref: null, meta: {} },
+    ];
+    return db;
+  }
+
+  function assignedRow(raw: Record<string, unknown>) {
+    return {
+      id: "email-0431",
+      gmail_message_id: "msg-castile",
+      mailbox_email: "805shutters@gmail.com",
+      match_status: "needs_review",
+      matched_quote_id: "quote-0431",
+      matched_job_id: "job-0431",
+      matched_bookkeeping_entry_id: "entry-0431",
+      applied_at: null,
+      raw,
+    };
+  }
+
+  it("keeps a Financial assignment to 805-0431 when an exact or fuzzy match points elsewhere", async () => {
+    onyxMailbox();
+    const apply = vi.spyOn(productEmailWorkflow, "applyOrderEmailProduct").mockResolvedValue({ addedCogs: 100, totalCogs: 100 });
+    const exactDb = castileBooks();
+    const financial = { actorEmail: "805-financial", manual_assignment: { by: "financial", at: "2026-11-14T00:00:00Z", quote_id: "quote-0431" } };
+    exactDb.records.push(assignedRow(financial));
+    await processOrderCogsInbox(exactDb as never, { productAutoApply: true, archive: false, messageIds: ["msg-castile"], actorEmail: "order-cogs-cron" });
+    expect(apply).not.toHaveBeenCalled();
+    expect(exactDb.records[0]).toMatchObject({ matched_quote_id: "quote-0431", raw: financial });
+    expect(exactDb.updates).toHaveLength(0);
+
+    const fuzzyDb = castileBooks();
+    fuzzyDb.entries = fuzzyDb.entries.filter(entry => entry.id !== "entry-exact");
+    fuzzyDb.quotes = fuzzyDb.quotes.filter(quote => quote.id !== "quote-exact");
+    fuzzyDb.records.push(assignedRow({ actorEmail: "805-financial" }));
+    await processOrderCogsInbox(fuzzyDb as never, { productAutoApply: true, archive: false, messageIds: ["msg-castile"], actorEmail: "order-cogs-cron" });
+    expect(apply).not.toHaveBeenCalled();
+    expect(fuzzyDb.records[0]).toMatchObject({ matched_quote_id: "quote-0431", matched_job_id: "job-0431", raw: { actorEmail: "805-financial" } });
+    expect(fuzzyDb.updates).toHaveLength(0);
+  });
+
+  it("still reprocesses an unlocked needs_review row, including a cron-owned quote id", async () => {
+    onyxMailbox();
+    const apply = vi.spyOn(productEmailWorkflow, "applyOrderEmailProduct").mockResolvedValue({ addedCogs: 100, totalCogs: 100 });
+    const db = castileBooks();
+    db.records.push({
+      id: "email-open",
+      gmail_message_id: "msg-castile",
+      mailbox_email: "805shutters@gmail.com",
+      match_status: "needs_review",
+      matched_quote_id: null,
+      applied_at: null,
+      raw: { actorEmail: "order-cogs-cron" },
+    });
+    const options = { productAutoApply: true, archive: false, messageIds: ["msg-castile"], actorEmail: "order-cogs-cron" };
+    await processOrderCogsInbox(db as never, options);
+    expect(apply).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ matched_quote_id: "quote-exact", extracted_order_number: "52609301462" }), "Onyx", expect.anything());
+    expect(db.records[0]).toMatchObject({ match_status: "matched", matched_quote_id: "quote-exact" });
+
+    const cronOwned = castileBooks();
+    cronOwned.records.push(assignedRow({ actorEmail: "order-cogs-cron" }));
+    await processOrderCogsInbox(cronOwned as never, options);
+    expect(cronOwned.records[0].matched_quote_id).toBe("quote-exact");
+    expect(orderCogsAssignmentLocked({ matched_quote_id: "quote-0431", raw: { actorEmail: "805-financial" } })).toBe(true);
+    expect(orderCogsAssignmentLocked({ matched_quote_id: "quote-0431", raw: { actorEmail: "order-cogs-cron", manual_assignment: { quote_id: "quote-0431" } } })).toBe(true);
+    expect(orderCogsAssignmentLocked({ matched_quote_id: null, raw: { actorEmail: "order-cogs-cron" } })).toBe(false);
+  });
+
+  it("does not put a locked needs_review row back on the retry queue", async () => {
+    onyxMailbox();
+    const db = castileBooks();
+    db.records.push(assignedRow({ actorEmail: "805-financial" }));
+    const result = await processOrderCogsInbox(db as never, { productAutoApply: true, archive: false, actorEmail: "order-cogs-cron" });
+    expect(result.scanned).toBe(0);
+    expect(db.records[0]).toMatchObject({ matched_quote_id: "quote-0431", raw: { actorEmail: "805-financial" } });
+    expect(db.updates).toHaveLength(0);
+  });
+
+  it("records a fuzzy suggestion and does not apply COGS while writes would otherwise be allowed", async () => {
+    onyxMailbox();
+    const apply = vi.spyOn(productEmailWorkflow, "applyOrderEmailProduct").mockResolvedValue({ addedCogs: 100, totalCogs: 100 });
+    const db = castileBooks();
+    db.entries = db.entries.filter(entry => entry.id === "entry-fuzzy");
+    db.quotes = db.quotes.filter(quote => quote.id === "quote-fuzzy");
+    const result = await processOrderCogsInbox(db as never, { productAutoApply: true, archive: false, messageIds: ["msg-castile"], actorEmail: "order-cogs-cron" });
+    expect(apply).not.toHaveBeenCalled();
+    expect(result.needsReview).toBe(1);
+    expect(result.applied || 0).toBe(0);
+    expect(db.records[0]).toMatchObject({
+      match_status: "needs_review",
+      match_reason: "fuzzy_name, distance 2",
+      matched_quote_id: null,
+      raw: {
+        actorEmail: "order-cogs-cron",
+        suggested_quote_id: "quote-fuzzy",
+        suggested_quote_number: "805-0444",
+      },
+    });
+    expect(db.updates.filter(update => update.table !== "crm_order_cogs_emails")).toHaveLength(0);
   });
 });

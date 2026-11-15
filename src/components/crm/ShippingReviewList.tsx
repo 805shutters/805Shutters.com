@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { shippingReviewQuoteText, shippingReviewWhyText } from "@/lib/crm/fuzzy-name";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type ReviewRow = {
@@ -8,6 +9,7 @@ type ReviewRow = {
   manufacturer: string | null;
   order_ref: string | null;
   po_number: string | null;
+  quote_id: string | null;
   quote_number: string | null;
   reason: string;
   detail: string | null;
@@ -83,8 +85,8 @@ function table(rows: ReviewRow[]) {
           <td style={{ padding: "8px 6px", verticalAlign: "top" }}>{row.manufacturer}</td>
           <td style={{ padding: "8px 6px", verticalAlign: "top" }}>{row.order_ref}</td>
           <td style={{ padding: "8px 6px", verticalAlign: "top" }}>{row.po_number}</td>
-          <td style={{ padding: "8px 6px", verticalAlign: "top" }}>{row.quote_number}{row.proposed_received_at ? <small><br />{row.proposed_received_at} {row.proposed_manufacturer_order_ref || ""}</small> : null}</td>
-          <td style={{ padding: "8px 6px", verticalAlign: "top" }}>{reasons[row.reason] || row.reason}</td>
+          <td style={{ padding: "8px 6px", verticalAlign: "top" }}>{shippingReviewQuoteText({ detail: row.detail, quoteNumber: row.quote_number, quoteId: row.quote_id })}{row.proposed_received_at ? <small><br />{row.proposed_received_at} {row.proposed_manufacturer_order_ref || ""}</small> : null}</td>
+          <td style={{ padding: "8px 6px", verticalAlign: "top" }}>{shippingReviewWhyText(row.detail) || reasons[row.reason] || row.reason}</td>
           <td style={{ padding: "8px 6px", verticalAlign: "top" }}>{row.detail}</td>
         </tr>)}
       </tbody>
