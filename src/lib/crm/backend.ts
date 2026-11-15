@@ -24,7 +24,6 @@ import {
 import { buildCommissionSummary } from "@/lib/crm/commissions";
 import { buildCustomerFiles } from "@/lib/crm/customer-files";
 import { buildClosedSalesReport, buildDashboardSummaryMetrics } from "@/lib/crm/dashboard-metrics";
-import { getMeasureNeededMeta } from "@/lib/crm/measure-needed-state";
 import {
   buildPartnerPaymentLedger,
   buildUnpaidPartnerPaymentItemForRow,
@@ -2105,10 +2104,6 @@ export async function updateCrmJob(
     lastUpdatedBy: actor.email,
     lastUpdatedAt: updatedAt
   };
-  const measure = getMeasureNeededMeta(patch.meta);
-  if (Object.prototype.hasOwnProperty.call(patch, "status") && patch.status === "ordered" && measure.status === "needed") {
-    throw new CrmAuthError(409, "Complete the required technical measure before marking this job ordered.");
-  }
   if (Object.prototype.hasOwnProperty.call(patch, "lead_source")) {
     const leadSource = typeof patch.lead_source === "string" && patch.lead_source.trim() ? patch.lead_source.trim() : null;
     const meta = patch.meta && typeof patch.meta === "object" && !Array.isArray(patch.meta) ? patch.meta : {};
@@ -3357,16 +3352,6 @@ export async function updateCrmQuote(
     .eq("quote_id", id);
   const builderManaged = (lineItemCount ?? 0) > 0;
   const serverPricedFields = new Set(["quote_total", "discount", "tax", "balance_due"]);
-  // Recording an existing order date is another path into Ordered; preserve
-  // the same required-measure guard as the operational stage button.
-  if ((payload.status === "ordered" || optionalText(payload.ordered_at)) && existing.job_id) {
-    const { data: linkedJob, error } = await supabase.from("crm_jobs").select("meta").eq("id", existing.job_id).maybeSingle();
-    if (error || !linkedJob) throw new CrmAuthError(502, "The job's technical measure could not be verified.");
-    const measure = getMeasureNeededMeta(linkedJob.meta);
-    if (measure.status === "needed" || measure.form_status === "draft" || measure.form_status === "awaiting_signature") {
-      throw new CrmAuthError(409, "Submit the required technical measure before recording the order.");
-    }
-  }
 
   const hasBuilderTotalOverride =
     builderManaged && payload.manual_total_override === true && hasPayloadKey(payload, "quote_total");
@@ -3929,12 +3914,8 @@ export async function updateCrmBookkeepingEntry(
     }
     if (measureJobId) {
       const { data: linkedJob, error } = await supabase.from("crm_jobs").select("id,meta").eq("id", measureJobId).maybeSingle();
-      if (error) throw new CrmAuthError(502, "The job's technical measure could not be verified.");
+      if (error) throw new CrmAuthError(502, "The linked order job could not be verified.");
       if (!linkedJob || linkedJob.meta?.deleted_at) throw new CrmAuthError(404, "The linked order job was not found.");
-      const measure = getMeasureNeededMeta(linkedJob.meta);
-      if (measure.status === "needed" || measure.form_status === "draft" || measure.form_status === "awaiting_signature") {
-        throw new CrmAuthError(409, "Submit the required technical measure before recording the order.");
-      }
     }
   }
   const contractSignedAt = optionalText(payload.contract_signed_at);

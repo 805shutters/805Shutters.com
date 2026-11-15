@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { completeMeasureNeededForJob, markMeasureNotNeededForJob, requestMeasureNeededForJob } from "@/lib/crm/measure-needed";
+import { completeMeasureNeededForJob, markMeasureNotNeededForJob } from "@/lib/crm/measure-needed";
 import { CrmAuthError, crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
-import { ensureTechnicalMeasureForm } from "@/lib/crm/technical-measures";
 
 export const runtime = "nodejs";
 
@@ -20,19 +19,7 @@ export async function POST(
     }
 
     if (!body.action || body.action === "request") {
-      const result = await requestMeasureNeededForJob(supabase, id, actor, "manual");
-      const { data: quote } = await supabase
-        .from("crm_quotes")
-        .select("id")
-        .eq("job_id", id)
-        .in("status", ["sold", "approved"])
-        .order("signed_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      const form = quote?.id
-        ? await ensureTechnicalMeasureForm(supabase, { jobId: id, quoteId: quote.id }, actor)
-        : null;
-      return NextResponse.json({ ...result, form });
+      return NextResponse.json({ error: "Technical measure requests are no longer used." }, { status: 410 });
     }
 
     if (body.action === "not_needed") {

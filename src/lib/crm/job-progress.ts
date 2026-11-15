@@ -1,6 +1,6 @@
 import {deriveFulfillment,type FulfillmentData} from "./fulfillment";
 import type { CrmBookkeepingRow, CrmJob, CrmQuote } from "./types";
-import { getMeasureNeededMeta, objectMeta } from "./measure-needed-state";
+import { objectMeta } from "./measure-needed-state";
 
 /** Deliberately excludes bearer tokens, signatures, customer snapshots and COD projections. */
 export type InstallerOutcomeEvidence = {
@@ -17,7 +17,7 @@ export type JobProgress = {
   installation: "unverified" | "partial" | "complete";
   service: "open" | "none_known";
   payment: "unknown" | "deposit_needed" | "balance_open" | "settled" | "overpaid";
-  stage: "scheduled" | "need_follow_up" | "sold_need_deposit" | "need_measure" | "need_to_order" | "ordered" | "shipped" | "balance_needed" | "complete" | "lost" | "archived" | "attention";
+  stage: "scheduled" | "need_follow_up" | "sold_need_deposit" | "need_to_order" | "ordered" | "shipped" | "balance_needed" | "complete" | "lost" | "archived" | "attention";
   active: boolean; confidence: "confirmed" | "needs_verification";
   evidence: Array<{ source: string; id: string; occurredAt: string | null }>;
   blockers: string[]; conflicts: string[]; nextAction: string; recordedStage: string | null;
@@ -71,7 +71,6 @@ export function deriveJobProgress(input: Input): JobProgress {
   if (input.signedAt) evidence.push({ source: "signed_contract", id: quoteId || row?.id || jobId || "unknown", occurredAt: input.signedAt });
   const product: JobProgress["product"] = fulfillment?.hasEvidence ? fulfillment.complete ? "received" : fulfillment.partiallyReceived ? "partially_received" : fulfillment.shipped ? "shipped" : fulfillment.rows.some(r=>["submitted","acknowledged"].includes(r.line.state)) ? "ordered" : "unprepared" : quote?.received_at || status === "received" ? "received" : input.orderedAt || status === "ordered" ? "ordered" : "unprepared";
   const payment = input.balanceOutstanding === null ? "unknown" : input.balanceOutstanding < -0.005 ? "overpaid" : input.balanceOutstanding <= 0.005 ? "settled" : input.depositOutstanding === null || input.depositOutstanding > 0.005 ? "deposit_needed" : "balance_open";
-  const measure = getMeasureNeededMeta(job?.meta);
   const missingSources = (input.sourceHealth || []).filter((source) => source.state !== "complete");
   for (const source of missingSources) blockers.push(`${source.source} unavailable`);
   if (partial) blockers.push("Installation is partial or incomplete");
@@ -80,13 +79,12 @@ export function deriveJobProgress(input: Input): JobProgress {
   if (input.isSale && !input.signatureRecorded) blockers.push("Signed scope needs verification");
   if (input.isSale && payment === "deposit_needed") blockers.push("Deposit prerequisite outstanding");
   if (input.isSale && payment === "unknown") blockers.push("Payment evidence unavailable");
-  if (input.isSale && measure.status === "needed") blockers.push("Required technical measure incomplete");
   if (partial && explicitCompletion) conflicts.push("Recorded completion conflicts with the latest partial report");
   if (fulfillment?.hasEvidence && !fulfillment.complete) blockers.push(`Purchased product remains incomplete: ${fulfillment.remaining} units outstanding; ${fulfillment.missingScope ?? "unknown"} openings need scope verification`);
   if (fulfillment?.rows.some(r=>r.line.state==="canceled")) blockers.push("Vendor cancellation requires purchased-scope and remaining-obligation review");
   if (fulfillment?.held) blockers.push("A vendor or customer hold remains open");
   if (fulfillment?.openVisits.length) blockers.push("A service or return visit remains open");
-  const cleanComplete = (!fulfillment?.hasEvidence || fulfillment.complete) && complete && !serviceOpen && payment === "settled" && missingSources.length === 0 && measure.status !== "needed";
+  const cleanComplete = (!fulfillment?.hasEvidence || fulfillment.complete) && complete && !serviceOpen && payment === "settled" && missingSources.length === 0;
   if (recordedStage && terminal.has(recordedStage) && input.isSale && !cleanComplete && !(recordedStage === "closed" && objectMeta(job?.meta?.payment_progress).source === "customer-payment-ledger")) conflicts.push(`Recorded ${recordedStage}; purchased work, service or settlement still needs verification`);
   let stage: JobProgress["stage"];
   if (partial || serviceOpen || fulfillment?.held || (complete && fulfillment?.hasEvidence && !fulfillment.complete) || conflicts.length || (input.isSale && payment === "unknown")) stage = "attention";
@@ -95,20 +93,19 @@ export function deriveJobProgress(input: Input): JobProgress {
   else if (complete) stage = payment === "balance_open" || payment === "deposit_needed" ? "balance_needed" : "attention";
   else if (product === "received") stage = "shipped";
   else if (["ordered","shipped","partially_received"].includes(product)) stage = "ordered";
-  else if (input.isSale) stage = payment === "deposit_needed" || payment === "unknown" ? "sold_need_deposit" : measure.status === "needed" ? "need_measure" : "need_to_order";
+  else if (input.isSale) stage = payment === "deposit_needed" || payment === "unknown" ? "sold_need_deposit" : "need_to_order";
   else stage = job?.status === "scheduled" || job?.appointment_start ? "scheduled" : "need_follow_up";
   if (input.recordedStage && input.recordedStage !== stage && !terminal.has(input.recordedStage)) conflicts.push(`Recorded ${input.recordedStage}; evidence indicates ${stage}`);
   const actions: Record<JobProgress["stage"], string> = {
     attention: partial || serviceOpen ? "Review installer issues and arrange return visit" : "Verify conflicting or incomplete evidence",
     sold_need_deposit: payment === "unknown" || input.depositOutstanding === null ? "Verify payment ledger and deposit terms" : "Collect required deposit",
-    need_measure: "Complete required technical measure", need_to_order: input.signatureRecorded ? "Review and prepare vendor order" : "Verify signed purchased scope",
+    need_to_order: input.signatureRecorded ? "Review and prepare vendor order" : "Verify signed purchased scope",
     ordered: "Confirm vendor promise and remaining product", shipped: "Verify complete physical receipt and installation readiness",
     balance_needed: "Review balance and contractual due date", complete: "No open obligations identified", lost: "Review cancellation obligations", archived: "Archived",
     scheduled: "Attend consultation and record outcome", need_follow_up: "Follow up on the opportunity",
   };
   const nextAction = stage === "attention" ? actions.attention
     : input.isSale && !complete && payment === "deposit_needed" ? actions.sold_need_deposit
-    : input.isSale && !complete && measure.status === "needed" ? actions.need_measure
     : fulfillment?.missingScope ? "Verify remaining purchased openings" : fulfillment?.delayed.length ? "Chase overdue vendor product" : actions[stage];
   return { identity: { jobId, quoteId, bookkeepingId: row?.source !== "crm_quote" ? row?.id || null : null }, commercial: input.isSale ? "accepted" : ["lost", "archived"].includes(status) ? "cancelled" : "open", product, installation, service: serviceOpen ? "open" : "none_known", payment, stage, active: !terminal.has(stage), confidence: latest && !missingSources.length && !conflicts.length ? "confirmed" : "needs_verification", evidence, blockers, conflicts, nextAction, recordedStage, freshness: input.sourceHealth || [] };
 }
