@@ -17,7 +17,7 @@
       "schedule": "*/5 * * * *"
     },
     {
-      "path": "/api/cron/overdue-alerts",
+      "path": "/api/cron/overdue-alerts/",
       "schedule": "13 17 * * *"
     },
     {
