@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { ArrowLeft, ChevronRight, FileText, Search } from "lucide-react";
 import type { PublicQuote } from "@/lib/crm/public-quote";
@@ -78,6 +78,7 @@ function MobileContractsWorkspace({
   const actionHeading = useRef<HTMLHeadingElement>(null);
   const searchScroll = useRef(0);
   const actionLock = useRef(false);
+  const signatureFormId = useId();
 
   async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     const response = await fetch(path.replace(/(\?|$)/, "/$1"), {
@@ -353,11 +354,12 @@ function MobileContractsWorkspace({
             Send
           </button>
           <button
-            type="button"
             disabled={!canSign || busy || documentLoading}
-            onClick={() => void beginSign()}
+            type={mode === "sign" ? "submit" : "button"}
+            form={mode === "sign" ? signatureFormId : undefined}
+            onClick={mode === "sign" ? undefined : () => void beginSign()}
           >
-            {document?.signed ? "Signed" : "Sign"}
+            {document?.signed ? "Signed" : mode === "sign" ? "Approve contract" : "Sign"}
           </button>
         </header>
         <section className={styles.documentTitle}>
@@ -511,6 +513,7 @@ function MobileContractsWorkspace({
             <Suspense fallback={<p>Loading signature form…</p>}>
               <SignQuote
                 key={token}
+                formId={signatureFormId}
                 token={token}
                 customerName={document.customerName}
                 total={document.total}
