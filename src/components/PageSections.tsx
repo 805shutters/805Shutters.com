@@ -7,6 +7,7 @@ import { LeadForm } from "./LeadForm";
 import { ServiceGrid } from "./ServiceGrid";
 import { TrackedPhoneLink } from "./TrackedPhoneLink";
 import { AppointmentBooking } from "./booking/AppointmentBooking";
+import { GalleryContactLinks } from "./GalleryContactLinks";
 import { HomeHeroCarousel, type HomeHeroSlide } from "./HomeHeroCarousel";
 import { LazyVideo } from "./LazyVideo";
 import { SitePage, homeHeroImage, site } from "@/lib/site-data";
@@ -1386,7 +1387,7 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
   const heroTitle = commercialMode
     ? "Commercial shade systems for every workspace"
     : "Custom Shutters, Shades & Blinds — Proudly Serving Ventura County for 30 Years";
-  const heroCta = commercialMode ? "Schedule a Meeting" : "Book your Free In-home Consultation";
+  const heroCta = commercialMode ? "Schedule a Meeting" : "Schedule a Free In-Home Consultation";
   const heroHref = commercialMode ? "/commercial-window-coverings/" : "/book-consultation/";
 
   return (
@@ -1405,6 +1406,7 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
               </Link>
             </div>
           </div>
+          {!commercialMode && <GalleryContactLinks />}
         </div>
       </section>
 
@@ -1519,24 +1521,6 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
         ))}
       </section>
 
-      <section className="cta-band">
-        <div className="content-wrap cta-layout">
-          <div>
-            <p className="eyebrow">Next step</p>
-            <h2>{page.cta || "Schedule a free consultation"}</h2>
-          </div>
-          <div className="hero-actions">
-            <AppointmentBooking
-              label={commercialMode ? "Book a commercial shade audit" : "Book an appointment here"}
-              bookingVariant={commercialMode ? "commercial" : "standard"}
-            />
-            <TrackedPhoneLink className="button secondary" location="home cta">
-              Call {site.phone}
-            </TrackedPhoneLink>
-          </div>
-        </div>
-      </section>
-
       {!commercialMode && residentialPhotoFlowSlides.length ? (
         <>
           <section className="home-photo-flow-intro" aria-label="More window treatment inspiration">
@@ -1572,6 +1556,23 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
         </>
       ) : null}
 
+      <section className="cta-band">
+        <div className="content-wrap cta-layout">
+          <div>
+            <p className="eyebrow">Next step</p>
+            <h2>{page.cta || "Schedule a free consultation"}</h2>
+          </div>
+          <div className="hero-actions">
+            <AppointmentBooking
+              label={commercialMode ? "Book a commercial shade audit" : "Book Online Now"}
+              bookingVariant={commercialMode ? "commercial" : "standard"}
+            />
+            <TrackedPhoneLink className="button secondary" location="home cta">
+              Call {site.phone}
+            </TrackedPhoneLink>
+          </div>
+        </div>
+      </section>
     </>
   );
 }

@@ -247,12 +247,14 @@ export function SiteHeader() {
             <span>Book a Consultation</span>
           </Link>
 
-          <nav className="mobile-menu-nav" aria-label="Mobile primary navigation">
+          <nav className="mobile-menu-nav" aria-label="Mobile products">
             {activeCategoryItems.map((item) => (
               <Link key={`menu-${item.href}`} href={item.href} onClick={() => setMenuOpen(false)}>
                 {item.label}
               </Link>
             ))}
+          </nav>
+          <nav className="mobile-menu-nav" aria-label="More information">
             {!isCommercialMode ? (
               <Link href="/financing/" onClick={() => setMenuOpen(false)}>
                 Financing
@@ -261,18 +263,22 @@ export function SiteHeader() {
             <Link href="/reviews/" onClick={() => setMenuOpen(false)}>
               Reviews
             </Link>
-            <Link href="/gallery/" onClick={() => setMenuOpen(false)}>
-              Gallery
-            </Link>
+            {isCommercialMode && (
+              <Link href="/gallery/" onClick={() => setMenuOpen(false)}>
+                Gallery
+              </Link>
+            )}
             <Link href="/about/" onClick={() => setMenuOpen(false)}>
               About
             </Link>
             <Link href="/faq/" onClick={() => setMenuOpen(false)}>
               FAQ
             </Link>
-            <Link href="/contact/" onClick={() => setMenuOpen(false)}>
-              Contact
-            </Link>
+            {isCommercialMode && (
+              <Link href="/contact/" onClick={() => setMenuOpen(false)}>
+                Contact
+              </Link>
+            )}
             <Link href={site.officialPath} onClick={() => setMenuOpen(false)}>
               Official Contact
             </Link>

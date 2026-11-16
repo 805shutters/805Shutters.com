@@ -19,7 +19,7 @@ export function MobileActionBar() {
         Call
       </TrackedPhoneLink>
       <Link className="mobile-action-bar__book" href="/book-consultation/">
-        Book Free Consultation
+        Book Online Now
       </Link>
     </div>
   );
