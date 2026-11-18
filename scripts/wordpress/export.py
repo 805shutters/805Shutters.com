@@ -4,14 +4,13 @@ import os
 import subprocess
 import sys
 from xml.etree import ElementTree
-from http.cookiejar import CookieJar
+from html import escape
 from urllib import parse, request
 
 def from_wxr(filename):
     wp = "{http://wordpress.org/export/1.2/}"
     content = "{http://purl.org/rss/1.0/modules/content/}encoded"
     excerpt = "{http://wordpress.org/export/1.2/excerpt/}encoded"
-    from html import escape
     records = []
     for item in ElementTree.parse(filename).findall("./channel/item"):
         if item.findtext(wp + "post_type") != "page" or item.findtext(wp + "status") != "publish":
@@ -26,15 +25,10 @@ def from_wxr(filename):
 
 
 def from_rest():
-    base = os.getenv("WORDPRESS_REST_PAGES")
-    if base:
-        if parse.urlsplit(base).scheme != "https":
-            raise ValueError("Hosted WordPress REST endpoints must use HTTPS")
-        client = request.build_opener()
-    else:
-        client = request.build_opener(request.HTTPCookieProcessor(CookieJar()))
-        client.open("http://127.0.0.1:9428/", timeout=30).close()
-        base = "http://127.0.0.1:9428/?rest_route=/wp/v2/pages"
+    base = os.getenv("WORDPRESS_REST_PAGES", "https://public-api.wordpress.com/wp/v2/sites/805shuttersstudio.wordpress.com/pages")
+    if parse.urlsplit(base).scheme != "https":
+        raise ValueError("Hosted WordPress REST endpoints must use HTTPS")
+    client = request.build_opener()
 
     records = []
     page = 1
