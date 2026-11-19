@@ -229,10 +229,14 @@ export function baseSlotReason(
     )
   )
     return "missing_information";
+  // The public cap is Jessica's consultation load. Installs never consume a
+  // slot, and a visit that does not affect Jessica does not either.
   if (
     active.filter(
       (e) =>
         e.event_type !== "block" &&
+        e.event_type !== "install" &&
+        affectsJessica(e) &&
         losAngelesDateString(new Date(e.start_at)) === date,
     ).length >= maxSelfBookingAppointmentsPerDay
   )
