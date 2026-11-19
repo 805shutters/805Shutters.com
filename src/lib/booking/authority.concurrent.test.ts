@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { bookingDatabaseFixture } from "./database-fixture";
 import { candidateVisit } from "./scheduling";
 import { eventSignature } from "./travel";
+import type { CrmCalendarEvent } from "@/lib/crm/types";
 const enabled = process.env.BOOKING_POSTGRES_TEST === "1";
 const container = `805-booking-test-${process.pid}`;
 const literal = (value: unknown) =>
@@ -52,14 +53,14 @@ function parallelSql(query: string) {
     child.stdin!.end(query);
   });
 }
-function request(time: string, revision: string, key = randomUUID(), residential = false, matchIdentity = false) {
+function request(time: string, revision: string, key = randomUUID(), residential = false, matchIdentity = false, previous: CrmCalendarEvent | null = null) {
   const event = candidateVisit("2035-10-01", time, "123 Main St", residential ? null : 5);
   if (residential) event.meta = { windowCount: null, bookingDurationPolicy: "residential_fixed_60_v1" };
   const proof = {
     eventId: event.id,
     signature: eventSignature(event),
     checkedAt: new Date().toISOString(),
-    previous: null,
+    previous: previous ? { id: previous.id, signature: eventSignature(previous), departureAt: previous.end_at, seconds: 30 * 60 } : null,
     next: null,
   };
   return `select booking_commit(${literal(key)},'hash',${literal(revision)},${literal({ source: "self_booking", status: "booked", name: "Test", phone: "8055550100", meta: matchIdentity ? { address: "123 Main St" } : {} })},${literal({ customer_name: "Test", phone: "8055550100", address: "123 Main St", product_interest: "shutters", meta: {} })},${literal(event)},${literal([proof])},'[{"kind":"customer_sms","payload":{}}]');`;
@@ -180,12 +181,13 @@ describe.skipIf(!enabled)("real Postgres concurrent schedule writes", () => {
   });
   it("serializes the final daily opening", async () => {
     sql(
-      "insert into crm_calendar_events(title,start_at,end_at,assigned_to) select 'Other visit','2035-10-01 15:00Z'::timestamptz+make_interval(hours=>n),'2035-10-01 16:00Z'::timestamptz+make_interval(hours=>n),'Mike' from generate_series(0,2) n;",
+      "insert into crm_calendar_events(title,start_at,end_at,assigned_to,event_type,location) select 'Jessica visit','2035-10-01 15:00Z'::timestamptz+make_interval(hours=>n),'2035-10-01 16:00Z'::timestamptz+make_interval(hours=>n),'Jessica','sales_consult','100 Capacity St' from generate_series(0,2) n;",
     );
+    const neighbor = JSON.parse(sql("select row_to_json(e) from crm_calendar_events e order by end_at desc limit 1")) as CrmCalendarEvent;
     const revision = sql("select revision from booking_schedule_state;");
     const results = await Promise.allSettled([
-      parallelSql(request("13:00", revision)),
-      parallelSql(request("15:00", revision)),
+      parallelSql(request("13:00", revision, randomUUID(), false, false, neighbor)),
+      parallelSql(request("15:00", revision, randomUUID(), false, false, neighbor)),
     ]);
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     const fresh = sql("select revision from booking_schedule_state;");
