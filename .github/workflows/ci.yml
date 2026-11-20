@@ -34,7 +34,10 @@ jobs:
         run: npm run test:anatomy
 
       - name: Typecheck
-        run: npm run typecheck
+        # The anatomy browser starts `next dev`, which can leave a partial
+        # `.next/dev/types/validator.ts`. Typecheck the source, then let the
+        # production build write a fresh `.next`.
+        run: rm -rf .next && npm run typecheck
 
       - name: Build
         run: npm run build
