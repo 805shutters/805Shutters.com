@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-// Pin the tested card-only Checkout contract. Endive rejects payment_method_types.
-export const STRIPE_API_VERSION = "2025-09-30.clover";
+// Endive uses an allowlist over dynamically eligible Checkout payment methods.
+export const STRIPE_API_VERSION = "2026-11-18.endive";
 export type StripeObject = { id: string; [key: string]: unknown };
 export function stripeConfig() {
   const key = process.env.STRIPE_SECRET_KEY || "";

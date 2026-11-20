@@ -68,7 +68,7 @@ it("permits expanded provider retrieval and sanitizes provider errors", async ()
     ),
   ).rejects.toThrow("Stripe request failed (400)");
   expect(fetcher).toHaveBeenCalledOnce();
-  expect(fetcher.mock.calls[0][1].headers["Stripe-Version"]).toBe("2025-09-30.clover");
+  expect(fetcher.mock.calls[0][1].headers["Stripe-Version"]).toBe("2026-11-18.endive");
   await expect(stripeRequest("https://attacker.example")).rejects.toThrow(
     "Invalid Stripe API path",
   );

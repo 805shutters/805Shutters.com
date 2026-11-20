@@ -79,7 +79,11 @@ it("uses durable request identity as idempotency and never creates an invoice or
   expect(calls[0][0]).toBe("/v1/checkout/sessions");
   expect(calls[0][1]?.idempotencyKey).toBe(calls[1][1]?.idempotencyKey);
   expect(calls[0][1]?.form?.toString()).toBe(calls[1][1]?.form?.toString());
-  expect(calls[0][1]?.form?.get("payment_method_types[0]")).toBe("card");
+  expect(calls[0][1]?.form?.get("allowed_payment_method_types[0]")).toBe("card");
+  expect(calls[0][1]?.form?.has("payment_method_types[0]")).toBe(false);
+  expect(calls[0][1]?.form?.get("integration_identifier")).toMatch(
+    /^805-crm-hosted-cards-[a-z]{8}$/,
+  );
 });
 it("refuses uncertain old creates and invalid amount before provider side effects", async () => {
   await expect(

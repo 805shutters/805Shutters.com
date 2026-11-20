@@ -244,7 +244,9 @@ export async function createStripePaymentLink(
     );
   const form = new URLSearchParams({
     mode: "payment",
-    "payment_method_types[0]": "card",
+    "allowed_payment_method_types[0]": "card",
+    // Keep the integration label stable so retries retain an identical body.
+    integration_identifier: "805-crm-hosted-cards-qmznvtrk",
     "line_items[0][price_data][currency]": "usd",
     "line_items[0][price_data][unit_amount]": String(input.amountCents),
     "line_items[0][price_data][product_data][name]": `805 Shutters ${row.purpose}`,
