@@ -62,7 +62,6 @@ import {
 } from "./core";
 import {
   NORMAN_805_DEALER_POLICY,
-  normanDealerScheduleForSelection,
 } from "./norman-dealer-policy";
 import { resolveNormanShutterWindowSizePricing } from "./norman-shutter-pricing-size";
 import { resolveOnyxWindowSizePricing } from "./onyx-pricing-size";
@@ -131,7 +130,7 @@ export type QuoteV2PriceSuccess = PriceBreakdown &
   };
 export type QuoteV2PriceFailure = PriceFailure & QuoteV2ResultMetadata & {
   /** Set only when live lookup is on and this line has no recorded site or manual price. */
-  blocked?: "live_lookup_required";
+  blocked?: "live_lookup_required" | "no_site_price";
 };
 export type QuoteV2PriceResult = QuoteV2PriceSuccess | QuoteV2PriceFailure;
 
@@ -221,82 +220,6 @@ export function dealerPolicySnapshotFromPriceResult(
     effectiveDealerFactor,
     revision: currentNormanDealerPolicyRevision(effectiveDealerFactor),
   });
-}
-
-/**
- * Allocate one portal-rounded group back to its source lines without losing a
- * penny. Each exact fractional-cent share is floored first; remaining cents go
- * to the largest fractional remainders, with original source order as the
- * stable tie-breaker. The output order always matches the input order.
- */
-function allocateRoundedMoneyGroup(
-  sourceAmounts: readonly number[],
-  multiplier: number,
-): number[] {
-  if (sourceAmounts.length === 0) return [];
-  const scale = 1_000_000;
-  const scaledMultiplier = Math.round(multiplier * scale);
-  const exactNumerators = sourceAmounts.map(
-    (amount) => moneyCents(amount) * scaledMultiplier,
-  );
-  const allocatedCents = exactNumerators.map((numerator) =>
-    Math.floor(numerator / scale),
-  );
-  const targetCents = Math.round(
-    exactNumerators.reduce((total, numerator) => total + numerator, 0) /
-      scale,
-  );
-  let centsRemaining =
-    targetCents -
-    allocatedCents.reduce((total, amount) => total + amount, 0);
-  const priority = exactNumerators
-    .map((numerator, index) => ({
-      index,
-      remainder: numerator % scale,
-    }))
-    .sort(
-      (left, right) =>
-        right.remainder - left.remainder || left.index - right.index,
-    );
-  for (let index = 0; index < centsRemaining; index += 1) {
-    allocatedCents[priority[index].index] += 1;
-  }
-  return allocatedCents.map(moneyFromCents);
-}
-
-function catalogLinesWithPortalGroupedRounding(
-  lines: readonly PriceLine[],
-  product: CatalogProduct,
-  effectiveDealerFactor: number,
-): PriceLine[] {
-  if (lines.length === 0) return [];
-  const wholesaleAmounts = Array<number>(lines.length).fill(0);
-  const indexesByFactor = new Map<number, number[]>();
-  lines.forEach((line, index) => {
-    // Published freight and other explicitly factored charges retain their
-    // documented factor. Product options and motorization inherit the current
-    // account schedule selected through the existing interface.
-    const factor =
-      findProductSurcharge(product, line.id)?.dealerFactor ??
-      effectiveDealerFactor;
-    const indexes = indexesByFactor.get(factor) ?? [];
-    indexes.push(index);
-    indexesByFactor.set(factor, indexes);
-  });
-  for (const [factor, indexes] of indexesByFactor) {
-    const allocation = allocateRoundedMoneyGroup(
-      indexes.map((index) => lines[index].amount),
-      factor,
-    );
-    indexes.forEach((lineIndex, allocationIndex) => {
-      wholesaleAmounts[lineIndex] = allocation[allocationIndex];
-    });
-  }
-
-  return lines.map((line, index) => ({
-    ...line,
-    wholesaleAmount: wholesaleAmounts[index],
-  }));
 }
 
 function metadata(
@@ -941,32 +864,11 @@ function priceInputContractIssues(
   ];
 }
 
-function normanUsesListDealerFactor(product: CatalogProduct | undefined): boolean {
-  return (
-    !!product &&
-    product.manufacturer?.trim().toLowerCase() === "norman" &&
-    product.id !== "norman_shutters" &&
-    product.productType?.trim().toLowerCase() !== "shutter"
-  );
-}
-
-function selectedNormanDealerFactor(
-  selection: SelectionContext,
-  product: CatalogProduct,
-): number | null {
-  // Shutter programs keep their square-foot cost. List × 0.30 and the
-  // shutter lead-time factor 0.297 are not shutter product costs.
-  if (!normanUsesListDealerFactor(product)) return null;
-  return (
-    normanDealerScheduleForSelection(
-      selection.options.schedule_discount_percent,
-    )?.effectivePortalFactor ?? null
-  );
-}
-
 /**
- * Preserve authoritative source MSRP/list dollars while deriving protected
- * dealer cost with the selected manufacturer/account schedule.
+ * Preserve authoritative source MSRP/list dollars and the source wholesale
+ * already on the price result. Norman non-shutter lines never reach this with
+ * a list-times-factor cost: the quote entry point blocks them until a site or
+ * manual price exists. Shutters keep the square-foot wholesale on the source.
  */
 function catalogCostRetail(
   source: PriceBreakdown,
@@ -997,7 +899,6 @@ function catalogCostRetail(
     };
   }
 
-  const normanDealerFactor = selectedNormanDealerFactor(selection, product);
   const onceLineIds = new Set(
     source.surchargeLines
       .filter(
@@ -1013,17 +914,10 @@ function catalogCostRetail(
   );
   const convertedBySourceLine = new Map<PriceLine, PriceLine>();
   const convertLines = (lines: readonly PriceLine[]): PriceLine[] => {
-    const converted =
-      normanDealerFactor == null
-        ? lines.map((line) => ({
-            ...line,
-            wholesaleAmount: line.wholesaleAmount ?? 0,
-          }))
-        : catalogLinesWithPortalGroupedRounding(
-            lines,
-            product,
-            normanDealerFactor,
-          );
+    const converted = lines.map((line) => ({
+      ...line,
+      wholesaleAmount: line.wholesaleAmount ?? 0,
+    }));
     lines.forEach((line, index) => {
       convertedBySourceLine.set(line, converted[index]);
     });
@@ -1039,10 +933,7 @@ function catalogCostRetail(
   // grid and one sum of all per-window option charges. The latter is allocated
   // back to source lines above so the itemized ledger retains provenance while
   // summing to the exact portal subtotal.
-  const productCostBase =
-    normanDealerFactor == null
-      ? source.wholesaleBase
-      : multiplyMoney(source.base, normanDealerFactor);
+  const productCostBase = source.wholesaleBase;
   const productCostUnit = sumMoney([
     productCostBase,
     ...perWindowLines.map((line) => line.wholesaleAmount ?? 0),
@@ -1828,6 +1719,16 @@ function liveLookupVendor(selection: SelectionContext): LiveLookupVendor | null 
     ?? liveLookupVendorName(getProduct(selection.productId)?.manufacturer);
 }
 
+function requiresNormanSitePrice(selection: SelectionContext): boolean {
+  const product = getProduct(selection.productId);
+  const manufacturer = product?.manufacturer?.trim().toLowerCase()
+    ?? selection.manufacturerId?.trim().toLowerCase();
+  if (manufacturer !== "norman") return false;
+  if (selection.productId === "norman_shutters" || product?.id === "norman_shutters") return false;
+  if ((product?.productType ?? "").trim().toLowerCase() === "shutter") return false;
+  return true;
+}
+
 function liveLookupCatalogBlock(request: QuoteV2PriceRequest): QuoteV2PriceFailure | null {
   const switches = request.liveLookup?.switches;
   if (!switches || !LIVE_LOOKUP_VENDORS.some((vendor) => switches[vendor] === true)) return null;
@@ -1857,7 +1758,31 @@ function liveLookupCatalogBlock(request: QuoteV2PriceRequest): QuoteV2PriceFailu
 export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2PriceResult {
   const held = liveLookupCatalogBlock(request);
   if (held) return held;
-  return priceQuoteV2SelectionFromCatalog(request);
+  return holdNormanListPrice(request, priceQuoteV2SelectionFromCatalog(request));
+}
+
+function holdNormanListPrice(request: QuoteV2PriceRequest, result: QuoteV2PriceResult): QuoteV2PriceResult {
+  if (!result.ok || !requiresNormanSitePrice(request.selection)) return result;
+  const recorded = request.liveLookup?.priceSource === "live_site" || request.liveLookup?.priceSource === "manual_no_source";
+  return {
+    ok: false,
+    code: recorded ? "LIVE_LOOKUP_REQUIRED" : "NO_SITE_PRICE",
+    error: recorded
+      ? "Catalog pricing is not applied while a live or manual price is recorded."
+      : "Norman cost requires the exact website price for this item, or a manual price from Mike or Jessica.",
+    warnings: result.warnings,
+    ...(recorded ? {} : { blocked: "no_site_price" as const }),
+    catalogVersion: result.catalogVersion,
+    catalogAsOf: result.catalogAsOf,
+    selectionFingerprint: result.selectionFingerprint,
+    measuredWidthInches: result.measuredWidthInches,
+    measuredHeightInches: result.measuredHeightInches,
+    productStatus: result.productStatus,
+    validationStatus: "blocked",
+    validationIssues: result.validationIssues,
+    pricedSelectionFingerprint: null,
+    pricedCatalogVersion: null,
+  };
 }
 
 function priceQuoteV2SelectionFromCatalog(request: QuoteV2PriceRequest): QuoteV2PriceResult {
@@ -1975,24 +1900,8 @@ function priceQuoteV2SelectionFromCatalog(request: QuoteV2PriceRequest): QuoteV2
   }
 
   const resultMetadata = metadata(selection, productStatus, issues, true);
-  const normanSchedule = normanUsesListDealerFactor(product)
-    ? normanDealerScheduleForSelection(
-        selection.options.schedule_discount_percent,
-      )
-    : null;
   const internalCost = request.includeInternalCost
-    ? internalCostFromResult(
-        result,
-        undefined,
-        normanSchedule
-          ? {
-              effectiveDealerFactor:
-                normanSchedule.effectivePortalFactor,
-              policyId: NORMAN_805_DEALER_POLICY.id,
-              fixtureId: normanSchedule.fixtureId,
-            }
-          : undefined,
-      )
+    ? internalCostFromResult(result, undefined, undefined)
     : undefined;
   const customerCharges = request.applyCustomerCharges ? calculateCustomerCharges({
     product: `${product.id} ${product.productType ?? ""}`, program: result.programId,

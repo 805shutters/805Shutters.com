@@ -21,10 +21,12 @@ function fixture(id:string,programId?:string){
  return {line,design};
 }
 function price(f:ReturnType<typeof fixture>){return repriceExactQuoteBuilderForServerDate({lines:[f.line],designs:[f.design],selectedVariantByLine:{[f.line.id]:'A'}},'2026-09-28').designs[0].result;}
-const amounts:Record<string,number>={roller:346,roman:861,honeycomb:415,perfectsheer:927,citylights_aluminum:303,smartprivacy_faux:198.8,faux_wood:219.2,wood_blinds:535,synchrony_vertical:261,smartdrape:842,norman_shutters:525,onyx_shutters:465};
+const amounts:Record<string,number>={norman_shutters:525,onyx_shutters:465};
+const normanSitePrice=new Set(['roller','roman','honeycomb','perfectsheer','citylights_aluminum','smartprivacy_faux','faux_wood','wood_blinds','synchrony_vertical','smartdrape']);
 describe('native V2 base pricing',()=>{
  it.each(Object.keys(BASE_CONFIGURATIONS))('%s prices from dimensions, preserves blanks and survives serialization',id=>{
   const f=fixture(id),original=structuredClone(f),r=price(f);
+  if(normanSitePrice.has(id)){expect(r).toMatchObject({ok:false,code:'NO_SITE_PRICE',blocked:'no_site_price'});expect(r).not.toHaveProperty('unitPrice');expect(f).toEqual(original);return;}
   expect(r.ok,JSON.stringify(r)).toBe(true);if(r.ok)expect(r.unitPrice).toBe(amounts[id]);
   expect(f.design.fabric).toBeNull();expect(f.design.mount_type).toBeNull();expect(f.design.options_json.fabric_color_code).toBeUndefined();
   expect(f).toEqual(original);expect(price(JSON.parse(JSON.stringify(f)))).toEqual(r);
