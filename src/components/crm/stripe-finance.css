@@ -1,0 +1,21 @@
+.stripe-finance { max-width: 1120px; margin: 0 auto; padding: 28px; color: #213247; font: 15px/1.55 Arial, sans-serif; }
+.stripe-finance h1 { max-width: 850px; margin: 24px 0 12px; font: 600 clamp(25px, 3vw, 36px)/1.2 Arial, sans-serif; letter-spacing: -.5px; }
+.stripe-finance h2 { margin: 28px 0 12px; font: 600 21px/1.3 Arial, sans-serif; }
+.stripe-finance p { margin: 12px 0; max-width: 950px; }
+.stripe-finance a { color: #285b83; text-decoration: underline; }
+.stripe-finance button { margin: 8px 8px 8px 0; padding: 10px 16px; border: 1px solid #ced8e2; border-radius: 7px; background: #203e5a; color: #fff; font: 600 14px/1.4 Arial, sans-serif; cursor: pointer; }
+.stripe-finance button:disabled { background: #e6ebef; color: #697987; cursor: default; }
+.stripe-finance button:focus-visible,.stripe-finance input:focus-visible,.stripe-finance textarea:focus-visible { outline: 3px solid #579bc8; outline-offset: 2px; }
+.stripe-finance .overflow-x-auto { max-width: 100%; overflow-x: auto; border: 1px solid #dce3e9; border-radius: 10px; background: white; }
+.stripe-finance table { border-collapse: collapse; width: 100%; min-width: 650px; text-align: left; }
+.stripe-finance th { background: #f0f4f7; color: #465e73; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.stripe-finance th,.stripe-finance td { padding: 13px 16px; vertical-align: top; border-bottom: 1px solid #e8edf1; }
+.stripe-finance td span { display: block; margin-top: 3px; font-size: 12px; color: #64788b; overflow-wrap: anywhere; }
+.stripe-finance td button { margin: 6px 0 0; padding: 7px 10px; font-size: 12px; }
+.stripe-finance form { margin: 24px 0; padding: 22px; border: 1px solid #c9d6e2; border-radius: 10px; background: #f5f8fa; }
+.stripe-finance form h2 { margin-top: 0; }
+.stripe-finance label { display: block; margin: 14px 0; font-weight: 600; }
+.stripe-finance input,.stripe-finance textarea { display: block; box-sizing: border-box; width: 100%; margin-top: 6px; padding: 10px; border: 1px solid #b9c8d5; border-radius: 6px; background: white; font: inherit; color: inherit; }
+.stripe-finance textarea { min-height: 95px; }
+.stripe-finance [role=alert] { padding: 12px 16px; border: 1px solid #dbb597; border-radius: 8px; background: #fff8ef; color: #7a3a1f; }
+@media(max-width:600px) { .stripe-finance { padding: 18px 16px; font-size: 14px; } .stripe-finance h1 { margin-top: 22px; } .stripe-finance form { padding: 16px; } .stripe-finance form button { width: 100%; } }

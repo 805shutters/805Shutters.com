@@ -1,4 +1,5 @@
 "use client";
+import {StripeFinanceWorkspace} from "./StripeFinanceWorkspace";
 import {InHousePayments} from "./InHousePayments";
 
 import { readCrmResponse } from "@/lib/crm/client-response";
@@ -139,7 +140,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "phone" | "square" | "contracts" | "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "followups" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "calendar" | "payoff";
+type CrmTab = "stripe" | "phone" | "square" | "contracts" | "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "followups" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "calendar" | "payoff";
 type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
@@ -3267,6 +3268,7 @@ export function CrmApp({
           />
         )
       ) : null}
+      {activeTab === "stripe" && session ? <StripeFinanceWorkspace session={session} /> : null}
       {activeTab === "square" && session ? <SquareFinanceWorkspace session={session} /> : null}
       {dashboardRefreshError && <p role="alert" className="crm-feedback-banner">{dashboardRefreshError}</p>}
       {data?.loadWarnings?.map((warning) => <p role="status" className="crm-feedback-banner" key={warning}>{warning}</p>)}
@@ -6953,9 +6955,9 @@ function SquarePaymentLinkPanel({
   }
 
   return (
-    <div className="crm-square-payment-panel" aria-label="Square customer payment links">
+    <div className="crm-square-payment-panel" aria-label="Customer card payment links">
       <div>
-        <strong>Send a Square payment link</strong>
+        <strong>Send a card payment link</strong>
         <span>The customer receives an automated email with a secure, order-specific checkout link.</span>
       </div>
       <div className="crm-square-payment-actions">

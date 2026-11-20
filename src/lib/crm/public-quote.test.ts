@@ -283,7 +283,7 @@ describe("signed SMS copy", () => {
     });
     expect(msg).toContain("deposit payment link");
     expect(msg).toContain("$2,125.00");
-    expect(msg).toContain("Square card");
+    expect(msg).toContain("Card: https://www.805shutters.com/quote/test-token#payment");
     expect(msg).not.toMatch(/venmo|ken-hill/i);
     expect(msg).toContain("Zelle");
     expect(msg).toContain("#payment");

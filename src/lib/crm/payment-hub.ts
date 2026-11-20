@@ -7,7 +7,7 @@ export type HubLedger = {
 };
 export type HubSquare = { id: string; kind: string; occurred_at: string; amount_cents: number; fee_cents: number | null; status: string; currency?: string; details: Record<string, unknown> };
 export const paymentMethods = {
-  credit_card: 'Square / Card', apple_pay: 'Apple Pay', check: 'Checks', cash: 'Cash', zelle: 'Zelle', venmo: 'Venmo', other: 'Other',
+  credit_card: 'Card', apple_pay: 'Apple Pay', check: 'Checks', cash: 'Cash', zelle: 'Zelle', venmo: 'Venmo', other: 'Other',
 } as const;
 export type HubMethod = keyof typeof paymentMethods;
 export const paymentPurposes = { deposit: 'Deposit', balance: 'Balance', progress: 'Progress payment', full: 'Full payment', unspecified: 'Unspecified' } as const;
@@ -15,15 +15,15 @@ export type HubPurpose = keyof typeof paymentPurposes;
 export const hubRecord = (v: unknown): Record<string, unknown> => v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {};
 const str = (v: unknown) => typeof v === 'string' ? v : '';
 export function ledgerPurpose(p: HubLedger): HubPurpose {
-  const explicit = str(hubRecord(p.meta?.payment_hub).purpose || p.meta?.square_payment_type).toLowerCase();
+  const explicit = str(hubRecord(p.meta?.payment_hub).purpose || p.meta?.purpose || p.meta?.square_payment_type).toLowerCase();
   if (Object.hasOwn(paymentPurposes, explicit)) return explicit as HubPurpose;
   if (p.meta?.paymentTargetAdjustment === true) {
     if (p.meta.adjustmentKind === 'deposit_paid') return 'deposit';
     if (p.meta.adjustmentKind === 'balance_paid') return 'balance';
   }
   const label = p.payment_label?.trim().toLowerCase() || '';
-  if (/^(?:square\s+)?deposit(?:\s+payment)?(?:\s+adjustment)?$/.test(label)) return 'deposit';
-  if (/^(?:square\s+)?(?:balance|final)(?:\s+payment)?(?:\s+adjustment)?$/.test(label)) return 'balance';
+  if (/^(?:(?:square|stripe)\s+)?deposit(?:\s+payment)?(?:\s+adjustment)?$/.test(label)) return 'deposit';
+  if (/^(?:(?:square|stripe)\s+)?(?:balance|final)(?:\s+payment)?(?:\s+adjustment)?$/.test(label)) return 'balance';
   if (/^(?:progress|partial|custom)(?:\s+payment)?$/.test(label)) return 'progress';
   if (/^(?:full payment|paid in full)$/.test(label)) return 'full';
   return 'unspecified';
@@ -33,11 +33,13 @@ function ledgerMethod(p: HubLedger): HubMethod {
   return Object.hasOwn(paymentMethods, method) ? method as HubMethod : 'other';
 }
 export type HubTransaction = {
-  id: string; squareId?: string; ledger?: HubLedger; customer: string; method: HubMethod;
+  id: string; squareId?: string; stripeId?: string; ledger?: HubLedger; customer: string; method: HubMethod;
   purposes: HubPurpose[]; occurredAt: string; dateIsRecorded: boolean; recordedAt?: string; amountCents: number;
   creditCents: number; feeCents: number | null; currency: string; status: string; detail: string; reference: string;
 };
 export function buildPaymentHub(input: {
+  stripeObjects?: (HubSquare & {account_id:string})[];
+  stripeAllocations?: {account_id:string;payment_intent_id:string;ledger_payment_id:string}[];
   objects: HubSquare[]; payments: HubLedger[];
   allocations: {square_payment_id: string; ledger_payment_id: string}[];
   quotes: {id: string; customer_name: string}[]; entries: {id: string; customer_name: string}[];
@@ -65,6 +67,12 @@ export function buildPaymentHub(input: {
     const outside = input.classifications.some(c=>c.square_payment_id===p.id);
     return {id:`square:${p.id}`,squareId:p.id,customer:[...new Set(linked.map(name))].join(', ') || (outside?'Outside 805 — reviewed':'Unmatched customer'),method,purposes,occurredAt:p.occurred_at,dateIsRecorded:false,amountCents:Number(p.amount_cents),creditCents:linked.reduce((s,l)=>s+Math.round(Number(l.amount)*100),0),feeCents:p.fee_cents,currency:p.currency||'USD',status:p.status,detail:Number(p.details.refunded_cents)>0?'Refund recorded — review job balance':str(p.details.review_error)||(!linked.length ? outside?'Not assigned to 805':'Customer match needs review':'Linked to CRM ledger'),reference:note};
   });
+  for (const p of input.stripeObjects || []) {
+    if(p.kind!=='payment')continue;
+    const linked=input.payments.filter(l=>(input.stripeAllocations||[]).some(a=>a.account_id===p.account_id&&a.payment_intent_id===p.id&&a.ledger_payment_id===l.id)||(l.external_source==='stripe'&&l.external_id===`${p.account_id}:${p.id}`));
+    linked.forEach(l=>used.add(l.id));
+    rows.push({id:`stripe:${p.account_id}:${p.id}`,stripeId:p.id,customer:[...new Set(linked.map(name))].join(', ')||'Unmatched customer',method:'credit_card',purposes:linked.length?[...new Set(linked.map(ledgerPurpose))]:['unspecified'],occurredAt:p.occurred_at,dateIsRecorded:false,amountCents:Number(p.amount_cents),creditCents:linked.reduce((sum,l)=>sum+Math.round(Number(l.amount)*100),0),feeCents:p.fee_cents,currency:p.currency||'usd',status:p.status,detail:p.details.disputed||Number(p.details.refunded_cents)>0?'Stripe refund or dispute — review adjustment':linked.length?'Stripe — linked to CRM ledger':'Stripe — customer match needs review',reference:p.id});
+  }
   for (const p of input.payments) {
     if (used.has(p.id)) continue;
     const hub = hubRecord(p.meta?.payment_hub), check = hubRecord(hub.check);

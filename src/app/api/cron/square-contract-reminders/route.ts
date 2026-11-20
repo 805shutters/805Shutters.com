@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 function requireCronAccess(request: NextRequest) {
   const secret = process.env.SQUARE_CONTRACT_REMINDER_CRON_SECRET || process.env.CRON_SECRET;
-  if (!secret) return;
+  if (!secret) throw new CrmAuthError(503,"Reminder authorization is not configured.");
   if ((request.headers.get("authorization") || "") !== `Bearer ${secret}`) {
     throw new CrmAuthError(401, "Square contract reminder cron is not authorized.");
   }

@@ -1,3 +1,5 @@
+import {CrmAuthError} from './auth';
+import {cardProvider} from '@/lib/finance/card-provider';
 import { isMikeAlertRecipient } from "@/lib/notify/owner-alert-routing";
 // In-house payment plan ("805 House Plan"): 0% interest, 50% deposit up front,
 // balance split into equal monthly installments. The first installment is due
@@ -164,6 +166,7 @@ export async function createPaymentPlanForJob(
   }
 
   const method = input.method || "square_autopay";
+  if(cardProvider() === "stripe" && method === "square_autopay")throw new CrmAuthError(409,"Use the current in-house installment schedule; new Square autopay enrollment is closed after Stripe cutover.");
   // Card-network rules cap credit-card surcharges at 3%; only card plans carry a fee.
   const rawFeePercent = input.card_fee_percent ?? (method === "square_autopay" ? 3 : 0);
   const cardFeePercent = method === "square_autopay" ? Math.min(3, Math.max(0, Number(rawFeePercent) || 0)) : 0;
@@ -485,6 +488,7 @@ export async function linkAutopayCard(
   token: string,
   input: { sourceId: string; cardholderName?: string | null }
 ): Promise<{ ok: true; cardBrand: string | null; cardLast4: string | null } | { ok: false; error: string }> {
+  if(cardProvider() === 'stripe')return {ok:false,error:'Saved Square cards cannot be moved to Stripe. Contact 805 Shutters for a reviewed payment schedule.'};
   const found = await findJobByAutopayToken(supabase, token);
   if (!found) return { ok: false, error: "This payment setup link is no longer valid." };
   const { job, plan } = found;

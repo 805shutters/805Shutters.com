@@ -1,0 +1,13 @@
+# Stripe migration handoff — November 20, 2026
+
+Owner explicitly authorized the remaining live configuration, additive database migration, production release and validated cutover after the parent voice chat disclosed these steps; he said “I want you to do both.” Danny access remains owned by a separate task. No repeated general release approval is needed. Real customer contact, charges, refunds and transfers for testing remain unauthorized.
+
+Completed: isolated implementation from main15ff3f17; original broad tests10887passed/36skipped, typecheck/build, desktop/390px synthetic UI andCSV. Mercury8322 saved and Cards enabled on live account acct_1Udwej5InN91QuB1. Real sandbox hosted Checkout test succeeded on acct_1UduO058IxNESGRU with a fictional$5card, actual signed webhook200, duplicate event one row, bad signature401, no real ledger writes, paid retirement refused and second checkout expired. Newest Endive rejected payment_method_types; pinned tested2025-09-30.clover. Full regressions rerunning after this compatibility correction.
+
+Applied dedicated805 migration20261120203721_stripe_collection.sql using Supabase MCP. Nine new tables RLS enabled and service-role-only; nine functions deny anon/authenticated execute. Existing310ledger rows unchanged; zero live Stripe requests. Security advisor adds only9intentional service-only no-policy INFOs; all pre-existing WARN/ERRORcounts unchanged. Actual remote migration timestamp used for local filename.
+
+Production Vercel flags saved: CARD_PAYMENT_PROVIDER=square; collection/sync/owneralerts/legacyautopay=false. No code push/deployment yet. Live restricted key form prepared: Accounts, Balance, Charges/Refunds, Events, Disputes, Payouts read; Checkout Sessions write. Owner must perform final credential creation per browser rule; question pending. No live key or webhook secret configured yet.
+
+Task plan: [complete] bank setup, implementation, initial checks, real test-provider validation, additive DB migration, staged production flags. [in progress] live key owner handoff; final regression/build and clean main release. [remaining] live webhook setup, actual external Square obligations/Grok callers, production desktop/mobile checks, validated cutover, separately authorized real pilot and settlement evidence.
+
+Preserve dirty canonical checkout. Current worktree codex/stripe-mercury-migration. Never describe production Stripe collection or bank settlement as complete. See release runbook and QA for evidence and remaining gates.

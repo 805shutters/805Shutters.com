@@ -98,6 +98,7 @@ function eventSource(actorEmail: string | null) {
 
 function paymentSource(payment: CrmBookkeepingPayment) {
   const external = payment.external_source?.toLowerCase() || "";
+  if (external.includes("stripe")) return "Stripe";
   if (external.includes("square")) return "Square";
   if (external.includes("venmo") || payment.payment_type === "venmo") return "Venmo";
   if (external.includes("zelle") || payment.payment_type === "zelle") return "Zelle";
