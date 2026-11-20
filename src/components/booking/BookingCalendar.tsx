@@ -18,6 +18,7 @@ import { bookingDurationLabelForWindowCount } from "@/lib/booking/duration";
 import { brandIdentity } from "@/lib/brand-identity";
 import {
   getLeadAttribution,
+  getMetaClickParams,
   trackBookingEvent,
   trackBookingStep,
 } from "@/lib/client-tracking";
@@ -485,11 +486,12 @@ function CommercialBookingCalendar({
         notes: String(formData.get("notes") || ""),
         followUpRequested,
         ...trackingContext,
+        ...getMetaClickParams(),
       };
       const bodyKey = JSON.stringify(payload);
       if (!requestKey.current || requestKey.current.body !== bodyKey)
         requestKey.current = { body: bodyKey, key: crypto.randomUUID() };
-      const response = await fetch("/api/booking", {
+      const response = await fetch("/api/booking/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

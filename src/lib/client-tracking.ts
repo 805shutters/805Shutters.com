@@ -3,6 +3,14 @@
 import { metaPixel } from "@/lib/meta-pixel";
 import { track } from "@vercel/analytics";
 import { getGoogleAdsId } from "@/lib/tracking-config";
+import {
+  FBCLID_COOKIE,
+  isFbc,
+  isFbp,
+  isSafeClickId,
+  landingFbclidCookies,
+  readCookie,
+} from "@/lib/meta-click";
 
 type Gtag = (...args: unknown[]) => void;
 type Fbq = (...args: unknown[]) => void;
@@ -105,8 +113,34 @@ function externalReferrer() {
 
 // UTMs and gclid only exist on the landing URL and document.referrer resets on
 // the first internal navigation, so snapshot them once per session.
+export function persistLandingFbclid() {
+  if (typeof document === "undefined") return;
+  const fbclid = new URLSearchParams(window.location.search).get("fbclid");
+  if (!fbclid || !isSafeClickId(fbclid)) return;
+  const secure = window.location.protocol === "https:";
+  for (const cookie of landingFbclidCookies(fbclid, Date.now(), readCookie("_fbc", document.cookie), secure)) {
+    document.cookie = cookie;
+  }
+}
+
+export function getMetaClickParams() {
+  if (typeof document === "undefined") return {};
+  persistLandingFbclid();
+  const fbp = readCookie("_fbp", document.cookie);
+  const fbc = readCookie("_fbc", document.cookie);
+  const fbclid = readCookie(FBCLID_COOKIE, document.cookie)
+    || new URLSearchParams(window.location.search).get("fbclid")
+    || undefined;
+  return {
+    ...(fbp && isFbp(fbp) ? { fbp } : {}),
+    ...(fbc && isFbc(fbc) ? { fbc } : {}),
+    ...(fbclid && isSafeClickId(fbclid) ? { fbclid } : {}),
+  };
+}
+
 export function captureFirstTouchAttribution() {
   if (typeof window === "undefined") return;
+  persistLandingFbclid();
   try {
     if (window.sessionStorage.getItem(firstTouchStorageKey)) return;
     const urlParams = new URLSearchParams(window.location.search);

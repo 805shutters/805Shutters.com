@@ -6,7 +6,7 @@ import { BookingCalendar } from "./BookingCalendar";
 
 const replace = vi.hoisted(()=>vi.fn());
 vi.mock("next/navigation",()=>({useRouter:()=>({replace})}));
-vi.mock("@/lib/client-tracking", () => ({ getLeadAttribution: () => ({}), trackBookingEvent: vi.fn(), trackBookingStep: vi.fn() }));
+vi.mock("@/lib/client-tracking", () => ({ getLeadAttribution: () => ({}), getMetaClickParams: () => ({}), trackBookingEvent: vi.fn(), trackBookingStep: vi.fn() }));
 vi.mock("@/components/address/AddressAutocomplete", () => ({
   AddressAutocomplete: ({ onResolved }: { onResolved: (address: { fullAddress: string }) => void }) =>
     createElement("button", { type: "button", onClick: () => onResolved({ fullAddress: "601 Carmen Drive, Camarillo, CA" }) }, "Choose address"),
