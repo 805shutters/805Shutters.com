@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { isPublicFacingPath } from "@/lib/public-activity";
 import { getGa4Ids, getGoogleAdsId } from "@/lib/tracking-config";
 
-import { metaPixel } from "@/lib/meta-pixel";
+import { trackMetaPageView } from "@/lib/client-tracking";
 
 export function RouteTracking() {
   const pathname = usePathname();
@@ -16,7 +16,7 @@ export function RouteTracking() {
     if (!isPublicFacingPath(pathname)) return;
     if (previousPath.current === pathname) return;
     previousPath.current = pathname;
-    metaPixel("track", "PageView");
+    trackMetaPageView();
 
     if (!didMount.current) {
       didMount.current = true;

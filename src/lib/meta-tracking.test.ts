@@ -6,12 +6,14 @@ const state = vi.hoisted(() => ({ pathname: "/book-consultation/" }));
 vi.mock("next/navigation", () => ({ usePathname: () => state.pathname }));
 vi.mock("@vercel/analytics", () => ({ track: vi.fn() }));
 import { RouteTracking } from "@/components/RouteTracking";
-import { captureFirstTouchAttribution, getLeadAttribution, trackBookingEvent } from "./client-tracking";
+import { captureFirstTouchAttribution, getLeadAttribution, persistLandingFbclid, trackBookingEvent, trackLeadEvent, trackMetaContact } from "./client-tracking";
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(); window.sessionStorage.clear(); });
 
 it("queues one PageView per public route even before the Meta script loads, then a deduplicatable Schedule", async () => {
   (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
   vi.stubEnv("NEXT_PUBLIC_META_PIXEL_ID", "117872572252906"); // Legacy override must not win.
+  const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+  vi.stubGlobal("fetch", fetch);
   delete window.fbq;
   vi.spyOn(document.head, "appendChild").mockImplementation(node => node);
   const host = document.createElement("div"); document.body.append(host);
@@ -19,20 +21,39 @@ it("queues one PageView per public route even before the Meta script loads, then
   const render = () => act(async () => root.render(createElement(StrictMode, null, createElement(RouteTracking))));
   await render();
   const queue = (window.fbq as unknown as { queue: unknown[][] }).queue;
-  expect(queue).toEqual([["init", "549342503537516"], ["track", "PageView"]]);
+  expect(queue[0]).toEqual(["init", "549342503537516"]);
+  expect(queue[1]).toEqual(["track", "PageView", {}, { eventID: expect.any(String) }]);
+  const firstPageId = (queue[1][3] as { eventID: string }).eventID;
+  expect(JSON.parse(fetch.mock.calls[0][1].body).eventId).toBe(firstPageId);
   state.pathname = "/shutters/";
   await render();
   expect(queue.filter(args => args[1] === "PageView")).toHaveLength(2);
+  const secondPageId = (queue.filter(args => args[1] === "PageView").at(-1)?.[3] as { eventID: string }).eventID;
+  expect(secondPageId).not.toBe(firstPageId);
   state.pathname = "/crm/";
   await render();
   expect(queue.filter(args => args[1] === "PageView")).toHaveLength(2);
   trackBookingEvent({ eventId: "saved-lead-id", productTypes: ["Roman Shades"] });
   expect(queue.at(-1)).toEqual(["track", "Schedule", expect.any(Object), {eventID:"saved-lead-id"}]);
-  expect(queue.filter(args => args[1] === "Lead")).toHaveLength(0);
+  trackLeadEvent({ eventId: "saved-lead-id", interest: "shutters" });
+  expect(queue.at(-1)).toEqual(["track", "Lead", expect.any(Object), {eventID:"saved-lead-id"}]);
+  trackMetaContact("call");
+  expect(queue.at(-1)?.[1]).toBe("Contact");
+  const contactCall = fetch.mock.calls.at(-1);
+  if (!contactCall) throw new Error("missing contact request");
+  expect((queue.at(-1)?.[3] as { eventID: string }).eventID).toBe(JSON.parse(String(contactCall[1].body)).eventId);
   const count = queue.length;
   trackBookingEvent({});
   expect(queue).toHaveLength(count);
   await act(async () => root.unmount()); host.remove();
+});
+
+it("keeps the landing fbclid case in a 90-day first-party cookie", () => {
+  history.replaceState(null, "", "/book-consultation/?fbclid=AbCdEf123");
+  persistLandingFbclid();
+  expect(document.cookie).toContain("805_fbclid=AbCdEf123");
+  expect(document.cookie).toMatch(/_fbc=fb\.1\.\d+\.AbCdEf123/);
+  expect(document.cookie).not.toContain("abcdef");
 });
 
 it("uses the booking landing campaign even when an older campaign is in session storage", () => {

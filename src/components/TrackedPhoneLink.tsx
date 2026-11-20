@@ -13,7 +13,7 @@ type TrackedPhoneLinkProps = {
 
 export function TrackedPhoneLink({ ariaLabel, className, location, children }: TrackedPhoneLinkProps) {
   return (
-    <a aria-label={ariaLabel} className={className} href={site.phoneHref} onClick={() => trackPhoneClick(location)}>
+    <a aria-label={ariaLabel} className={className} data-meta-contact="tracked" href={site.phoneHref} onClick={() => trackPhoneClick(location)}>
       {children || site.phone}
     </a>
   );

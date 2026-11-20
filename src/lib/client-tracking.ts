@@ -3,6 +3,14 @@
 import { metaPixel } from "@/lib/meta-pixel";
 import { track } from "@vercel/analytics";
 import { getGoogleAdsId } from "@/lib/tracking-config";
+import {
+  FBCLID_COOKIE,
+  isFbc,
+  isFbp,
+  isSafeClickId,
+  landingFbclidCookies,
+  readCookie,
+} from "@/lib/meta-click";
 
 type Gtag = (...args: unknown[]) => void;
 type Fbq = (...args: unknown[]) => void;
@@ -105,8 +113,34 @@ function externalReferrer() {
 
 // UTMs and gclid only exist on the landing URL and document.referrer resets on
 // the first internal navigation, so snapshot them once per session.
+export function persistLandingFbclid() {
+  if (typeof document === "undefined") return;
+  const fbclid = new URLSearchParams(window.location.search).get("fbclid");
+  if (!fbclid || !isSafeClickId(fbclid)) return;
+  const secure = window.location.protocol === "https:";
+  for (const cookie of landingFbclidCookies(fbclid, Date.now(), readCookie("_fbc", document.cookie), secure)) {
+    document.cookie = cookie;
+  }
+}
+
+export function getMetaClickParams() {
+  if (typeof document === "undefined") return {};
+  persistLandingFbclid();
+  const fbp = readCookie("_fbp", document.cookie);
+  const fbc = readCookie("_fbc", document.cookie);
+  const fbclid = readCookie(FBCLID_COOKIE, document.cookie)
+    || new URLSearchParams(window.location.search).get("fbclid")
+    || undefined;
+  return {
+    ...(fbp && isFbp(fbp) ? { fbp } : {}),
+    ...(fbc && isFbc(fbc) ? { fbc } : {}),
+    ...(fbclid && isSafeClickId(fbclid) ? { fbclid } : {}),
+  };
+}
+
 export function captureFirstTouchAttribution() {
   if (typeof window === "undefined") return;
+  persistLandingFbclid();
   try {
     if (window.sessionStorage.getItem(firstTouchStorageKey)) return;
     const urlParams = new URLSearchParams(window.location.search);
@@ -168,7 +202,7 @@ export function trackLeadEvent(params: LeadEventParams = {}) {
     send_to: googleAdsSendTo(process.env.NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL)
   });
 
-  window.fbq?.(
+  metaPixel(
     "track",
     "Lead",
     {
@@ -190,6 +224,42 @@ export function trackLeadEvent(params: LeadEventParams = {}) {
   });
 }
 
+export function trackMetaPageView(pageUrl?: string) {
+  if (typeof window === "undefined" || typeof crypto?.randomUUID !== "function") return;
+  const eventId = crypto.randomUUID();
+  metaPixel("track", "PageView", {}, { eventID: eventId });
+  void fetch("/api/meta/pageview/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ eventId, pageUrl: pageUrl || window.location.href, ...getMetaClickParams() }),
+    keepalive: true,
+  }).catch(() => undefined);
+  return eventId;
+}
+
+export function trackMetaContact(channel: "call" | "text" | "email", pageUrl?: string) {
+  if (typeof window === "undefined" || typeof crypto?.randomUUID !== "function") return;
+  const eventId = crypto.randomUUID();
+  metaPixel(
+    "track",
+    "Contact",
+    { content_name: channel, content_category: "window_treatments" },
+    { eventID: eventId },
+  );
+  const payload = {
+    eventId,
+    pageUrl: pageUrl || window.location.href,
+    channel,
+    ...getMetaClickParams(),
+  };
+  void fetch("/api/meta/contact/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    keepalive: true,
+  }).catch(() => undefined);
+}
+
 export function trackPhoneClick(location: string) {
   if (typeof window === "undefined") {
     return;
@@ -202,11 +272,7 @@ export function trackPhoneClick(location: string) {
     send_to: googleAdsSendTo(process.env.NEXT_PUBLIC_GOOGLE_ADS_PHONE_CONVERSION_LABEL)
   });
 
-  window.fbq?.("track", "Contact", {
-    content_name: "Phone Click",
-    content_category: "window_treatments",
-    phone_location: location
-  });
+  trackMetaContact("call");
 
   track("Phone Click", {
     location,

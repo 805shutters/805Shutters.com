@@ -1,23 +1,23 @@
-import { createHash } from "node:crypto";
+import { postMetaEvent } from "@/lib/meta-capi";
+import {
+  clickUserData,
+  metaTestEventCode,
+  publicEventSourceUrl,
+  scheduleMatchingData,
+  type MetaUserData,
+} from "@/lib/meta-user-data";
 
-import { META_DATASET_ID } from "@/lib/tracking-config";
-const hash = (value: string) => createHash("sha256").update(value).digest("hex");
-
-/** Only these two approved customer fields may leave the server for Schedule. */
-export function scheduleMatchingData(email: string, phone: string) {
-  const normalizedEmail = email.trim().toLowerCase();
-  let normalizedPhone = phone.replace(/\D/g, "");
-  if (normalizedPhone.length === 10) normalizedPhone = `1${normalizedPhone}`;
-  return {
-    ...(normalizedEmail ? { em: [hash(normalizedEmail)] } : {}),
-    ...(normalizedPhone ? { ph: [hash(normalizedPhone)] } : {}),
-  };
-}
+export { scheduleMatchingData };
 
 export type SchedulePayload = {
   eventId: string;
   eventTime: number;
+  eventSourceUrl?: string;
   matching: { em?: string[]; ph?: string[] };
+  fbc?: string;
+  fbp?: string;
+  client_ip_address?: string;
+  client_user_agent?: string;
 };
 
 /** An operator-configured reserved contact isolates a production verification run. */
@@ -33,41 +33,35 @@ export function isSyntheticBookingVerification(email: string, phone: string) {
     isMetaVerificationMatching(scheduleMatchingData(email, phone));
 }
 
+const SCHEDULE_SOURCE = "https://www.805shutters.com/book-consultation/";
+
 export async function sendMetaScheduleEvent(payload: SchedulePayload) {
-  const token = process.env.META_CAPI_ACCESS_TOKEN;
-  const testCode = process.env.VERCEL_ENV === "preview" || isMetaVerificationMatching(payload.matching)
-    ? process.env.META_CAPI_TEST_EVENT_CODE : undefined;
+  const token = process.env.META_CAPI_ACCESS_TOKEN?.trim();
+  const verification = isMetaVerificationMatching(payload.matching);
+  const testCode = metaTestEventCode(verification);
   if (!token) throw new Error("META_TOKEN_MISSING");
   if (process.env.VERCEL_ENV === "preview" && !testCode)
     throw new Error("META_PREVIEW_TEST_CODE_MISSING");
   if (!payload.eventId || !Number.isInteger(payload.eventTime))
     throw new Error("META_EVENT_INVALID");
-  // Reconstruct the allowlist: never spread persisted data into a Meta request.
-  const userData: { em?: string[]; ph?: string[] } = {};
+  // Hashes stay on the allowlist. Click signals are separate, unhashed fields.
+  const userData: MetaUserData = {};
   for (const key of ["em", "ph"] as const) {
     const values = payload.matching?.[key];
     if (Array.isArray(values) && values.length === 1 && /^[a-f0-9]{64}$/.test(values[0]))
       userData[key] = values;
   }
+  Object.assign(userData, clickUserData(payload));
   if (!userData.em && !userData.ph) throw new Error("META_MATCHING_INVALID");
-  let response: Response;
-  try {
-    response = await fetch(`https://graph.facebook.com/v23.0/${META_DATASET_ID}/events`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        data: [{ event_name: "Schedule", event_id: payload.eventId,
-          event_time: payload.eventTime, action_source: "website",
-          event_source_url: "https://www.805shutters.com/book-consultation/",
-          user_data: userData }],
-        ...(testCode ? { test_event_code: testCode } : {}),
-      }),
-      signal: AbortSignal.timeout(10000),
-    });
-  } catch { throw new Error("META_NETWORK_FAILURE"); }
-  if (!response.ok) throw new Error(`META_HTTP_${response.status}`);
-  const body = await response.json().catch(() => null);
-  if (body?.events_received !== 1) throw new Error("META_ACCEPTANCE_UNCONFIRMED");
+  await postMetaEvent({
+    eventName: "Schedule",
+    eventId: payload.eventId,
+    eventTime: payload.eventTime,
+    eventSourceUrl: publicEventSourceUrl(payload.eventSourceUrl, SCHEDULE_SOURCE),
+    userData,
+    testCode,
+    confirmAcceptance: true,
+  });
   return { eventName: "Schedule", eventId: payload.eventId, eventsReceived: 1,
     acceptedAt: new Date().toISOString(), testEvent: Boolean(testCode) };
 }

@@ -32,7 +32,8 @@ import {
   commercialProjectTypeOptions,
   productInterestOptions,
 } from "@/lib/product-interest-options";
-import { isSyntheticBookingVerification, scheduleMatchingData } from "@/lib/booking/meta-schedule";
+import { isSyntheticBookingVerification } from "@/lib/booking/meta-schedule";
+import { metaClickFromRequest, publicEventSourceUrl, scheduleMatchingData } from "@/lib/meta-user-data";
 import { metaAttributionSource } from "@/lib/meta-booking-alert";
 export const runtime = "nodejs";
 type BookingPayload = {
@@ -57,6 +58,8 @@ type BookingPayload = {
   utm_term?: string;
   gclid?: string;
   fbclid?: string;
+  fbp?: string;
+  fbc?: string;
   referrer?: string;
   landingPath?: string;
 };
@@ -366,7 +369,15 @@ export async function submitConsultation(
     startAt,
     endAt,
   };
-  const metaSchedule = { eventTime: Math.floor(Date.now() / 1000), matching: scheduleMatchingData(email, phone) };
+  const metaSchedule = {
+    eventTime: Math.floor(Date.now() / 1000),
+    eventSourceUrl: publicEventSourceUrl(
+      `https://www.805shutters.com${pagePath}`,
+      "https://www.805shutters.com/book-consultation/",
+    ),
+    matching: scheduleMatchingData(email, phone),
+    ...metaClickFromRequest(request, payload),
+  };
   for (let attempt = 0; attempt < 2; attempt++) {
     const { data: replay, error: replayError } = await supabase
       .from("booking_requests")
