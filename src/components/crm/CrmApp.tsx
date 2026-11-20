@@ -1096,7 +1096,7 @@ export function CrmApp({
         { method: "POST", body: JSON.stringify({ paymentType, recipientEmail: recipientEmail?.trim() || undefined, ...confirmation }) },
       );
       if (!result.email.sent) {
-        throw new Error(result.email.error || result.email.skipped || "Square link was created, but the email was not sent.");
+        throw new Error(result.email.error || result.email.skipped || "Card payment link was created, but the email was not sent.");
       }
       setMessage(`${paymentType === "deposit" ? "Deposit" : "Balance"} link for ${toCurrency(result.amount)} sent to ${result.recipient}.`);
       return result;
@@ -1224,7 +1224,7 @@ export function CrmApp({
       const result = await crmFetch<SquarePaymentLinkResult>(session, `/api/crm/bookkeeping/${item.row!.id}/square-payment-link`, {
         method: "POST", body: JSON.stringify({ paymentType, ...confirmation }),
       });
-      if (!result.email.sent) throw new Error(result.email.error || result.email.skipped || "Square link was created, but the email was not sent.");
+      if (!result.email.sent) throw new Error(result.email.error || result.email.skipped || "Card payment link was created, but the email was not sent.");
       setMessage(result.warning || `${paymentType === "deposit" ? "Deposit" : "Balance"} link for ${toCurrency(result.amount)} sent to ${result.recipient}.`);
       return result;
     } finally { setBusy(false); }
