@@ -13,7 +13,9 @@ const body = { quoteId: "q1", jobId: "j1", paymentType: "balance", channel: "tex
 let from: ReturnType<typeof vi.fn>;
 let insert: ReturnType<typeof vi.fn>;
 beforeEach(() => {
-  vi.clearAllMocks(); insert = vi.fn().mockResolvedValue({ error: null });
+  vi.clearAllMocks();
+  vi.stubEnv("CARD_PAYMENT_PROVIDER", "square");
+  insert = vi.fn().mockResolvedValue({ error: null });
   from = vi.fn(table => {
     const data = table === "crm_quotes" ? { id: "q1", job_id: "j1", customer_phone: "8055551212" } : table === "crm_jobs" ? { id: "j1", phone: "8055551212", meta: {} } : null;
     const chain = { eq: vi.fn(() => chain), maybeSingle: vi.fn().mockResolvedValue({ data, error: null }), then: (resolve: (value: unknown) => unknown) => Promise.resolve({ error: null }).then(resolve) };

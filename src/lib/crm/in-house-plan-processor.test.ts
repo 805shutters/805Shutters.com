@@ -124,6 +124,7 @@ function io(outcome = "accepted"): PlanProviders {
   };
 }
 beforeEach(() => {
+  vi.stubEnv("CARD_PAYMENT_PROVIDER", "square");
   vi.stubEnv("MIKE_805_SALES_SMS_NUMBER", "+18055550101");
   state.optout = false;
   state.changed = false;
@@ -365,6 +366,32 @@ it("creates checkout for the exact unpaid deposit with stable provider identity,
   await installmentLink(db, state.plan, installment, provider);
   expect(provider.createLink).toHaveBeenCalledTimes(1);
   expect(saved.square_order_id).toBe("square-order");
+});
+
+it("refuses a new installment link when the card provider is unset and still recovers a stored Square link", async () => {
+  vi.stubEnv("CARD_PAYMENT_PROVIDER", "");
+  state.plan.status = "waiting_deposit";
+  const installment = state.plan.installments[0];
+  state.tables.crm_in_house_plan_links = [{
+    id: "recover-unset",
+    plan_id: "plan",
+    installment_id: installment.id,
+    amount_cents: installment.amount_cents - installment.paid_cents,
+    status: "creating",
+    provider: "square",
+    square_link_id: null,
+  }];
+  const provider = io();
+  vi.mocked(provider.createLink).mockResolvedValue({
+    id: "old-square",
+    orderId: "old-order",
+    url: "https://square.example.test/recovered",
+  });
+  await expect(installmentLink(dbMock(), state.plan, installment, provider)).rejects.toMatchObject({ status: 503 });
+  expect(provider.createLink).not.toHaveBeenCalled();
+  state.plan.status = "cancelled";
+  await retireObsoletePlanLinks(dbMock(), state.plan, provider);
+  expect(provider.createLink).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: "recover-unset" }), "square");
 });
 
 it("holds an old provider installment after cutover but retains its identity for retirement", async () => {
