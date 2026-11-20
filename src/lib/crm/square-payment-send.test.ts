@@ -9,7 +9,7 @@ import { createStripePaymentLink } from "@/lib/crm/stripe-collection";
 import { buildSquareOrderPaymentEmail, sendEmail } from "@/lib/notify/email";
 import { sendSms } from "@/lib/notify/twilio";
 import { POST } from "@/app/api/crm/quotes/[id]/square-payment-link/route";
-import { type SquarePaymentConfirmation, sendSquareOrderPaymentLink as sendCurrentSquareOrderPaymentLink } from "./square-payment-links";
+import { SquarePaymentDeliveryError, type SquarePaymentConfirmation, sendSquareOrderPaymentLink as sendCurrentSquareOrderPaymentLink } from "./square-payment-links";
 
 vi.mock("@/lib/crm/square-payment-requests", () => ({ trackSquarePaymentRequest: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/lib/crm/backend", () => ({ recordCrmActivity: vi.fn() }));
@@ -202,7 +202,7 @@ describe("Square payment send service safeguards", () => {
     expect(createSquarePaymentLink).toHaveBeenCalledExactlyOnceWith({ amountCents: 40000, title: "Deposit — 805 Shutters (Q-TEST)", quoteId, jobId: "job-1", idempotencyKey: undefined, paymentType: "deposit", buyerEmail: customerEmail });
     expect(sendEmail).toHaveBeenCalledExactlyOnceWith({ to: customerEmail, from: "805 Shutters <805@805shutters.com>", idempotencyKey: undefined, ...mail });
     expect(buildSquareOrderPaymentEmail).toHaveBeenCalledWith("Test customer", link.url, expect.objectContaining({ paymentType: "deposit", amount: 400, quoteNumber: "Q-TEST" }));
-    expect(result).toMatchObject({ amount: 400, recipient: customerEmail, url: link.url, email: { sent: true, id: "email-test-id" } });
+    expect(result).toMatchObject({ amount: 400, recipient: customerEmail, url: link.url, email: { sent: true, id: "email-test-id" }, deliveryState: "accepted", providerStatus: "accepted", providerMessageId: "email-test-id" });
     expect(result).toMatchObject({ auditRecorded: true, warning: null });
     expect(recordCrmActivity).toHaveBeenCalledWith(db.client, actor, expect.objectContaining({ action: "square_deposit_link.send", metadata: expect.objectContaining({ amount: 400, recipient: customerEmail, emailSent: true, squarePaymentLinkId: link.id }) }));
   });
@@ -218,9 +218,29 @@ describe("Square payment send service safeguards", () => {
     vi.mocked(sendEmail).mockResolvedValue(emailResult);
     const db = ledger();
     const result = await sendSquareOrderPaymentLink(db.client, quoteId, "deposit", actor);
-    expect(result).toMatchObject({ url: link.url, email: emailResult });
+    expect(result).toMatchObject({ url: link.url, email: emailResult, deliveryState: "failed", providerStatus: "failed" });
     expect(result.email!.sent).toBe(false);
+    expect(result.providerMessageId).toBeUndefined();
     expect(recordCrmActivity).toHaveBeenCalledWith(db.client, actor, expect.objectContaining({ metadata: expect.objectContaining({ emailSent: false, emailError: emailResult.error || emailResult.skipped }) }));
+  });
+
+  it("reports an uncertain Payment Hub email as unknown, never as accepted", async () => {
+    vi.mocked(sendEmail).mockResolvedValue({ sent: false, uncertain: true });
+    const result = await sendSquareOrderPaymentLink(ledger().client, quoteId, "deposit", actor);
+    expect(result.email).toMatchObject({ sent: false, uncertain: true });
+    expect(result).toMatchObject({ deliveryState: "unknown", providerStatus: "unknown" });
+    expect(result.providerMessageId).toBeUndefined();
+  });
+
+  it("still throws SquarePaymentDeliveryError for an explicit email channel that is not accepted", async () => {
+    vi.mocked(sendEmail).mockResolvedValue({ sent: false, error: "Mail provider rejected delivery" });
+    const failed = await sendCurrentSquareOrderPaymentLink(ledger().client, quoteId, "deposit", actor, undefined, { channel: "email" }, { expectedAmount: 500, expectedRecipient: customerEmail }).catch((error) => error);
+    expect(failed).toBeInstanceOf(SquarePaymentDeliveryError);
+    expect(failed.deliveryState).toBe("failed");
+    vi.mocked(sendEmail).mockResolvedValue({ sent: false, uncertain: true });
+    const unknown = await sendCurrentSquareOrderPaymentLink(ledger().client, quoteId, "deposit", actor, undefined, { channel: "email" }, { expectedAmount: 500, expectedRecipient: customerEmail }).catch((error) => error);
+    expect(unknown).toBeInstanceOf(SquarePaymentDeliveryError);
+    expect(unknown.deliveryState).toBe("unknown");
   });
 
   it("never reports sent when the email helper throws", async () => {

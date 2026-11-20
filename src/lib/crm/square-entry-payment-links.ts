@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
 import { collectCrmPages } from "@/lib/crm/pagination";
-import { squareOrderPaymentAmounts, verifySquarePaymentConfirmation, type SquareOrderPaymentType, type SquarePaymentConfirmation } from "@/lib/crm/square-payment-links";
+import { squareEmailDeliveryState, squareOrderPaymentAmounts, verifySquarePaymentConfirmation, type SquareOrderPaymentType, type SquarePaymentConfirmation } from "@/lib/crm/square-payment-links";
 import { dollarsToCents } from "@/lib/finance/square";
 import { buildSquareOrderPaymentEmail, sendEmail } from "@/lib/notify/email";
 import { brandIdentity } from "@/lib/brand-identity";
@@ -113,6 +113,8 @@ export async function sendSquareEntryPaymentLink(
     // distinction avoids encouraging another send of an already delivered link.
   }
   return { paymentType, amount, recipient, url: link.url, email, auditRecorded,
+    deliveryState: squareEmailDeliveryState(email),
+    providerMessageId: email.id ?? null,
     warning: auditRecorded ? null : email.sent
       ? "Payment email sent, but the activity log could not be recorded. Do not resend just to repair the log."
       : "Payment link created, but the failed email attempt could not be added to the activity log." };

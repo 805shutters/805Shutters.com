@@ -54,6 +54,13 @@ export function verifySquarePaymentConfirmation(
 
 export type SquarePaymentDeliveryState = "accepted" | "failed" | "unknown";
 
+/** Sent wins. An unsent uncertain acknowledgement stays unknown; every other miss is failed. */
+export function squareEmailDeliveryState(email: { sent?: boolean; uncertain?: boolean } | null | undefined): SquarePaymentDeliveryState {
+  if (email?.sent) return "accepted";
+  if (email?.uncertain) return "unknown";
+  return "failed";
+}
+
 export class SquarePaymentDeliveryError extends CrmAuthError {
   constructor(
     message: string,
@@ -263,7 +270,7 @@ export async function sendSquareOrderPaymentLink(
       squarePaymentLinkUrl: link.provider === "stripe" ? null : link.url,
       emailSent: email?.sent || false,
       emailProviderMessageId: email?.id || null,
-      emailDeliveryState: email?.sent ? "accepted" : email?.uncertain ? "unknown" : "failed",
+      emailDeliveryState: squareEmailDeliveryState(email),
       emailError: email?.error || email?.skipped || null,
       smsSent: sms?.sent || false,
       smsProviderMessageId: sms?.sid || null,
@@ -291,6 +298,10 @@ export async function sendSquareOrderPaymentLink(
     );
   }
 
+  // Explicit email and text channels throw SquarePaymentDeliveryError above when the
+  // provider does not accept. The Payment Hub omits `delivery` and reads `email.sent`
+  // on HTTP 200, so this path reports the email result instead of throwing.
+  const emailDeliveryState = squareEmailDeliveryState(email);
   return {
     paymentType,
     amount,
@@ -300,9 +311,9 @@ export async function sendSquareOrderPaymentLink(
     linkId: link.id,
     auditRecorded,
     warning: auditRecorded ? null : "Payment request processed, but the activity log could not be recorded. Review delivery status before retrying.",
-    deliveryState: "accepted" as const,
+    deliveryState: delivery?.channel === "text" ? "accepted" as const : emailDeliveryState,
     providerMessageId: delivery?.channel === "text" ? sms?.sid : email?.id,
-    providerStatus: delivery?.channel === "text" ? sms?.providerStatus : "accepted",
+    providerStatus: delivery?.channel === "text" ? sms?.providerStatus : emailDeliveryState,
     email,
     sms,
   };
