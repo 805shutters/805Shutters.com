@@ -962,6 +962,8 @@ export type ExactQuoteBuilderRepriceInput = {
   /** Saved manual lines participate in shared order rules but are not repriced. */
   pricingContext?: readonly { lineId: string; roomName?: string | null; sortOrder: number; selection: SelectionContext }[];
   applyCustomerCharges?: boolean | readonly string[];
+  /** Passed through only when at least one vendor switch is on. */
+  liveLookupSwitches?: Partial<Record<"norman" | "onyx" | "sundance" | "lotus", boolean>>;
   lines: SalesQuoteLineItem[];
   designs: SalesQuoteDesign[];
   selectedVariantByLine: Record<string, string>;
@@ -1349,6 +1351,11 @@ function repriceExactQuoteBuilderV2(
       ...(["wood_blinds","smartfold","perfectsheer","smartdrape"].includes(selection.productId) && selection.catalogAsOf >= "2026-09-19" ? { valanceWidthInches:woodValancePriceWidth(selection) ?? perfectsheerValancePriceWidth(selection) ?? smartfoldValancePriceWidth(selection), surcharges:surchargeSelections(selection.productId,design,true,selection) } : {}),
       programId: programId ?? undefined,
     };
+    const liveSwitches = input.liveLookupSwitches;
+    const liveLookupOn = !!liveSwitches && Object.values(liveSwitches).some(enabled => enabled === true);
+    const recordedPriceSource = design.options_json && typeof design.options_json === "object" && !Array.isArray(design.options_json)
+      ? (design.options_json as Record<string, unknown>).price_source
+      : null;
     const result = priceQuoteV2Selection({
       selection,
       validationPurpose: catalogAsOf >= GRID_OPTION_QUOTING_EFFECTIVE_FROM ? 'quote' : 'order',
@@ -1357,6 +1364,10 @@ function repriceExactQuoteBuilderV2(
       applyCustomerCharges: typeof input.applyCustomerCharges === "boolean"
         ? input.applyCustomerCharges
         : input.applyCustomerCharges?.includes(design.id) ?? Boolean(storedCustomerCharges(design.options_json)),
+      ...(liveLookupOn ? { liveLookup: {
+        switches: liveSwitches,
+        priceSource: recordedPriceSource === "live_site" || recordedPriceSource === "manual_no_source" ? recordedPriceSource : null,
+      } } : {}),
       additionalValidationIssues: [
         ...motorizationIssues,
         ...(selectedDesignIdByLine.get(line.id) === design.id
