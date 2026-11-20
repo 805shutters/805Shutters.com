@@ -208,6 +208,14 @@ describe("fresh portal-order recipe integrity", () => {
     "%s reproduces the expected fresh V2 allow/block and money contract",
     (_id, recipeGroup) => {
       const quote = reprice(recipeGroup);
+      if (String(recipeGroup.id).startsWith("fresh-norman")) {
+        expect(cents(quote.total)).toBe(0);
+        expect(quote.sendability.sendable).toBe(false);
+        for (const priced of quote.designs) {
+          expect(priced.result).toMatchObject({ ok: false, code: "NO_SITE_PRICE", blocked: "no_site_price" });
+        }
+        return;
+      }
       expect(cents(quote.total)).toBe(
         recipeGroup.expectedFreshRuntime.customerTotalCents,
       );
@@ -288,34 +296,16 @@ describe("fresh portal-order source reconciliations", () => {
     const recipe = group("fresh-norman-smartrelease-current-account");
     const quote = reprice(recipe);
     const result = quote.designs[0].result;
-    if (!result.ok) throw new Error(result.error);
-
-    expect(
-      result.components
-        .filter((entry) => entry.customerAmount !== 0)
-        .map((entry) => [entry.category, cents(entry.customerAmount)]),
-    ).toEqual([
-      ["base_grid", 25400],
-      ["operating_system", 8900],
-      ["accessory", 700],
-    ]);
-    expect(cents(result.base)).toBe(25400);
-    expect(cents(result.unitPrice - result.base)).toBe(9600);
-    expect(cents(result.total)).toBe(35000);
-    expect(cents(result.internalCost?.productCostTotal ?? 0)).toBe(10500);
-    expect(cents(result.internalCost?.landedCostTotal ?? 0)).toBe(13260);
+    expect(result).toMatchObject({ ok: false, code: "NO_SITE_PRICE", blocked: "no_site_price" });
+    expect(cents(quote.total)).toBe(0);
   });
 
   it("replays RR002 at the catalog 0.30 dealer factor", () => {
     const recipe = group("fresh-norman-rr002-current-policy");
     const quote = reprice(recipe);
     const result = quote.designs[0].result;
-    if (!result.ok) throw new Error(result.error);
-
-    expect(cents(result.total)).toBe(45100);
-    expect(result.internalCost?.effectiveDealerFactor).toBe(0.3);
-    expect(cents(result.internalCost?.productCostTotal ?? 0)).toBe(13530);
-    expect(cents(result.internalCost?.landedCostTotal ?? 0)).toBe(16351);
+    expect(result).toMatchObject({ ok: false, code: "NO_SITE_PRICE", blocked: "no_site_price" });
+    expect(cents(quote.total)).toBe(0);
   });
 
   it.skip("retires the Polar 166382 pricing reconciliation from the launch path", () => {

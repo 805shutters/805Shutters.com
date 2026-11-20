@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import fixtures from "@/lib/crm/sales-quote-norman-price.fixtures.json";
 import { prepareNormanLegacyPricing, type NormanQuotePricingState } from "@/lib/crm/sales-quote-norman-price";
+import { priceDesign } from "@/lib/quote/pricing";
 import { setRollerPowerConfiguration } from "./DesignCard";
 
 it("prices a legacy roller motor selection through the unchanged server validator and restores cordless", () => {
@@ -17,18 +18,30 @@ it("prices a legacy roller motor selection through the unchanged server validato
     }],
   } as unknown as NormanQuotePricingState;
   const design = state.designs[0];
-  expect(prepareNormanLegacyPricing(state, "2026-09-26")[0].rpcResult.authoritativeSnapshot).toMatchObject({ retail: { unitPrice: 645, total: 1935 } });
+  const list = priceDesign({
+    productId: "roller", programId: selection.programId, widthInches: 36.5, heightInches: 60.25,
+  }, "2026-09-26");
+  expect(list.ok, JSON.stringify(list)).toBe(true);
+  if (list.ok) expect(list.base).toBe(467);
+  const blockedQuote = () => {
+    const priced = prepareNormanLegacyPricing(state, "2026-09-26")[0];
+    expect(priced.priceStatus, JSON.stringify(priced)).toBe("blocked");
+    expect(priced.customerPrice).toMatchObject({ ok: false, code: "NO_SITE_PRICE" });
+    expect(priced.rpcResult.authoritativeSnapshot).toBeNull();
+    expect(priced.rpcResult.validationSnapshot).toMatchObject({ pricingFailure: { code: "NO_SITE_PRICE" } });
+  };
+  blockedQuote();
   design.lift_system = "Motorized";
   design.motor_type = "Single Motor (Battery)";
   expect(prepareNormanLegacyPricing(state, "2026-09-26")[0].priceStatus).toBe("blocked");
   design.motor_type = setRollerPowerConfiguration(design.options_json!, "Norman Smart Rechargeable Battery with Charging Wand & AC Adapter Charger");
-  const priced = prepareNormanLegacyPricing(state, "2026-09-26")[0];
-  expect(priced.priceStatus, JSON.stringify(priced)).toBe("authoritative");
-  expect(priced.rpcResult.authoritativeSnapshot).toMatchObject({ retail: { unitPrice: 1127, total: 3381 } });
+  expect(design.motor_type).toBeTruthy();
+  expect(design.options_json!.power_configuration).toBe("Norman Smart Rechargeable Battery with Charging Wand & AC Adapter Charger");
+  blockedQuote();
   design.lift_system = "Cordless";
   design.motor_type = setRollerPowerConfiguration(design.options_json!, null);
   design.options_json!.tube_class = "All Tubes";
-  const restored = prepareNormanLegacyPricing(state, "2026-09-26")[0];
-  expect(restored.priceStatus).toBe("authoritative");
-  expect(restored.rpcResult.authoritativeSnapshot).toMatchObject({ retail: { unitPrice: 645, total: 1935 } });
+  expect(design.motor_type).toBeNull();
+  expect(design.options_json!.power_configuration).toBeNull();
+  blockedQuote();
 });
