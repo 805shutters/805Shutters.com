@@ -4,6 +4,7 @@ import { Analytics, type AnalyticsProps } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { BeforeSendMiddleware as SpeedInsightsBeforeSend } from "@vercel/speed-insights";
 import { usePathname } from "next/navigation";
+import { MetaContactClicks } from "@/components/MetaContactClicks";
 import { RouteTracking } from "@/components/RouteTracking";
 import { TrackingScripts } from "@/components/TrackingScripts";
 import { VisitorTelegramTracking } from "@/components/VisitorTelegramTracking";
@@ -25,6 +26,7 @@ export function PublicActivityTracking() {
         <>
           <TrackingScripts />
           <RouteTracking />
+          <MetaContactClicks />
           <VisitorTelegramTracking />
           <Analytics beforeSend={onlyPublicAnalytics} />
           <SpeedInsights beforeSend={onlyPublicSpeedInsights} />
