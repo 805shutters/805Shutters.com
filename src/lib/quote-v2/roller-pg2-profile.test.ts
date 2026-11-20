@@ -5,6 +5,8 @@ import { normanRollerFabricColors } from "@/lib/quote/norman-roller-fabrics";
 import type { SelectionContext } from "./core";
 import { quoteV2CatalogVersionFor } from "./catalog";
 import { priceQuoteV2Selection } from "./engine";
+import { normanRollerFall2026Source } from "./generated/norman-roller-fall-2026.generated";
+import { normanRollerPg4Source } from "./generated/norman-roller-pg4-2026-09.generated";
 import { normanRollerV2Source } from "./generated/norman-roller-v2.generated";
 import { resolveRollerMatrixProfile, resolveRollerOffering } from "./roller-matrix";
 
@@ -90,6 +92,10 @@ describe("Roller Price Group 2 profile resolution", () => {
       const row = normanRollerV2Source.limitRows.find((candidate) => candidate.id === profile.assignment.limitRowId);
       expect(row?.sourceFabricLabel).toBe(ORIGINAL_BALI_ROW);
       expect(row?.fabricCodes).toEqual(["A90105"]);
+      expect(row?.sourceFabricTokens).toEqual(["A90105"]);
+      expect(profile.profile.id).toBe("roller-profile-0115");
+      expect(profile.definition.id).toBe("roller-definition-005");
+      expect(profile.definition.operatingSystem).toBe("Cordless");
       expect(profile.profile.limits.maxWidth).toBe(78);
 
       const price = priceQuoteV2Selection({
@@ -128,6 +134,7 @@ describe("Roller Price Group 2 profile resolution", () => {
       const row = normanRollerV2Source.limitRows.find((candidate) => candidate.id === profile.assignment.limitRowId);
       const expectedLabel = ["F0668", "F1668", "F1669"].includes(colorCode) ? ORIGINAL_BALI_ROW : ADDED_BALI_ROW;
       expect(row?.sourceFabricLabel, colorCode).toBe(expectedLabel);
+      expect(profile.profile.id, colorCode).toBe(expectedLabel === ORIGINAL_BALI_ROW ? "roller-profile-0115" : "roller-profile-0132");
       expect(profile.profile.limits.maxWidth, colorCode).toBe(expectedLabel === ORIGINAL_BALI_ROW ? 78 : 94.5);
 
       const price = priceQuoteV2Selection({
@@ -145,6 +152,59 @@ describe("Roller Price Group 2 profile resolution", () => {
       expect(price.programId).toBe(LEGACY_FABRIC_PG2);
       expect(JSON.stringify(price)).not.toContain(QUARANTINE);
     }
+  });
+
+  it("keeps the generated color lists on the A90105 labels and resolves F2025 inside the range", () => {
+    const labels = [...new Set(
+      normanRollerV2Source.limitRows
+        .filter((row) => row.fabricCodes.includes("A90105"))
+        .map((row) => row.sourceFabricLabel),
+    )].sort();
+    expect(labels).toEqual([ADDED_BALI_ROW, ORIGINAL_BALI_ROW].sort());
+    const sandstone = resolveRollerMatrixProfile(shade(baliColor("F2025"), 40, 40));
+    expect(sandstone.ok).toBe(true);
+    if (!sandstone.ok) return;
+    expect(sandstone.profile.id).toBe("roller-profile-0132");
+    expect(sandstone.profile.limits.maxWidth).toBe(94.5);
+    const row = normanRollerV2Source.limitRows.find((candidate) => candidate.id === sandstone.assignment.limitRowId);
+    expect(row?.sourceFabricLabel).toBe(ADDED_BALI_ROW);
+  });
+
+  it("leaves every non-A90105 fabric on the single limit row the fabric-code match already selected", () => {
+    const sources = [normanRollerV2Source, normanRollerPg4Source, normanRollerFall2026Source];
+    let compared = 0;
+    for (const source of sources) {
+      for (const offering of source.offerings) {
+        if (offering.fabricCode === "A90105") continue;
+        const color = normanRollerFabricColors.find(
+          (row) => row.collection === offering.collection && row.colorCode === offering.colorCode,
+        );
+        const configuration = offering.regionScope === "ca_ma" || offering.regionScope === "other_regions"
+          ? { roller_region_scope: offering.regionScope }
+          : undefined;
+        const selected = shade(
+          { collection: offering.collection, colorCode: offering.colorCode, programId: color?.programId ?? LEGACY_FABRIC_PG2 },
+          36,
+          60,
+          configuration,
+        );
+        const profile = resolveRollerMatrixProfile(selected);
+        const label = `${source === normanRollerV2Source ? "v2" : source === normanRollerPg4Source ? "pg4" : "fall"} ${offering.collection} ${offering.colorCode} ${offering.regionScope}`;
+        if (!profile.ok) {
+          expect(profile.code, label).not.toBe("PROFILE_AMBIGUOUS");
+          continue;
+        }
+        const resolvedSource = sources.find((candidate) => candidate.limitRows.some((row) => row.id === profile.assignment.limitRowId));
+        if (resolvedSource !== source) continue;
+        const peers = source.limitRows.filter(
+          (row) => row.sheet === profile.sheet && row.fabricCodes.includes(offering.fabricCode),
+        );
+        expect(peers, label).toHaveLength(1);
+        expect(profile.assignment.limitRowId, label).toBe(peers[0]?.id);
+        compared += 1;
+      }
+    }
+    expect(compared).toBeGreaterThan(300);
   });
 
   it("keeps Ohara and Charlotte on the Fall 2026 Price Group 2 program", () => {
