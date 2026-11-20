@@ -12,8 +12,16 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 export async function GET(request: NextRequest) {
   try {
-    const { supabase, email } = await requireCrmUser(request),
+    const { supabase, email } = await requireCrmUser(request);
+    let config: ReturnType<typeof stripeConfig>;
+    try {
       config = stripeConfig();
+    } catch {
+      throw new CrmAuthError(
+        503,
+        "Stripe setup is not complete. Reconciliation will be available after the account connection is configured.",
+      );
+    }
     const results = await Promise.all(
       ["requests", "objects", "events", "sync", "bank_matches", "alerts"].map(
         async (name) => {

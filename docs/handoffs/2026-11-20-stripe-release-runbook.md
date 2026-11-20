@@ -1,6 +1,6 @@
 # Stripe / Mercury migration — implementation and release handoff
 
-Reviewed November 20, 2026. Local branch `codex/stripe-mercury-migration`, base `15ff3f173e512dfbc8aa3c3a043beabb20059f1f`, isolated worktree `/Users/michaelshepard/Documents/805-stripe-mercury-migration`. Owner authorized release/configuration. Dedicated805 migration20261120203721 is applied; real isolated Stripe test Checkout/webhook passed. Production flags keep Square selected and Stripe collection/sync/alerts disabled. Commit/push/deployment/live credentials remain in progress. No real customer sends or money movement. See current migration handoff for the latest state.
+Reviewed November 20, 2026. Local branch `codex/stripe-mercury-migration`, base `15ff3f173e512dfbc8aa3c3a043beabb20059f1f`, isolated worktree `/Users/michaelshepard/Documents/805-stripe-mercury-migration`. Owner authorized release/configuration. Dedicated805 migration20261120203721 is applied; real isolated Stripe test Checkout/webhook passed. Production flags keep Square selected and Stripe collection/sync/alerts disabled. Code d72cead9 is pushed to main and verified live on www.805shutters.com (deployment dpl_E1SqYCMfCCMoZbFzDYbu7QeEEfSQ). Live credentials/webhook and provider cutover remain pending. No real customer sends or money movement. See current migration handoff for the latest state.
 
 ## Selected outcome and verified account state
 
@@ -63,4 +63,4 @@ Review states, unmatched provider payments, uncertain creation/sends, incomplete
 
 See `docs/handoffs/2026-11-20-stripe-qa.md` for final exact test counts and limitations. Desktop and 390 CSS-pixel phone synthetic preview verified contained overflow, exact amounts, reconciliation refresh, bank form validation/cancel/success/failure, staff/test restrictions and visible load failure. Export downloaded and parsed as three fictional processor rows. Preview records are fictional and made no customer/provider/bank requests.
 
-Production authentication, live Checkout/webhook, customer delivery, provider settlement, Mercury arrival, external Grok tools and QuickBooks posting remain gates. Real test Checkout/webhook and production database migration/RLS are verified as described in QA. Existing signed PDFs/artwork source was not rewritten; regression coverage is not a new live visual signoff on every historical PDF.
+Production authenticated CRM navigation passed. Live Checkout/webhook, customer delivery, provider settlement, Mercury arrival, external Grok tools and QuickBooks posting remain gates. Real test Checkout/webhook and production database migration/RLS are verified as described in QA. Existing signed PDFs/artwork source was not rewritten; regression coverage is not a new live visual signoff on every historical PDF.

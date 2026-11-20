@@ -44,6 +44,17 @@ const request = (body: unknown) =>
     method: "POST",
     body: JSON.stringify(body),
   });
+it("shows an actionable setup hold without exposing configuration or querying evidence", async () => {
+  vi.mocked(stripeConfig).mockImplementationOnce(() => {
+    throw new Error("private configuration detail");
+  });
+  const r = await GET(new NextRequest("https://fixture.invalid/api/crm/stripe/"));
+  expect(r.status).toBe(503);
+  const body = await r.text();
+  expect(body).toContain("Stripe setup is not complete.");
+  expect(body).not.toContain("private configuration detail");
+  expect(from).not.toHaveBeenCalled();
+});
 it("does not mutate during an authenticated evidence read", async () => {
   const r = await GET(
     new NextRequest("https://fixture.invalid/api/crm/stripe/"),
