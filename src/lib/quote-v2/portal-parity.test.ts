@@ -5,8 +5,8 @@ import { priceQuoteV2Selection } from "./engine";
 
 /**
  * Historical read-only dealer-portal fixture captured 2026-07-20 from Norman
- * draft TEST, line RR002. The .30 account factor is superseded by the current
- * authenticated 805 policy; its list dollars remain useful as a fixed input.
+ * draft TEST, line RR002. Its list dollars remain a fixed input. Dealer cost
+ * is list × the catalog factor 0.30.
  */
 const NORMAN_PORTAL_RR002 = Object.freeze({
   product: "Roller Shades",
@@ -26,7 +26,7 @@ const NORMAN_PORTAL_RR002 = Object.freeze({
 });
 
 describe("Norman dealer-portal parity fixtures", () => {
-  it("does not let the superseded RR002 .30 capture override current 805 policy", () => {
+  it("prices RR002 dealer cost at the catalog 0.30 factor", () => {
     const selection: SelectionContext = {
       manufacturerId: "norman",
       productId: "roller",
@@ -66,21 +66,21 @@ describe("Norman dealer-portal parity fixtures", () => {
     });
 
     if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
-    expect(result.wholesaleBase).toBe(126.72); // $384 list x current .33
+    expect(result.wholesaleBase).toBe(115.2); // $384 list x catalog factor .30
     expect(result.surchargeLines).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: "raceway",
-          wholesaleAmount: 22.11, // $67 list x current .33
+          wholesaleAmount: 20.1, // $67 list x catalog factor .30
         }),
       ]),
     );
-    expect(result.wholesaleUnitPrice).toBe(148.83);
+    expect(result.wholesaleUnitPrice).toBe(135.3);
     expect(result.internalCost).toMatchObject({
-      productCostUnit: 148.83,
-      effectiveDealerFactor: 0.33,
+      productCostUnit: 135.3,
+      effectiveDealerFactor: 0.3,
     });
-    expect(result.wholesaleBase).not.toBe(NORMAN_PORTAL_RR002.baseDealerNet);
+    expect(result.wholesaleBase).toBe(NORMAN_PORTAL_RR002.baseDealerNet);
 
     // Customer retail remains the source-book suggested retail. The current
     // account schedule changes protected dealer cost only.

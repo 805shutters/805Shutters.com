@@ -122,20 +122,20 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
         expect.objectContaining({
           category: "base_grid",
           catalogAmount: 298,
-          wholesaleAmount: 98.34,
+          wholesaleAmount: 89.4,
           customerAmount: 298,
         }),
         expect.objectContaining({
           category: "fabric_upgrade",
           catalogAmount: 30,
-          wholesaleAmount: 9.9,
+          wholesaleAmount: 9,
           customerAmount: 30,
         }),
         expect.objectContaining({
           category: "operating_system",
           priceLineId: "motor:autowand:autowand",
           catalogAmount: 166,
-          wholesaleAmount: 54.78,
+          wholesaleAmount: 49.8,
           customerAmount: 166,
         }),
         expect.objectContaining({
@@ -148,19 +148,19 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     );
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 494,
-      wholesalePerWindow: 163.02,
+      wholesalePerWindow: 148.2,
       customerPerWindow: 494,
     });
     expect(priced.costResult).toMatchObject({
       ok: true,
-      wholesaleUnitCost: 163.02,
+      wholesaleUnitCost: 148.2,
       freightAllocated: 25,
-      processingFeeAllocated: 3.76,
-      landedCostTotal: 191.78,
+      processingFeeAllocated: 3.46,
+      landedCostTotal: 176.66,
     });
 
     expect(priced.snapshot?.dealerPolicy).toMatchObject({
-      effectiveDealerFactor: 0.33,
+      effectiveDealerFactor: 0.3,
     });
     const customerRetailSnapshot = JSON.stringify(priced.snapshot?.retail);
     expect(customerRetailSnapshot).toContain('"customerAmount":298');
@@ -205,13 +205,13 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
 
     expect(result.total).toBe(860);
-    expect(result.internalCost?.productCostTotal).toBe(283.8);
+    expect(result.internalCost?.productCostTotal).toBe(258);
     expect(result.components).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           category: "base_grid",
           catalogAmount: 628,
-          wholesaleAmount: 207.24,
+          wholesaleAmount: 188.4,
           customerAmount: 628,
         }),
         expect.objectContaining({
@@ -219,14 +219,14 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
           category: "accessory",
           basis: "width_ladder",
           catalogAmount: 232,
-          wholesaleAmount: 76.56,
+          wholesaleAmount: 69.6,
           customerAmount: 232,
         }),
       ]),
     );
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 860,
-      wholesalePerWindow: 283.8,
+      wholesalePerWindow: 258,
       customerPerWindow: 860,
     });
     expect(quote.sendability.sendable).toBe(true);
@@ -268,13 +268,13 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
 
     expect(result.total).toBe(959);
-    expect(result.internalCost?.productCostTotal).toBe(316.47);
+    expect(result.internalCost?.productCostTotal).toBe(287.7);
     expect(result.components).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           category: "base_grid",
           catalogAmount: 628,
-          wholesaleAmount: 207.24,
+          wholesaleAmount: 188.4,
           customerAmount: 628,
         }),
         expect.objectContaining({
@@ -282,7 +282,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
           category: "accessory",
           basis: "width_ladder",
           catalogAmount: 331,
-          wholesaleAmount: 109.23,
+          wholesaleAmount: 99.3,
           customerAmount: 331,
         }),
       ]),
@@ -296,7 +296,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     ).toBe(false);
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 959,
-      wholesalePerWindow: 316.47,
+      wholesalePerWindow: 287.7,
       customerPerWindow: 959,
     });
     expect(quote.sendability.sendable).toBe(true);
@@ -338,13 +338,13 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
 
     expect(result.total).toBe(860);
-    expect(result.internalCost?.productCostTotal).toBe(283.8);
+    expect(result.internalCost?.productCostTotal).toBe(258);
     expect(result.components).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           category: "base_grid",
           catalogAmount: 628,
-          wholesaleAmount: 207.24,
+          wholesaleAmount: 188.4,
           customerAmount: 628,
         }),
         expect.objectContaining({
@@ -352,7 +352,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
           category: "accessory",
           basis: "width_ladder",
           catalogAmount: 232,
-          wholesaleAmount: 76.56,
+          wholesaleAmount: 69.6,
           customerAmount: 232,
         }),
       ]),
@@ -366,7 +366,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     ).toBe(false);
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 860,
-      wholesalePerWindow: 283.8,
+      wholesalePerWindow: 258,
       customerPerWindow: 860,
     });
     expect(quote.sendability.sendable).toBe(true);
@@ -412,13 +412,13 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
         expect.objectContaining({
           category: "base_grid",
           catalogAmount: 298,
-          wholesaleAmount: 98.34,
+          wholesaleAmount: 89.4,
           customerAmount: 298,
         }),
         expect.objectContaining({
           category: "fabric_upgrade",
           catalogAmount: 74,
-          wholesaleAmount: 24.42,
+          wholesaleAmount: 22.2,
           customerAmount: 74,
         }),
         expect.objectContaining({
@@ -426,7 +426,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
           category: "operating_system",
           priceLineId: "smartrelease",
           catalogAmount: 89,
-          wholesaleAmount: 29.37,
+          wholesaleAmount: 26.7,
           customerAmount: 89,
         }),
       ]),
@@ -440,7 +440,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     ).toBe(false);
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 461,
-      wholesalePerWindow: 152.13,
+      wholesalePerWindow: 138.3,
       customerPerWindow: 461,
     });
     expect(quote.sendability.sendable).toBe(true);
@@ -488,13 +488,13 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
         expect.objectContaining({
           category: "base_grid",
           catalogAmount: 298,
-          wholesaleAmount: 98.34,
+          wholesaleAmount: 89.4,
           customerAmount: 298,
         }),
         expect.objectContaining({
           category: "fabric_upgrade",
           catalogAmount: 30,
-          wholesaleAmount: 9.9,
+          wholesaleAmount: 9,
           customerAmount: 30,
         }),
         expect.objectContaining({
@@ -502,7 +502,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
           category: "operating_system",
           priceLineId: "smartrelease",
           catalogAmount: 89,
-          wholesaleAmount: 29.37,
+          wholesaleAmount: 26.7,
           customerAmount: 89,
         }),
       ]),
@@ -516,7 +516,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     ).toBe(false);
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 417,
-      wholesalePerWindow: 137.61,
+      wholesalePerWindow: 125.1,
       customerPerWindow: 417,
     });
     expect(quote.sendability.sendable).toBe(true);
@@ -559,7 +559,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
 
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 346,
-      wholesalePerWindow: 114.18,
+      wholesalePerWindow: 103.8,
       customerPerWindow: 346,
     });
     expect(result.components).toEqual(
@@ -567,7 +567,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
         expect.objectContaining({
           category: "base_grid",
           catalogAmount: 346,
-          wholesaleAmount: 114.18,
+          wholesaleAmount: 103.8,
           customerAmount: 346,
         }),
       ]),
@@ -768,7 +768,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     }
     expect(motorOnlyResult).toMatchObject({
       base: 888,
-      wholesaleBase: 293.04,
+      wholesaleBase: 266.4,
       configurationUnits: 3,
       total: 2_086,
       productStatus: "documented_limited",
@@ -779,19 +779,19 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
         expect.objectContaining({
           id: "coupled_shade",
           amount: 234,
-          wholesaleAmount: 77.22,
+          wholesaleAmount: 70.2,
         }),
         expect.objectContaining({
           id: "motor:smart_motorization:motor",
           amount: 964,
-          wholesaleAmount: 318.12,
+          wholesaleAmount: 289.2,
           detail: "482 x 2",
         }),
       ]),
     );
     expect(motorOnlyResult.componentTotals).toMatchObject({
       catalogPerWindow: 2_086,
-      wholesalePerWindow: 688.38,
+      wholesalePerWindow: 625.8,
       customerPerWindow: 2_086,
     });
     expect(motorOnly.sendability.sendable).toBe(true);
@@ -808,13 +808,13 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
         expect.objectContaining({
           id: "motor:smart_motorization:smartsense",
           amount: 60,
-          wholesaleAmount: 19.8,
+          wholesaleAmount: 18,
         }),
       ]),
     );
     expect(smartResult.componentTotals).toMatchObject({
       catalogPerWindow: 2_146,
-      wholesalePerWindow: 708.18,
+      wholesalePerWindow: 643.8,
       customerPerWindow: 2_146,
     });
     expect(smartResult.total - motorOnlyResult.total).toBe(60);
@@ -824,7 +824,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
           (motorOnlyResult.internalCost?.productCostTotal ?? 0)) *
           100,
       ),
-    ).toBe(1_980);
+    ).toBe(1_800);
     expect(withSmartSense.sendability.sendable).toBe(true);
   });
 });

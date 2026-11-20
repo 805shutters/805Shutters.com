@@ -927,11 +927,22 @@ function priceInputContractIssues(
   ];
 }
 
+function normanUsesListDealerFactor(product: CatalogProduct | undefined): boolean {
+  return (
+    !!product &&
+    product.manufacturer?.trim().toLowerCase() === "norman" &&
+    product.id !== "norman_shutters" &&
+    product.productType?.trim().toLowerCase() !== "shutter"
+  );
+}
+
 function selectedNormanDealerFactor(
   selection: SelectionContext,
   product: CatalogProduct,
 ): number | null {
-  if (product.manufacturer?.trim().toLowerCase() !== "norman") return null;
+  // Shutter programs keep their square-foot cost. List × 0.30 and the
+  // shutter lead-time factor 0.297 are not shutter product costs.
+  if (!normanUsesListDealerFactor(product)) return null;
   return (
     normanDealerScheduleForSelection(
       selection.options.schedule_discount_percent,
@@ -1912,8 +1923,7 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
   }
 
   const resultMetadata = metadata(selection, productStatus, issues, true);
-  const normanSchedule =
-    product?.manufacturer?.trim().toLowerCase() === "norman"
+  const normanSchedule = normanUsesListDealerFactor(product)
     ? normanDealerScheduleForSelection(
         selection.options.schedule_discount_percent,
       )

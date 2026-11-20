@@ -120,7 +120,7 @@ describe('Norman source-priced selections without ordering-only details',()=>{
   for(const [sides,count] of [['one',1],['two',2]] as const){
    const s=current(productId);s.configuration.cut_out_sides=sides;const original=structuredClone(s),r=price(s);
    expect(r.ok,JSON.stringify(r)).toBe(true);
-   if(r.ok){const cut=r.surchargeLines.filter(line=>line.id==='cut_out');expect(cut).toHaveLength(1);expect(authoritativeAutomaticSurchargeSelections(s)).toContainEqual({id:'cut_out',units:count});expect(cut[0].amount).toBe((productId==='wood_blinds'?99:29.37)*count);}
+   if(r.ok){const cut=r.surchargeLines.filter(line=>line.id==='cut_out');expect(cut).toHaveLength(1);expect(authoritativeAutomaticSurchargeSelections(s)).toContainEqual({id:'cut_out',units:count});expect(cut[0].amount).toBe((productId==='wood_blinds'?99:26.7)*count);}
    expect(s).toEqual(original);expect(price(s,'order').ok).toBe(false);
   }
   const unknown=current(productId);unknown.configuration.cutout=true;expect(price(unknown).ok).toBe(false);

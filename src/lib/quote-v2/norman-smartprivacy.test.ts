@@ -37,8 +37,8 @@ describe("SmartPrivacy independent assortment, fit and pricing",()=>{
   expect(smartprivacyComponents(s)?.record.components.map(c=>c.shims)).toEqual([4,8,4]);
   const result=price(s);expect(result.ok,JSON.stringify(result)).toBe(true);
   if(!result.ok)return;
-  // Retail grids: 161 + 249 + 161; valances 28 + 56 + 28; 16 shims × $7. Existing factor .33 and margin $125.
-  expect(result.wholesaleUnitPrice).toBe(262.35);expect(result.total).toBe(387.35);
+  // Retail grids: 161 + 249 + 161; valances 28 + 56 + 28; 16 shims × $7. Catalog factor .30 and margin $125.
+  expect(result.wholesaleUnitPrice).toBe(238.5);expect(result.total).toBe(363.5);
   expect(result.total-result.wholesaleTotal!).toBe(125);
   expect(JSON.stringify(toCustomerQuotePriceResult(result))).not.toMatch(/wholesale|margin|factoryCode/);
  });

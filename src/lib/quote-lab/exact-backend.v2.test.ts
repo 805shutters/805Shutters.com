@@ -545,7 +545,7 @@ describe("exact-interface V2 integration", () => {
         expect.objectContaining({
           id: "additional_fiberglass_pole",
           amount: 56,
-          wholesaleAmount: 18.48,
+          wholesaleAmount: 16.8,
           detail: "28 x 2 units",
         }),
       ]),
@@ -555,14 +555,14 @@ describe("exact-interface V2 integration", () => {
         expect.objectContaining({
           id: "accessory:additional_fiberglass_pole",
           catalogAmount: 56,
-          wholesaleAmount: 18.48,
+          wholesaleAmount: 16.8,
           customerAmount: 56,
         }),
       ]),
     );
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 440,
-      wholesalePerWindow: 145.2,
+      wholesalePerWindow: 132,
       customerPerWindow: 440,
     });
     expect(quote.sendability.sendable).toBe(true);
@@ -837,7 +837,7 @@ describe("exact-interface V2 integration", () => {
         expect.objectContaining({
           id: "motor:automate_home:motor_rechargeable_battery_pack",
           amount: 682,
-          wholesaleAmount: 225.06,
+          wholesaleAmount: 204.6,
         }),
       ]),
     );
@@ -849,7 +849,7 @@ describe("exact-interface V2 integration", () => {
         expect.arrayContaining([
           expect.objectContaining({
             id: "motor:automate_home:motor_rechargeable_battery_pack",
-            amount: 225.06,
+            amount: 204.6,
           }),
         ]),
       );
@@ -871,14 +871,14 @@ describe("exact-interface V2 integration", () => {
           id: "operating:motor:automate_home:motor_rechargeable_battery_pack",
           category: "operating_system",
           catalogAmount: 682,
-          wholesaleAmount: 225.06,
+          wholesaleAmount: 204.6,
           customerAmount: 682,
         }),
       ]),
     );
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 1_066,
-      wholesalePerWindow: 351.78,
+      wholesalePerWindow: 319.8,
       customerPerWindow: 1_066,
     });
 
@@ -944,7 +944,7 @@ describe("exact-interface V2 integration", () => {
       expect.objectContaining({
         id: "motor:smart_motorization:hub",
         amount: 321,
-        wholesaleAmount: 105.93,
+        wholesaleAmount: 96.3,
       }),
     ]);
     expect(result.components).toEqual(
@@ -953,14 +953,14 @@ describe("exact-interface V2 integration", () => {
           id: "motor:smart_motorization:hub",
           category: "accessory",
           catalogAmount: 321,
-          wholesaleAmount: 105.93,
+          wholesaleAmount: 96.3,
           customerAmount: 321,
         }),
       ]),
     );
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 1_187,
-      wholesalePerWindow: 391.71,
+      wholesalePerWindow: 356.1,
       customerPerWindow: 1_187,
     });
   });

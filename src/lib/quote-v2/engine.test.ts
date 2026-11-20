@@ -218,12 +218,12 @@ describe("Quote V2 authoritative pricing engine", () => {
       ok: true,
       productStatus: "documented_limited",
       validationStatus: "valid",
-      wholesaleUnitPrice: 61.38,
-      unitPrice: 186.38,
-      total: 186.38,
+      wholesaleUnitPrice: 55.8,
+      unitPrice: 180.8,
+      total: 180.8,
     });
     if (!result.ok) return;
-    expect(result.unitPrice - result.wholesaleUnitPrice!).toBe(125);
+    expect(result.unitPrice - result.wholesaleUnitPrice!).toBeCloseTo(125, 10);
     expect(JSON.stringify(toCustomerQuotePriceResult(result))).not.toMatch(
       /wholesale|margin|profit|cost/i,
     );
@@ -264,12 +264,12 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(result).toMatchObject({
       ok: true,
       componentMatchedWidths: [24, 54, 24],
-      wholesaleUnitPrice: 256.41,
-      unitPrice: 381.41,
-      total: 381.41,
+      wholesaleUnitPrice: 233.1,
+      unitPrice: 358.1,
+      total: 358.1,
     });
     if (!result.ok) return;
-    expect(result.unitPrice - result.wholesaleUnitPrice!).toBe(125);
+    expect(result.unitPrice - result.wholesaleUnitPrice!).toBeCloseTo(125, 10);
   });
 
   it.skip("retires Polar pricing even when the manufacturer label is forged", () => {
@@ -330,12 +330,12 @@ describe("Quote V2 authoritative pricing engine", () => {
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.wholesaleBase).toBe(83.82); // $254 list x current portal factor .33
+    expect(result.wholesaleBase).toBe(76.2); // $254 list x catalog dealer factor .30
     expect(result.base).toBe(254);
     expect(result.unitPrice).toBe(254);
     expect(result.total).toBe(254);
-    expect(result.internalCost?.productCostTotal).toBe(83.82);
-    expect(result.internalCost?.effectiveDealerFactor).toBe(0.33);
+    expect(result.internalCost?.productCostTotal).toBe(76.2);
+    expect(result.internalCost?.effectiveDealerFactor).toBe(0.3);
   });
 
   it("hard-blocks a present malformed schedule before pricing", () => {
@@ -410,7 +410,7 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(standardResult.ok).toBe(true);
     expect(slowerResult.ok).toBe(true);
     if (!standardResult.ok || !slowerResult.ok) return;
-    expect(standardResult.wholesaleBase).toBe(83.82);
+    expect(standardResult.wholesaleBase).toBe(76.2);
     expect(slowerResult.wholesaleBase).toBe(75.44);
     expect(standardResult.base).toBe(254);
     expect(slowerResult.base).toBe(254);
@@ -560,11 +560,11 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(result.ok, JSON.stringify(result, null, 2)).toBe(true);
     if (!result.ok) return;
     expect(result.unitPrice).toBe(350);
-    expect(result.wholesaleUnitPrice).toBe(115.5);
+    expect(result.wholesaleUnitPrice).toBe(105);
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 350,
       customerPerWindow: 350,
-      wholesalePerWindow: 115.5,
+      wholesalePerWindow: 105,
     });
   });
 

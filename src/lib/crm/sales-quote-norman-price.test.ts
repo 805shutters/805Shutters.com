@@ -251,7 +251,7 @@ describe("Norman calculation in ordinary legacy quotes", () => {
   it.each([2, 3])("preserves once-per-line faux margin and customer fees at quantity %i", quantity => {
     const [result] = prepareNormanLegacyPricing(stateFor("faux_wood", quantity), "2026-09-22");
     const retail = (result.rpcResult.authoritativeSnapshot as { retail: Record<string, number> }).retail;
-    expect(retail.total).toBeCloseTo(103.62 * quantity + 125 + 39 * quantity, 2);
+    expect(retail.total).toBeCloseTo(94.2 * quantity + 125 + 39 * quantity, 2);
     expect(retail.unitPrice * quantity + retail.onceTotal).toBeCloseTo(retail.total, 2);
   });
 

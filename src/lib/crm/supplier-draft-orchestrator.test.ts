@@ -13,6 +13,26 @@ function storeFor(spec:SupplierQuoteSpec){let saved:DurableDraftJob={id:'SYNTHET
   return {store,get:()=>saved,interruptAt:(n:number)=>{failAt=n;}};
 }
 describe('supplier draft orchestration',()=>{
+  it('prices the owner-selected multiplier and does not keep a stored or default multiplier',async()=>{
+    const draft=syntheticDraft();
+    expect(draft.draftJob!.multiplier).toBe('2');
+    draft.draftJob!.multiplier='2.5';
+    const spec=buildSupplierSpec(draft);
+    expect(spec.multiplier).toBe('2.5');
+    const unset=syntheticDraft();
+    unset.draftJob!.multiplier=null;
+    expect(()=>buildSupplierSpec(unset)).toThrow(/multiplier/);
+    const priced=priceSupplierSpec(spec,[receipt(spec)]);
+    expect(priced.prices[0]).toMatchObject({productCost:'100.00',merchandise:'250.00',installation:'25.00',shipping:'14.00',total:'289.00'});
+    const s=storeFor(spec);
+    s.get().state.prices=[{lineId:spec.lines[0].id,productCost:'100.00',merchandise:'200.00',installation:'25.00',shipping:'14.00',total:'239.00',merchandiseUnitInput:'200.00',manualPreserved:false}];
+    const supplier:SupplierDraftAdapter={readCurrentAccount,async createOrResumeDraft(){return receipt(spec);}};
+    const customer:CustomerDraftAdapter={async createOrResumeDraft(){return readback(spec);},async readback(){return readback(spec);}};
+    await runDraftJob('SYNTHETIC-JOB',{store:s.store,suppliers:{Norman:supplier},customer});
+    expect(s.get().state.phase).toBe('complete');
+    expect(s.get().state.prices[0]).toMatchObject({merchandise:'250.00',installation:'25.00',shipping:'14.00',total:'289.00'});
+    expect(s.get().spec.multiplier).toBe('2.5');
+  });
   it('multiplies product alone then adds fees exactly once for all eight factors',()=>{
     const expected=['214.00','239.00','264.00','289.00','314.00','339.00','364.00','389.00'];
     ['1.75','2','2.25','2.5','2.75','3','3.25','3.5'].forEach((factor,i)=>{const spec=buildSupplierSpec(syntheticDraft());spec.multiplier=factor as never;const r=priceSupplierSpec(spec,[receipt(spec)]);expect(r.total).toBe(expected[i]);expect(r.prices[0].installation).toBe('25.00');expect(r.prices[0].shipping).toBe('14.00');});

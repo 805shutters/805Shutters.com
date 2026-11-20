@@ -1,5 +1,27 @@
 import { sourceProvenance } from "./source-manifest";
 import portalFixture from "./fixtures/norman-805-portal-2026-07-21.json";
+import normanCatalog from "../quote/catalog/norman-2026.catalog.json";
+
+/**
+ * Non-shutter Norman dealer cost is list × the catalog `dealerFactor`.
+ * Every Norman product in norman-2026.catalog.json carries the same factor.
+ * The July 21 portal fixture still records an observed standard factor of
+ * 0.33; that capture is not the runtime cost factor.
+ */
+function normanCatalogStandardDealerFactor(): number {
+  const factors = [
+    ...new Set(normanCatalog.products.map((product) => product.dealerFactor)),
+  ];
+  if (factors.length !== 1 || factors[0] !== 0.3) {
+    throw new Error(
+      `Norman catalog dealerFactor must be the single standard cost factor 0.30. Found: ${factors.join(", ")}.`,
+    );
+  }
+  return factors[0];
+}
+
+const NORMAN_CATALOG_STANDARD_DEALER_FACTOR =
+  normanCatalogStandardDealerFactor();
 
 export type NormanDealerSchedule = Readonly<{
   id: "standard" | "shutter_lead_time";
@@ -23,6 +45,12 @@ export type NormanDealerSchedule = Readonly<{
  * `NORMAN PRICING.pdf` is retained only as quarantined evidence because it
  * belongs to a different dealer account, not 805. Nothing in this runtime policy derives
  * from that artifact.
+ *
+ * The standard schedule is the catalog dealer factor (0.30 × list) for
+ * non-shutter products, add-ons, and valances. The July fixture's observed
+ * 0.33 standard factor is not applied. The shutter lead-time schedule stays
+ * at the fixture's 0.297. Norman shutter product cost does not follow list ×
+ * either factor; shutter programs price from their own square-foot cost.
  */
 export const NORMAN_805_DEALER_POLICY = Object.freeze({
   id: "norman-805-dealer-policy-2026-07-21",
@@ -50,7 +78,7 @@ export const NORMAN_805_DEALER_POLICY = Object.freeze({
     standard: Object.freeze({
       id: "standard",
       selectionPercent: 30,
-      effectivePortalFactor: portalFixture.standard.effectivePortalFactor,
+      effectivePortalFactor: NORMAN_CATALOG_STANDARD_DEALER_FACTOR,
       fixtureId: portalFixture.id,
     } satisfies NormanDealerSchedule),
     shutterLeadTime: Object.freeze({
@@ -62,7 +90,7 @@ export const NORMAN_805_DEALER_POLICY = Object.freeze({
     } satisfies NormanDealerSchedule),
   }),
   dealerFactors: Object.freeze({
-    standard: portalFixture.standard.effectivePortalFactor,
+    standard: NORMAN_CATALOG_STANDARD_DEALER_FACTOR,
     shutterLeadTime: portalFixture.shutterLeadTime.effectivePortalFactor,
   }),
   freight: Object.freeze({
