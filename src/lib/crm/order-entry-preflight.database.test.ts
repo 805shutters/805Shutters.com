@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -106,27 +107,43 @@ async function claimUntil(manufacturer: string, eventId: string) {
   throw new Error(`did not claim ${eventId}`);
 }
 
+function gitShow(rev: string, path: string) {
+  return execFileSync("git", ["show", `${rev}:${path}`], { encoding: "utf8", maxBuffer: 20_000_000 });
+}
+
 beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/20261121160000_quote_category_field_sequence.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/20261121223000_line_event_queue.sql", "utf8"));
-  await db.exec(readFileSync("supabase/migrations/20261122010000_order_entry_preflight.sql", "utf8"));
+  await db.exec(gitShow(
+    "a21d32fa5e92dfe20f663ccbeace1c0ca14a7a56",
+    "supabase/migrations/20261121235500_norman_line_event_consumer.sql",
+  ));
+  await db.exec(readFileSync("supabase/migrations/20261122020000_quote_sequence_field_file_corrections.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/20261122030000_order_entry_preflight.sql", "utf8"));
   await db.exec(`
     select set_config('quote_sequence.admin_write', 'on', false);
     insert into public.quote_category_field_sequence (
       manufacturer, category, field_key, ask_order, required, input_kind, depends_on,
-      catalog_version, inferred, set_by,
+      catalog_version, inferred, set_by, applies_when, active,
       required_for_order, vendor_field_name, value_translation, conditional_rules
     ) values
       ('Norman', 'preflight_probe', 'color', 1, false, 'buttons', '{}',
-        'order-form:norman:preflight_probe:v1', true, 'seed',
+        'order-form:norman:preflight_probe:v1', true, 'seed', '{}'::jsonb, true,
         true, 'Color', '{"White":"WH"}'::jsonb, '{"raw":"","clauses":[]}'::jsonb),
       ('Norman', 'preflight_probe', 'panel_configuration', 2, false, 'typed', '{}',
-        'order-form:norman:preflight_probe:v1', true, 'seed',
+        'order-form:norman:preflight_probe:v1', true, 'seed', '{}'::jsonb, true,
         true, 'panel_configuration', '{}'::jsonb, '{"raw":"","clauses":[]}'::jsonb),
       ('Norman', 'preflight_probe', 't_post_location', 3, false, 'typed', '{panel_configuration}',
         'order-form:norman:preflight_probe:v1', true, 'seed',
-        true, 't_post_location', '{}'::jsonb,
-        '{"raw":"panel_configuration contains ''T''","clauses":[{"field":"panel_configuration","op":"contains","value":"T","case":"sensitive"}]}'::jsonb);
+        '{"op":"contains","field":"panel_configuration","value":"T"}'::jsonb, true,
+        true, 't_post_location', '{}'::jsonb, '{"raw":"","clauses":[]}'::jsonb),
+      ('Norman', 'preflight_probe', 'motor_note', 4, false, 'typed', '{}',
+        'order-form:norman:preflight_probe:v1', true, 'seed',
+        '{"op":"eq","field":"control_type","value":"Motorized"}'::jsonb, true,
+        true, 'motor_note', '{}'::jsonb, '{"raw":"","clauses":[]}'::jsonb),
+      ('Norman', 'preflight_probe', 'retired_color', 5, false, 'typed', '{}',
+        'order-form:norman:preflight_probe:v1', true, 'seed', '{}'::jsonb, false,
+        true, 'retired_color', '{}'::jsonb, '{"raw":"","clauses":[]}'::jsonb);
     select set_config('quote_sequence.admin_write', 'off', false);
   `);
 }, 180000);
@@ -181,7 +198,7 @@ describe("order-entry population", () => {
       empty_maps: line + orderLevel,
       same_name: line + orderLevel,
       unparsed,
-      uncovered: 0,
+      uncovered: 16,
       seed_required: true,
       set_by: "seed",
     });
@@ -191,9 +208,10 @@ describe("order-entry population", () => {
       required_for_order: boolean;
       vendor_field_name: string;
       order_entry_flag: string;
-      rules: { clauses: Array<{ field: string; op: string; value: string; case: string }> };
+      active: boolean;
+      applies_when: { op: string; field: string; value: string };
     }>(`
-      select required_for_order, vendor_field_name, order_entry_flag, conditional_rules as rules
+      select required_for_order, vendor_field_name, order_entry_flag, active, applies_when
       from public.quote_category_field_sequence
       where manufacturer = 'Norman' and category = 'brightwood' and field_key = 't_post_location'
     `);
@@ -201,7 +219,8 @@ describe("order-entry population", () => {
       required_for_order: true,
       vendor_field_name: "t_post_location",
       order_entry_flag: "gaps",
-      rules: { clauses: [{ field: "panel_configuration", op: "contains", value: "T", case: "sensitive" }] },
+      active: true,
+      applies_when: { op: "contains", field: "panel_configuration", value: "T" },
     });
 
     const ash = await db.query<{ order_entry_flag: string | null; status: string }>(`
@@ -263,30 +282,33 @@ describe("order-entry population", () => {
     expect(headerFields.rows.find((row) => row.manufacturer === "Onyx" && row.field_key === "sidemark")?.required_for_order).toBe(true);
     expect(headerFields.rows.find((row) => row.manufacturer === "Norman" && row.field_key === "ship_to")?.required_for_order).toBe(true);
 
-    const wake = await db.query<{ manufacturer: string; worker_role: string; transport: string }>(`
-      select manufacturer, worker_role, transport
-      from line_event.manufacturer_wake
-      order by manufacturer
+    const roles = await db.query<{ rolname: string; rolcanlogin: boolean }>(`
+      select rolname, rolcanlogin
+      from pg_roles
+      where rolname in ('manufacturer_bot_norman', 'manufacturer_bot_onyx', 'manufacturer_bot_sundance', 'manufacturer_bot_lotus')
+      order by rolname
     `);
-    expect(wake.rows).toEqual(
-      Object.entries(ORDER_ENTRY_MANUFACTURER_ROLES)
-        .map(([manufacturer, worker_role]) => ({ manufacturer, worker_role, transport: "http" }))
-        .sort((a, b) => a.manufacturer.localeCompare(b.manufacturer)),
+    expect(roles.rows).toEqual(
+      Object.values(ORDER_ENTRY_MANUFACTURER_ROLES).sort().map((rolname) => ({ rolname, rolcanlogin: false })),
     );
-    const polarRole = await db.query<{ n: number }>(`
-      select count(*)::int as n from pg_roles where rolname = 'polar_line_worker'
+    const grants = await db.query<{ ok: boolean }>(`
+      select has_function_privilege('manufacturer_bot_onyx', 'public.enqueue_line_event(uuid, bigint, text, jsonb)', 'execute') as ok
     `);
-    expect(polarRole.rows[0].n).toBe(0);
+    expect(grants.rows[0].ok).toBe(false);
     const wakeBody = await db.query<{ prosrc: string; comment: string }>(`
       select p.prosrc, obj_description(p.oid) as comment
       from pg_proc p
       join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public' and p.proname = 'wake_line_event_worker'
     `);
-    expect(wakeBody.rows[0].prosrc).not.toMatch(/http_post|net\.http|pg_net|dblink/i);
+    expect(wakeBody.rows[0].prosrc).toContain("wake_http");
     expect(wakeBody.rows[0].prosrc).toContain("wake_disabled");
-    expect(wakeBody.rows[0].comment).toMatch(/HTTP/);
-    expect(wakeBody.rows[0].comment).toContain("norman_line_worker");
+    expect(wakeBody.rows[0].comment).toContain("line_event.worker_url");
+    const priceReaders = gitShow(
+      "origin/cursor/live-price-followups-fb23",
+      "supabase/migrations/20261122004500_current_live_price_readers.sql",
+    );
+    expect(priceReaders).not.toMatch(/line_event|quote_category_field_sequence/);
   });
 });
 
@@ -305,7 +327,7 @@ describe("order-entry preflight", () => {
     const stored = await db.query<{ state: string; version: string; block_reason: string | null; events: number; results: number }>(`
       select q.state, q.version::text, q.block_reason,
         (select count(*) from line_event.events e where e.line_id = q.line_id)::int as events,
-        (select count(*) from line_event.field_results r where r.line_id = q.line_id and r.field_key = 'color')::int as results
+        (select count(*) from line_event.needs_input r where r.line_id = q.line_id and r.field_key = 'color' and r.event_id is null)::int as results
       from line_event.quote_lines q
       where q.line_id = $1
     `, [id(1)]);
@@ -354,6 +376,24 @@ describe("order-entry preflight", () => {
       [id(3)],
     );
     expect(events.rows[0].n).toBe(0);
+  });
+
+  it("honors applies_when and skips inactive rows", async () => {
+    const quiet = await enqueue(14, 1, probe({ color: "White", panel_configuration: "LR" }));
+    expect(quiet.fired).toBe(true);
+    expect(quiet.needs_input ?? []).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ field_key: "motor_note" }),
+      expect.objectContaining({ field_key: "retired_color" }),
+      expect.objectContaining({ field_key: "t_post_location" }),
+    ]));
+
+    const motor = await enqueue(15, 1, probe({
+      color: "White",
+      panel_configuration: "LR",
+      control_type: "Motorized",
+    }));
+    expect(motor.fired).toBe(false);
+    expect(motor.needs_input?.map((item) => item.field_key)).toEqual(["motor_note"]);
   });
 
   it("respects conditional rules", async () => {
@@ -408,14 +448,20 @@ describe("order-entry preflight", () => {
       where q.line_id = $1
     `, [id(7)]);
     expect(row.rows[0]).toEqual({ state: "priced", version: "1", block_reason: null, events: 1 });
-    const failure = await db.query<{ field_key: string; result: string; attempted_version: string }>(`
-      select field_key, result, attempted_version::text
-      from line_event.field_results
+    const failure = await db.query<{ field_key: string; kind: string; assignee: string; idempotency_key: string; event_id: string | null }>(`
+      select field_key, kind, assignee, idempotency_key, event_id::text
+      from line_event.needs_input
       where line_id = $1
       order by created_at desc
       limit 1
     `, [id(7)]);
-    expect(failure.rows[0]).toEqual({ field_key: "color", result: "needs_input", attempted_version: "2" });
+    expect(failure.rows[0]).toEqual({
+      field_key: "color",
+      kind: "order_entry",
+      assignee: "quoter",
+      idempotency_key: `${id(7)}:2`,
+      event_id: null,
+    });
   });
 
   it("fires once after the missing field is corrected", async () => {
@@ -446,7 +492,7 @@ describe("order-entry preflight", () => {
   });
 
   it("does not delete order-entry rows", async () => {
-    await expect(db.query("delete from line_event.field_results")).rejects.toThrow(/not deleted/);
+    await expect(db.query("delete from line_event.needs_input")).rejects.toThrow(/cannot be deleted/);
     await expect(db.query("delete from public.quote_order_entry_header")).rejects.toThrow(/not deleted/);
     await db.exec("select set_config('quote_sequence.admin_write', 'on', false)");
     await expect(db.query(
@@ -454,7 +500,7 @@ describe("order-entry preflight", () => {
     )).rejects.toThrow(/not deleted/);
     await db.exec("select set_config('quote_sequence.admin_write', 'off', false)");
     const remaining = await db.query<{ n: number }>(
-      "select count(*)::int as n from line_event.field_results where line_id = $1",
+      "select count(*)::int as n from line_event.needs_input where line_id = $1",
       [id(1)],
     );
     expect(remaining.rows[0].n).toBeGreaterThan(0);

@@ -9,7 +9,7 @@
  * so it has no wake role.
  */
 
-export const ORDER_ENTRY_FIELD_FILE = "data/order-entry/805-order-entry-fields.json";
+export const ORDER_ENTRY_FIELD_FILE = "supabase/seed-sources/805-order-entry-fields.json";
 
 export const ORDER_ENTRY_FIELD_FILE_SHA256 =
   "2b54653e7e95ea8adbba325853653fb22f83c327edefd55dff6363ff54bed8fd";
@@ -17,10 +17,10 @@ export const ORDER_ENTRY_FIELD_FILE_SHA256 =
 export const ORDER_ENTRY_WAKE_TRANSPORT = "http" as const;
 
 export const ORDER_ENTRY_MANUFACTURER_ROLES = {
-  norman: "norman_line_worker",
-  onyx: "onyx_line_worker",
-  sundance: "sundance_line_worker",
-  lotus: "lotus_line_worker",
+  norman: "manufacturer_bot_norman",
+  onyx: "manufacturer_bot_onyx",
+  sundance: "manufacturer_bot_sundance",
+  lotus: "manufacturer_bot_lotus",
 } as const;
 
 export const ORDER_ENTRY_WAKE_EXCLUDED = ["polar"] as const;

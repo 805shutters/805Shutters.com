@@ -17,8 +17,8 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "data" / "order-entry" / "805-order-entry-fields.json"
-TARGET = ROOT / "supabase" / "migrations" / "20261122010000_order_entry_preflight.sql"
+SOURCE = ROOT / "supabase" / "seed-sources" / "805-order-entry-fields.json"
+TARGET = ROOT / "supabase" / "migrations" / "20261122030000_order_entry_preflight.sql"
 SOURCE_SHA256 = "2b54653e7e95ea8adbba325853653fb22f83c327edefd55dff6363ff54bed8fd"
 LOAD_TAG = "$order_entry_load$"
 
@@ -440,6 +440,7 @@ declare
   v_values jsonb := '{}'::jsonb;
   v_field record;
   v_level record;
+  v_apply text;
   v_answer jsonb;
   v_translated jsonb;
   v_payload jsonb;
@@ -483,6 +484,7 @@ begin
       select 1 from public.quote_category_field_sequence as sequence_row
       where lower(sequence_row.manufacturer) = v_manufacturer
         and sequence_row.category = v_category
+        and sequence_row.active
         and (v_requested_version is null or sequence_row.catalog_version = v_requested_version)
     ) into v_known;
     if not coalesce(v_known, false) then
@@ -510,6 +512,7 @@ begin
       select 1 from public.quote_category_field_sequence as sequence_row
       where lower(sequence_row.manufacturer) = v_manufacturer
         and sequence_row.category = v_category
+        and sequence_row.active
         and (v_requested_version is null or sequence_row.catalog_version = v_requested_version)
         and sequence_row.required_for_order is not null
     ) then
@@ -521,15 +524,17 @@ begin
     else
       for v_field in
         select distinct on (sequence_row.field_key)
+          sequence_row.manufacturer,
           sequence_row.field_key,
           sequence_row.required_for_order,
           sequence_row.vendor_field_name,
           sequence_row.value_translation,
-          sequence_row.conditional_rules,
+          sequence_row.applies_when,
           sequence_row.catalog_version
         from public.quote_category_field_sequence as sequence_row
         where lower(sequence_row.manufacturer) = v_manufacturer
           and sequence_row.category = v_category
+          and sequence_row.active
           and (v_requested_version is null or sequence_row.catalog_version = v_requested_version)
         order by sequence_row.field_key, sequence_row.catalog_version desc
       loop
@@ -537,7 +542,15 @@ begin
         if coalesce(v_field.required_for_order, false) is not true then
           continue;
         end if;
-        if not line_event.order_entry_rule_applies(v_field.conditional_rules, v_answers) then
+        v_apply := public.quote_sequence_applies_state(
+          coalesce(v_field.applies_when, '{}'::jsonb),
+          v_answers,
+          v_field.manufacturer,
+          v_category,
+          v_field.catalog_version,
+          0
+        );
+        if v_apply is distinct from 'yes' then
           continue;
         end if;
         v_answer := line_event.order_entry_answer(v_answers, v_field.field_key);
@@ -648,9 +661,22 @@ begin
   end if;
 
   if jsonb_array_length(v_needs) > 0 then
-    insert into line_event.field_results (line_id, attempted_version, field_key, result, reason)
-    select p_line_id, p_version, item->>'field_key', 'needs_input', item->>'reason'
-    from jsonb_array_elements(v_needs) as item;
+    insert into line_event.needs_input (
+      line_id, event_id, idempotency_key, field_key, reason, assignee, kind, status, attempt
+    )
+    select
+      p_line_id,
+      null,
+      p_line_id::text || ':' || p_version::text,
+      item->>'field_key',
+      left(item->>'reason', 500),
+      'quoter',
+      'order_entry',
+      'open',
+      1
+    from jsonb_array_elements(v_needs) as item
+    where item->>'field_key' ~ '^[a-z0-9_]{1,80}$'
+    on conflict (idempotency_key, field_key) do nothing;
     return jsonb_build_object(
       'ok', false,
       'schema', '805-line-event/v1',
@@ -787,20 +813,26 @@ HEADER = """-- Order-entry preflight for 805 manufacturer line events. Step 3a.
 -- Not applied to production by the pull request that adds this file.
 -- Does not place manufacturer orders, send quotes, email, or texts, or touch MTS.
 --
--- Merge order: the in-flight seed correction (applies_when / seed value fixes on
--- quote_category_field_sequence) merges first. This migration's timestamp is
--- after 20261122004500. It writes only the new order-entry columns and does not
--- update required, ask_order, input_kind, depends_on, inferred, set_by, or set_at.
--- Sequence rows this file does not cover stay null on those columns and get
--- order_entry_flag = not_in_order_entry_field_file.
+-- Merge and apply order:
+--   #109 20261122004500_current_live_price_readers.sql (does not touch these tables)
+--   #111 20261121235500_norman_line_event_consumer.sql
+--   #113 20261122020000_quote_sequence_field_file_corrections.sql
+--   this file, 20261122030000
+-- This migration does not update required, ask_order, input_kind, depends_on,
+-- applies_when, active, superseded_at, inferred, set_by, or set_at.
+-- #113 leaves 1,513 sequence rows. This fill matches the original 1,497 keys
+-- and leaves #113's 16 new Polar rows null, flagged not_in_order_entry_field_file.
+-- Inactive rows are filled but preflight skips them.
 --
--- Source file: data/order-entry/805-order-entry-fields.json
+-- Source file: supabase/seed-sources/805-order-entry-fields.json
 -- sha256: __SHA256__
 --
--- Wake design: one HTTP call per manufacturer, executed as that manufacturer's
--- role (norman_line_worker, onyx_line_worker, sundance_line_worker,
--- lotus_line_worker). public.wake_line_event_worker stays disabled and does
--- not perform the call. Polar is not a line-event manufacturer and has no wake role.
+-- Roles follow #111: NOLOGIN manufacturer_bot_<manufacturer>.
+-- manufacturer_bot_norman already exists and is not granted anything here.
+-- Onyx, Sundance, and Lotus get the same kind of role and no functions.
+-- #111's wake stays as it is: one HTTP call for Norman only, and only when
+-- line_event.wake_http, line_event.worker_url, and line_event.worker_secret
+-- are set. This migration does not replace that function.
 
 alter table public.quote_category_field_sequence
   add column if not exists required_for_order boolean,
@@ -837,7 +869,7 @@ comment on column public.quote_category_field_sequence.vendor_field_name is
 comment on column public.quote_category_field_sequence.value_translation is
   'CRM value to vendor value. An empty object means the CRM value is sent as itself. A value missing from a non-empty map is untranslatable.';
 comment on column public.quote_category_field_sequence.conditional_rules is
-  'When the field is required. clauses are all required. any means one is enough. unparsed rules do not block; the row is flagged.';
+  'Parsed from the field file. Preflight uses applies_when from the seed correction, not this column.';
 comment on column public.quote_category_field_sequence.order_entry_flag is
   'Null when the order-entry file marks the product complete. gaps, conditional_unparsed, or not_in_order_entry_field_file otherwise.';
 
@@ -885,30 +917,18 @@ create table if not exists public.quote_order_entry_header (
 comment on table public.quote_order_entry_header is
   'Order-level P.O., sidemark, and ship-to captured when a line event passes preflight. Rows are not deleted.';
 
-create table if not exists line_event.field_results (
-  id uuid primary key default gen_random_uuid(),
-  line_id uuid not null references line_event.quote_lines (line_id),
-  attempted_version bigint not null check (attempted_version > 0),
-  field_key text not null,
-  result text not null check (result = 'needs_input'),
-  reason text not null,
-  created_at timestamptz not null default now()
-);
+do $needs_input$
+begin
+  if to_regclass('line_event.needs_input') is null then
+    raise exception 'line_event.needs_input is missing. Apply 20261121235500_norman_line_event_consumer.sql (#111) before this migration.';
+  end if;
+end
+$needs_input$;
 
-comment on table line_event.field_results is
-  'Field-level needs_input from order-entry preflight or a later order-entry failure. Append-only. A corrected retry enqueues the same version once; these rows stay.';
+alter table line_event.needs_input alter column event_id drop not null;
 
-create index if not exists line_event_field_results_line_idx
-  on line_event.field_results (line_id, attempted_version, created_at);
-
-create table if not exists line_event.manufacturer_wake (
-  manufacturer text primary key check (manufacturer in ('norman', 'onyx', 'sundance', 'lotus')),
-  worker_role text not null unique,
-  transport text not null check (transport = 'http')
-);
-
-comment on table line_event.manufacturer_wake is
-  'Design record only. The wake is one HTTP call per manufacturer, as that manufacturer role. public.wake_line_event_worker does not perform it. Polar has no line-event wake role.';
+comment on column line_event.needs_input.event_id is
+  'Set when a consumed line event failed. Null when order-entry preflight refused to fire the event. idempotency_key is still line_id:version.';
 
 create or replace function public.quote_order_entry_reject_delete()
 returns trigger
@@ -917,41 +937,6 @@ set search_path = ''
 as $fn$
 begin
   raise exception '% rows are not deleted', tg_table_name;
-end
-$fn$;
-
-create or replace function line_event.field_results_guard()
-returns trigger
-language plpgsql
-set search_path = ''
-as $fn$
-begin
-  if tg_op = 'DELETE' then
-    raise exception 'order-entry field results are not deleted';
-  end if;
-  if tg_op = 'UPDATE' then
-    raise exception 'order-entry field results are not updated';
-  end if;
-  if current_setting('line_event.via_function', true) is distinct from 'on' then
-    raise exception 'order-entry field results are written by preflight';
-  end if;
-  return new;
-end
-$fn$;
-
-create or replace function line_event.manufacturer_wake_guard()
-returns trigger
-language plpgsql
-set search_path = ''
-as $fn$
-begin
-  if tg_op = 'DELETE' then
-    raise exception 'manufacturer wake rows are not deleted';
-  end if;
-  if tg_op = 'UPDATE' then
-    raise exception 'manufacturer wake rows are not updated';
-  end if;
-  return new;
 end
 $fn$;
 
@@ -987,24 +972,13 @@ create trigger quote_order_entry_header_guard
 before insert or update or delete on public.quote_order_entry_header
 for each row execute function public.quote_order_entry_header_guard();
 
-create trigger line_event_field_results_guard
-before insert or update or delete on line_event.field_results
-for each row execute function line_event.field_results_guard();
-
-create trigger line_event_manufacturer_wake_guard
-before update or delete on line_event.manufacturer_wake
-for each row execute function line_event.manufacturer_wake_guard();
-
 alter table public.quote_order_entry_field_file enable row level security;
 alter table public.quote_order_entry_product_coverage enable row level security;
 alter table public.quote_order_level_field enable row level security;
 alter table public.quote_order_entry_header enable row level security;
-alter table line_event.field_results enable row level security;
-alter table line_event.manufacturer_wake enable row level security;
 
 revoke all on public.quote_order_entry_field_file, public.quote_order_entry_product_coverage,
   public.quote_order_level_field, public.quote_order_entry_header from public;
-revoke all on line_event.field_results, line_event.manufacturer_wake from public;
 """
 
 # The user asked for an additive migration. Trigger recreation uses DROP TRIGGER,
@@ -1015,32 +989,17 @@ revoke all on line_event.field_results, line_event.manufacturer_wake from public
 # allows only drop trigger.
 
 FOOTER_START = r"""
-comment on function public.wake_line_event_worker(text, uuid) is
-  'Designed wake: one HTTP call to that manufacturer''s worker, using one role per manufacturer (norman_line_worker, onyx_line_worker, sundance_line_worker, lotus_line_worker). The call stays disabled. This function performs no HTTP request and returns woken=false, reason=wake_disabled. enqueue_line_event is the only caller.';
-
-insert into line_event.manufacturer_wake (manufacturer, worker_role, transport)
-values
-  ('norman', 'norman_line_worker', 'http'),
-  ('onyx', 'onyx_line_worker', 'http'),
-  ('sundance', 'sundance_line_worker', 'http'),
-  ('lotus', 'lotus_line_worker', 'http')
-on conflict (manufacturer) do nothing;
-
 do $roles$
 declare
   worker text;
 begin
-  foreach worker in array array['norman_line_worker', 'onyx_line_worker', 'sundance_line_worker', 'lotus_line_worker']
+  foreach worker in array array['manufacturer_bot_onyx', 'manufacturer_bot_sundance', 'manufacturer_bot_lotus']
   loop
     if not exists (select 1 from pg_roles where rolname = worker) then
       execute format('create role %I nologin', worker);
     end if;
     execute format('comment on role %I is %L', worker,
-      '805 line worker for one manufacturer. The designed wake is one HTTP call as this role. The wake function does not make that call.');
-    execute format('grant execute on function public.enqueue_line_event(uuid, bigint, text, jsonb) to %I', worker);
-    execute format('grant execute on function public.claim_next_line_event(text, text) to %I', worker);
-    execute format('grant execute on function public.complete_line_event(uuid, text, text, text) to %I', worker);
-    execute format('grant execute on function public.block_line_event(uuid, text, text, text, text) to %I', worker);
+      'NOLOGIN manufacturer line role, same pattern as manufacturer_bot_norman. No functions and no table grants. The Norman HTTP wake is unchanged and does not post this manufacturer.');
   end loop;
 end
 $roles$;
@@ -1053,8 +1012,6 @@ revoke all on function line_event.order_entry_rule_applies(jsonb, jsonb) from pu
 revoke all on function line_event.order_entry_translate(jsonb, jsonb) from public;
 revoke all on function line_event.order_entry_ship_to_present(jsonb) from public;
 revoke all on function line_event.preflight_order_entry(uuid, bigint, text, jsonb) from public;
-revoke all on function line_event.field_results_guard() from public;
-revoke all on function line_event.manufacturer_wake_guard() from public;
 revoke all on function public.quote_order_entry_reject_delete() from public;
 revoke all on function public.quote_order_entry_header_guard() from public;
 
@@ -1195,7 +1152,7 @@ def main() -> None:
         "  if missing > 0 then\n",
         "    raise exception 'order-entry field file has % keys that are not in quote_category_field_sequence. Merge the seed correction first; regenerate this migration if keys changed.', missing;\n",
         "  end if;\n",
-        "  perform set_config('quote_sequence.admin_write', 'on', true);\n",
+        "  perform public.quote_sequence_begin_migration('2b54653e7e95ea8adbba325853653fb22f83c327edefd55dff6363ff54bed8fd');\n",
         "  update public.quote_category_field_sequence as sequence_row\n",
         "  set required_for_order = load.required_for_order,\n",
         "      vendor_field_name = load.vendor_field_name,\n",
@@ -1216,7 +1173,7 @@ def main() -> None:
         "    and value_translation is null\n",
         "    and conditional_rules is null\n",
         "    and order_entry_flag is null;\n",
-        "  perform set_config('quote_sequence.admin_write', 'off', true);\n",
+        "  perform public.quote_sequence_end_migration();\n",
         "  insert into public.quote_order_entry_field_file (sha256, generated, product_count)\n",
         "  values (" + sql_text(SOURCE_SHA256) + ", " + sql_text(data["generated"]) + ", " + str(len(data["products"])) + ")\n",
         "  on conflict (sha256) do nothing;\n",
@@ -1241,7 +1198,8 @@ def main() -> None:
         "\nnotify pgrst, 'reload schema';\n",
     ]
     text = "".join(parts)
-    if "delete from" in text.lower() or "truncate" in text.lower() or re.search(r"\bdrop\b", text, re.I):
+    stripped = re.sub(r"alter column event_id drop not null", "", text, flags=re.I)
+    if "delete from" in stripped.lower() or "truncate" in stripped.lower() or re.search(r"\bdrop\b", stripped, re.I):
         raise SystemExit("migration must not delete, truncate, or drop")
     TARGET.write_text(text)
     print(f"wrote {TARGET} ({TARGET.stat().st_size} bytes)")
