@@ -10,6 +10,7 @@ import {
 } from "@/lib/quote/live-lookup-current";
 
 const migration = readFileSync("supabase/migrations/20261122004500_current_live_price_readers.sql", "utf8");
+const applyMigration = readFileSync("supabase/migrations/20261122044500_live_price_authenticated_apply.sql", "utf8");
 const lineHash = quoteLineSpecHash({
   productType: "Roller Shades",
   widthWhole: 36,
@@ -73,6 +74,31 @@ describe("quote row guard", () => {
     expect(migration).toContain("quote_v2_status in ('draft', 'stale', 'priced', 'blocked')");
     expect(migration).not.toContain("set notes = null");
     expect(migration).not.toContain("design.notes =");
+    expect(migration).not.toContain("select public.backfill_current_live_price_fields()");
+    const priceFn = applyMigration.slice(
+      applyMigration.indexOf("function public.price_line_from_receipt"),
+      applyMigration.indexOf("function public.backfill_current_live_price_fields"),
+    );
+    const guardAt = priceFn.indexOf("'quote_not_draft'");
+    expect(guardAt).toBeGreaterThan(0);
+    for (const write of [
+      "insert into public.crm_supplier_workflow_line_prices",
+      "insert into public.crm_live_lookup_line_price_revisions",
+      "update public.sales_quote_designs",
+      "insert into public.sales_quote_line_price_overrides",
+      "insert into public.sales_quote_line_price_events",
+      "update public.sales_quotes",
+    ]) {
+      expect(priceFn.indexOf(write)).toBeGreaterThan(guardAt);
+    }
+    const backfill = applyMigration.slice(applyMigration.indexOf("function public.backfill_current_live_price_fields"));
+    const quoteUpdate = backfill.indexOf("update public.sales_quotes");
+    expect(backfill.indexOf("set_config('request.jwt.claims'")).toBeLessThan(quoteUpdate);
+    expect(backfill.indexOf("set_config('request.jwt.claim.role'")).toBeLessThan(quoteUpdate);
+    expect(backfill.lastIndexOf("set_config('request.jwt.claim.role'")).toBeGreaterThan(quoteUpdate);
+    expect(backfill.slice(quoteUpdate, backfill.indexOf("get diagnostics status_count"))).not.toMatch(/total_amount|notes/);
+    expect(applyMigration).not.toMatch(/drop\s+trigger|disable\s+trigger/i);
+    expect(applyMigration.trimEnd().endsWith("select public.backfill_current_live_price_fields();")).toBe(true);
   });
 });
 

@@ -45,6 +45,7 @@ beforeAll(async () => {
     alter table sales_quotes add column if not exists quote_number text;
     alter table sales_quotes add column if not exists quote_letter text;`);
   await db.exec(readFileSync("supabase/migrations/20261122004500_current_live_price_readers.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/20261122044500_live_price_authenticated_apply.sql", "utf8"));
   // Production already has these checks. The migrations do not create the
   // components check, line_total >= 0, or product_cost >= 0. Install the
   // production expression when it is absent. Do not weaken it.
@@ -1012,6 +1013,45 @@ it("backfills stale live-priced quotes once and leaves human notes and other sta
   });
 });
 
+async function countRows(sql: string, value: string) {
+  const row = await db.query<{ count: string }>(sql, [value]);
+  return Number(row.rows[0].count);
+}
+
+async function closedQuoteSnapshot(quote: number, line: number) {
+  const quoteRow = (await db.query<{
+    status: string;
+    quote_v2_status: string;
+    total_amount: string;
+    manufacturer_cost: string;
+    product_cost: string;
+    quote_v2_revision: string;
+  }>(
+    `select status, quote_v2_status, total_amount::text, manufacturer_cost::text,
+            product_cost::text, quote_v2_revision::text
+     from sales_quotes where id = $1`,
+    [id(quote)],
+  )).rows[0];
+  const designs = (await db.query<{ unit_price: string; options_json: string; notes: string | null }>(
+    "select unit_price::text, options_json::text, notes from sales_quote_designs where line_item_id = $1 order by variant",
+    [id(line)],
+  )).rows;
+  const selected = (await db.query<{ selected_design_id: string | null }>(
+    "select selected_design_id::text as selected_design_id from sales_quote_line_items where id = $1",
+    [id(line)],
+  )).rows[0].selected_design_id;
+  return {
+    quote: quoteRow,
+    designs,
+    selectedDesignId: selected,
+    overrides: await countRows("select count(*) from sales_quote_line_price_overrides where quote_id = $1", id(quote)),
+    workflow: await countRows("select count(*) from crm_supplier_workflow_line_prices where line_id = $1", id(line)),
+    revisions: await countRows("select count(*) from crm_live_lookup_line_price_revisions where line_id = $1", id(line)),
+    events: await countRows("select count(*) from sales_quote_line_price_events where quote_id = $1", id(quote)),
+    receipts: await countRows("select count(*) from crm_vendor_price_receipts where quote_id = $1", id(quote)),
+  };
+}
+
 it("leaves a sent quote and an archived quote unchanged and still prices a draft", async () => {
   const human = "Line ref L1. INTERNAL TEST. Unpriced pending Norman live lookup. Amelia discontinued 12/31/2026";
   await db.query("update crm_live_lookup_switch set enabled = true where vendor = 'norman'");
@@ -1029,25 +1069,19 @@ it("leaves a sent quote and an archived quote unchanged and still prices a draft
       [id(601), human],
     );
     const sentRecord = await record(60, 601, 115.2);
-    const sentPriced = await db.query<{ result: { quoteStatus: string; unitPrice: number; revision: number } }>(
+    const sentBefore = await closedQuoteSnapshot(60, 601);
+    expect(sentBefore.receipts).toBe(1);
+    expect(sentBefore.workflow).toBe(0);
+    expect(sentBefore.revisions).toBe(0);
+    expect(sentBefore.overrides).toBe(0);
+    expect(sentBefore.events).toBe(0);
+    expect(sentBefore.designs).toEqual([{ unit_price: "0", options_json: "{}", notes: human }]);
+    const sentPriced = await db.query<{ result: { quoteStatus: string; revision: number } }>(
       "select price_line_from_receipt($1, $2, 'A', $3, 1, $4) as result",
       [id(60), id(601), sentRecord, id(++request)],
     );
-    expect(sentPriced.rows[0].result).toMatchObject({ quoteStatus: "quote_not_draft", unitPrice: 288, revision: 1 });
-    const sentQuote = await db.query<{ status: string; quote_v2_status: string; total_amount: string; manufacturer_cost: string; product_cost: string; quote_v2_revision: string }>(
-      "select status, quote_v2_status, total_amount::text, manufacturer_cost::text, product_cost::text, quote_v2_revision::text from sales_quotes where id = $1",
-      [id(60)],
-    );
-    expect(sentQuote.rows[0].status).toBe("sent");
-    expect(sentQuote.rows[0].quote_v2_status).toBe("sent");
-    expect(sentQuote.rows[0].quote_v2_revision).toBe("1");
-    expect(Number(sentQuote.rows[0].total_amount)).toBe(10);
-    expect(Number(sentQuote.rows[0].manufacturer_cost)).toBe(1);
-    expect(Number(sentQuote.rows[0].product_cost)).toBe(2);
-    const sentNote = await db.query<{ notes: string }>("select notes from sales_quote_designs where line_item_id = $1", [id(601)]);
-    expect(sentNote.rows[0].notes).toBe(human);
-    const sentLine = await db.query<{ count: string }>("select count(*) from crm_supplier_workflow_line_prices where line_id = $1", [id(601)]);
-    expect(Number(sentLine.rows[0].count)).toBe(1);
+    expect(sentPriced.rows[0].result).toEqual({ quoteStatus: "quote_not_draft", revision: 1 });
+    expect(await closedQuoteSnapshot(60, 601)).toEqual(sentBefore);
 
     await seed(61, 611, "Roller Shades");
     await db.query(
@@ -1057,22 +1091,23 @@ it("leaves a sent quote and an archived quote unchanged and still prices a draft
        where id = $1`,
       [id(61)],
     );
+    await db.query(
+      "insert into sales_quote_designs (line_item_id, variant, product_type, unit_price, options_json, notes) values ($1, 'A', 'Roller Shades', 12, '{\"color\":\"white\"}'::jsonb, $2)",
+      [id(611), human],
+    );
     const archivedRecord = await record(61, 611, 76.2);
-    const archivedPriced = await db.query<{ result: { quoteStatus: string } }>(
+    const archivedBefore = await closedQuoteSnapshot(61, 611);
+    expect(archivedBefore.receipts).toBe(1);
+    expect(archivedBefore.workflow).toBe(0);
+    expect(archivedBefore.revisions).toBe(0);
+    expect(archivedBefore.overrides).toBe(0);
+    expect(archivedBefore.events).toBe(0);
+    const archivedPriced = await db.query<{ result: { quoteStatus: string; revision: number } }>(
       "select price_line_from_receipt($1, $2, 'A', $3, 1, $4) as result",
       [id(61), id(611), archivedRecord, id(++request)],
     );
-    expect(archivedPriced.rows[0].result.quoteStatus).toBe("quote_not_draft");
-    const archivedQuote = await db.query<{ status: string; quote_v2_status: string; total_amount: string; quote_v2_revision: string }>(
-      "select status, quote_v2_status, total_amount::text, quote_v2_revision::text from sales_quotes where id = $1",
-      [id(61)],
-    );
-    expect(archivedQuote.rows[0]).toEqual({
-      status: "archived",
-      quote_v2_status: "priced",
-      total_amount: "99",
-      quote_v2_revision: "1",
-    });
+    expect(archivedPriced.rows[0].result).toEqual({ quoteStatus: "quote_not_draft", revision: 1 });
+    expect(await closedQuoteSnapshot(61, 611)).toEqual(archivedBefore);
 
     await seed(62, 621, "Roller Shades");
     const draftRecord = await record(62, 621, 115.2);
@@ -1157,4 +1192,119 @@ it("keeps Onyx and Sundance closed and still prices Norman after the follow-up m
     "select enabled from crm_live_lookup_switch where vendor in ('onyx', 'sundance') order by vendor",
   );
   expect(switches.rows.map((row) => row.enabled)).toEqual([false, false]);
+});
+
+it("applies the live price migrations while auth.role() is authenticated and the v2 trigger is present", async () => {
+  const human = "Line ref L1. INTERNAL TEST. Unpriced pending Norman live lookup. Amelia discontinued 12/31/2026";
+  await seed(70, 701, "Roller Shades");
+  await db.query(
+    `update sales_quotes
+     set status = 'draft', quote_v2_status = 'stale', total_amount = 327,
+         manufacturer_cost = 115.20, product_cost = 200
+     where id = $1`,
+    [id(70)],
+  );
+  await db.query(
+    "insert into sales_quote_designs (line_item_id, variant, product_type, unit_price, options_json, notes) values ($1, 'A', 'Roller Shades', 0, '{}'::jsonb, $2)",
+    [id(701), human],
+  );
+  await insertLivePrice(70, 701, await hash(701), { portal_draft_id: null });
+  await seed(71, 711, "Roller Shades");
+  await db.query(
+    `update sales_quotes
+     set status = 'sent', quote_v2_status = 'sent', total_amount = 10,
+         manufacturer_cost = 1, product_cost = 2
+     where id = $1`,
+    [id(71)],
+  );
+  await insertLivePrice(71, 711, await hash(711), {});
+
+  const proveBlocked = (quote: number) => db.exec(`
+    do $proof$
+    begin
+      update public.sales_quotes
+      set total_amount = total_amount
+      where id = '${id(quote)}'::uuid;
+      raise exception 'trigger allowed an authenticated update';
+    exception
+      when insufficient_privilege then
+        if sqlerrm not like '%Authoritative V2 quotes can only be mutated by the server%' then
+          raise;
+        end if;
+    end $proof$;
+  `);
+
+  await db.exec("begin");
+  try {
+    await db.exec(`
+      create schema if not exists auth;
+      create or replace function auth.role() returns text
+      language sql stable
+      as $$
+        select coalesce(
+          nullif(current_setting('request.jwt.claim.role', true), ''),
+          (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role')
+        )::text;
+      $$;
+    `);
+    const persistence = readFileSync("supabase/migrations/20260722190000_add_quote_v2_authoritative_persistence.sql", "utf8");
+    await db.exec(persistence.slice(persistence.indexOf("create or replace function public.block_authenticated_v2_quote_mutation")));
+    await db.query(`
+      select set_config('request.jwt.claim.role', 'authenticated', true),
+             set_config('request.jwt.claims', '{"role":"service_role"}', true)
+    `);
+    const preferred = await db.query<{ role: string }>("select auth.role() as role");
+    expect(preferred.rows[0].role).toBe("authenticated");
+    await db.query(`
+      select set_config('request.jwt.claim.role', 'authenticated', true),
+             set_config('request.jwt.claims', '{"role":"authenticated"}', true)
+    `);
+    expect((await db.query<{ role: string }>("select auth.role() as role")).rows[0].role).toBe("authenticated");
+    await proveBlocked(70);
+
+    await db.exec(readFileSync("supabase/migrations/20261122004500_current_live_price_readers.sql", "utf8"));
+    await db.exec(readFileSync("supabase/migrations/20261122044500_live_price_authenticated_apply.sql", "utf8"));
+
+    const priced = await db.query<{
+      status: string;
+      quote_v2_status: string;
+      total_amount: string;
+      manufacturer_cost: string;
+      product_cost: string;
+      notes: string;
+    }>(
+      `select q.status, q.quote_v2_status, q.total_amount::text, q.manufacturer_cost::text,
+              q.product_cost::text, d.notes
+       from sales_quotes q
+       join sales_quote_line_items li on li.quote_id = q.id
+       join sales_quote_designs d on d.line_item_id = li.id
+       where q.id = $1`,
+      [id(70)],
+    );
+    expect(priced.rows[0].status).toBe("draft");
+    expect(priced.rows[0].quote_v2_status).toBe("priced");
+    expect(Number(priced.rows[0].total_amount)).toBe(327);
+    expect(Number(priced.rows[0].manufacturer_cost)).toBe(115.2);
+    expect(Number(priced.rows[0].product_cost)).toBe(200);
+    expect(priced.rows[0].notes).toBe(human);
+    const sent = await db.query<{ status: string; quote_v2_status: string; total_amount: string; manufacturer_cost: string; product_cost: string }>(
+      "select status, quote_v2_status, total_amount::text, manufacturer_cost::text, product_cost::text from sales_quotes where id = $1",
+      [id(71)],
+    );
+    expect(sent.rows[0].status).toBe("sent");
+    expect(sent.rows[0].quote_v2_status).toBe("sent");
+    expect(Number(sent.rows[0].total_amount)).toBe(10);
+    expect(Number(sent.rows[0].manufacturer_cost)).toBe(1);
+    expect(Number(sent.rows[0].product_cost)).toBe(2);
+    expect((await db.query<{ role: string }>("select auth.role() as role")).rows[0].role).toBe("authenticated");
+    await proveBlocked(70);
+    const trigger = await db.query<{ enabled: string }>(
+      `select tgenabled::text as enabled from pg_trigger
+       where tgname = 'sales_quotes_block_authenticated_v2_mutation'
+         and tgrelid = 'public.sales_quotes'::regclass and not tgisinternal`,
+    );
+    expect(trigger.rows[0].enabled).toBe("O");
+  } finally {
+    await db.exec("rollback");
+  }
 });

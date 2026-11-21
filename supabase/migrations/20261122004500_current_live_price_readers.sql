@@ -29,9 +29,17 @@
 --
 -- The sales_quotes update (costs, totals, revision, and quote_v2_status) runs
 -- only when status = 'draft' and quote_v2_status is draft, stale, priced, or
--- blocked. A sent or archived quote is left untouched and the result is
--- quote_not_draft. The receipt and the line price record are still kept.
--- Design notes are not modified.
+-- blocked. Design notes are not modified.
+--
+-- This file does not call backfill_current_live_price_fields. Production
+-- never recorded this version, so the next apply runs it before any later
+-- file. Calling the backfill here updated sales_quotes while auth.role() was
+-- authenticated, and sales_quotes_block_authenticated_v2_mutation
+-- (block_authenticated_v2_quote_mutation) raised 42501 and rolled the file
+-- back. The call moved to 20261122044500_live_price_authenticated_apply.sql,
+-- which sets the service_role JWT claim for that call only and replaces
+-- price_line_from_receipt so a closed quote returns quote_not_draft before
+-- any line write. This file does not drop or disable that trigger.
 --
 -- Expected rows on production, from the live prices already saved for
 -- 805-0592 A ($327.00) and 805-0593 A ($277.50). This file does not apply
@@ -611,5 +619,3 @@ begin
     execute 'grant execute on function public.live_line_current_price_source(uuid) to crm_price_bot';
   end if;
 end $live$;
-
-select public.backfill_current_live_price_fields();
