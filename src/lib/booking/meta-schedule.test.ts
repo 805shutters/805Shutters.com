@@ -23,7 +23,7 @@ it("sends only approved matching fields, fixed source URL, and stable deduplicat
   expect(request.headers.Authorization).toBe("Bearer unit-test-token");
   expect(JSON.parse(request.body)).toEqual({ test_event_code: "unit-test-code", data: [{
     event_name: "Schedule", event_id: data.eventId, event_time: data.eventTime,
-    action_source: "website", event_source_url: "https://www.805shutters.com/book-consultation/", user_data: payload().matching,
+    action_source: "website", event_source_url: "https://www.805shutters.com/book-consultation/", user_data: { ...payload().matching, client_ip_address: "192.0.2.1" },
   }] });
   expect(receipt).toMatchObject({ eventId: data.eventId, eventName: "Schedule", eventsReceived: 1, testEvent: true });
 });

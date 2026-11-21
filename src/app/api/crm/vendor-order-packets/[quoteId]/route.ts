@@ -168,7 +168,7 @@ export async function GET(
     const { supabase } = await requireCrmUser(request);
     const { quoteId } = await context.params;
     const manufacturer = (request.nextUrl.searchParams.get("manufacturer") || "").trim().toLowerCase();
-    if (manufacturer && !["norman", "onyx", "lotus", "polar"].includes(manufacturer)) {
+    if (manufacturer && !["norman", "onyx", "lotus", "polar", "sundance"].includes(manufacturer)) {
       throw new CrmAuthError(400, "The manufacturer packet filter is invalid.");
     }
     const { data, error } = await supabase

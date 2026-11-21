@@ -253,7 +253,7 @@ describe("financing options section", () => {
 });
 
 describe("buildPaymentLinkEmail", () => {
-  it("includes Square, Zelle, amount due, and the payment anchor link", () => {
+  it("includes card, Zelle, amount due, and the payment anchor link", () => {
     const { subject, html, text } = buildPaymentLinkEmail("Jane Smith", "https://x/quote/abc#payment", {
       depositDue: 2125,
       quoteNumber: "Q-100",
@@ -264,11 +264,11 @@ describe("buildPaymentLinkEmail", () => {
     expect(html).toContain("https://x/quote/abc#payment");
     expect(html).toContain("Here is a payment link to pay the deposit");
     expect(html).toContain("new window coverings");
-    expect(html).toContain("Square");
+    expect(html).toContain("Card payment");
     expect(html).not.toMatch(/venmo|ken-hill/i);
     expect(html).toContain("Zelle");
     expect(text).toContain("Hello Jane Smith");
-    expect(text).toContain("Square card payment: https://x/quote/abc#payment");
+    expect(text).toContain("Card payment: https://x/quote/abc#payment");
     expect(text).not.toMatch(/venmo|ken-hill/i);
     expect(text).toContain("Zelle");
     expect(text).toContain("Official 805 Shutters contact: 805Shutters.com | 805-806-9344");

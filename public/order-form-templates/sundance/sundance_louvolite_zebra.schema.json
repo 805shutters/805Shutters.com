@@ -1,0 +1,421 @@
+{
+  "schema_version": 1,
+  "routing_key": "sundance:sundance_louvolite_zebra",
+  "manufacturer": "Sundance",
+  "product_key": "sundance_louvolite_zebra",
+  "product_name": "Louvolite Vision (zebra)",
+  "product_kind": "Sheer Shades",
+  "portal_ordering_type": "Caress-Zebra",
+  "catalog_version": "sundance-assortment-2026-09-26-r15",
+  "status": "gaps",
+  "source_url": "https://sundance.blindata.app",
+  "ordered_fields": [
+    "customer_name",
+    "quote_number",
+    "order_draft_name",
+    "account_number",
+    "po_number",
+    "sidemark",
+    "delivery_method",
+    "ship_to_name",
+    "ship_to_address",
+    "ship_to_zip",
+    "bill_to",
+    "contact_phone_email",
+    "special_instructions",
+    "order_date",
+    "room_name",
+    "quantity",
+    "width",
+    "height",
+    "mount_type",
+    "fabric_color",
+    "control",
+    "chain_color",
+    "control_side",
+    "cassette",
+    "cassette_color",
+    "assembly",
+    "alignment_group",
+    "cutouts",
+    "charger_qty",
+    "remote_qty",
+    "line_note"
+  ],
+  "fields": [
+    {
+      "key": "customer_name",
+      "label": "customer_name",
+      "ask_order": 1,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "quote_number",
+      "label": "quote_number",
+      "ask_order": 2,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "order_draft_name",
+      "label": "order_draft_name",
+      "ask_order": 3,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "account_number",
+      "label": "account_number",
+      "ask_order": 4,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "po_number",
+      "label": "po_number",
+      "ask_order": 5,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "sidemark",
+      "label": "sidemark",
+      "ask_order": 6,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "delivery_method",
+      "label": "delivery_method",
+      "ask_order": 7,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "ship_to_name",
+      "label": "ship_to_name",
+      "ask_order": 8,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "805 SHUTTERS (default, used on every past order)",
+          "label": "805 SHUTTERS (default, used on every past order)"
+        },
+        {
+          "value": "customer",
+          "label": "customer"
+        }
+      ]
+    },
+    {
+      "key": "ship_to_address",
+      "label": "ship_to_address",
+      "ask_order": 9,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "ship_to_zip",
+      "label": "ship_to_zip",
+      "ask_order": 10,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "bill_to",
+      "label": "bill_to",
+      "ask_order": 11,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "contact_phone_email",
+      "label": "contact_phone_email",
+      "ask_order": 12,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "special_instructions",
+      "label": "special_instructions",
+      "ask_order": 13,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "order_date",
+      "label": "order_date",
+      "ask_order": 14,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "room_name",
+      "label": "Room",
+      "ask_order": 15,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "quantity",
+      "label": "Qty",
+      "ask_order": 16,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "width",
+      "label": "Width",
+      "ask_order": 17,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "height",
+      "label": "Height / Drop",
+      "ask_order": 18,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "mount_type",
+      "label": "Mount",
+      "ask_order": 19,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Inside",
+          "label": "Inside"
+        },
+        {
+          "value": "Outside",
+          "label": "Outside"
+        }
+      ]
+    },
+    {
+      "key": "fabric_color",
+      "label": "Fabric/collection + color",
+      "ask_order": 20,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "control",
+      "label": "control",
+      "ask_order": 21,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "chain_color",
+      "label": "chain_color",
+      "ask_order": 22,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "White",
+          "label": "White"
+        },
+        {
+          "value": "Ivory",
+          "label": "Ivory"
+        },
+        {
+          "value": "Gray",
+          "label": "Gray"
+        },
+        {
+          "value": "Bronze",
+          "label": "Bronze"
+        },
+        {
+          "value": "Black",
+          "label": "Black"
+        },
+        {
+          "value": "Nickel Plated",
+          "label": "Nickel Plated"
+        },
+        {
+          "value": "Stainless Steel",
+          "label": "Stainless Steel"
+        }
+      ]
+    },
+    {
+      "key": "control_side",
+      "label": "control_side",
+      "ask_order": 23,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Left",
+          "label": "Left"
+        },
+        {
+          "value": "Right",
+          "label": "Right"
+        }
+      ]
+    },
+    {
+      "key": "cassette",
+      "label": "cassette",
+      "ask_order": 24,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "3-inch Small Rounded with Fabric Insert (std 3\" round)",
+          "label": "3-inch Small Rounded with Fabric Insert (std 3\" round)"
+        },
+        {
+          "value": "3-inch Square Aluminum",
+          "label": "3-inch Square Aluminum"
+        }
+      ]
+    },
+    {
+      "key": "cassette_color",
+      "label": "cassette_color",
+      "ask_order": 25,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "White",
+          "label": "White"
+        },
+        {
+          "value": "Ivory",
+          "label": "Ivory"
+        },
+        {
+          "value": "Silver",
+          "label": "Silver"
+        },
+        {
+          "value": "Bronze",
+          "label": "Bronze"
+        },
+        {
+          "value": "Black",
+          "label": "Black"
+        }
+      ]
+    },
+    {
+      "key": "assembly",
+      "label": "assembly",
+      "ask_order": 26,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Single",
+          "label": "Single"
+        },
+        {
+          "value": "multi-shade",
+          "label": "multi-shade"
+        }
+      ]
+    },
+    {
+      "key": "alignment_group",
+      "label": "alignment_group",
+      "ask_order": 27,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "no closed list in the field file",
+      "choices": []
+    },
+    {
+      "key": "cutouts",
+      "label": "cutouts",
+      "ask_order": 28,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "charger_qty",
+      "label": "charger_qty",
+      "ask_order": 29,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "remote_qty",
+      "label": "remote_qty",
+      "ask_order": 30,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "line_note",
+      "label": "Note / Instructions (per line)",
+      "ask_order": 31,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    }
+  ]
+}

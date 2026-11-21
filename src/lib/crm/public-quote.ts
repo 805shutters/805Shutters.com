@@ -2412,7 +2412,7 @@ export function buildQuotePaymentLinkSms(
         : 0;
   const amountText = amountDue > 0 ? ` ${hasDepositDue ? "Deposit due" : "Amount due"}: ${money(amountDue)}.` : "";
   if(details.paymentSchedule === IN_HOUSE_SCHEDULE)return `805 Shutters three-month payment link.${amountText} Pay securely: ${url}. Questions? Call or text 805-806-9344. Reply STOP to stop text messages.`;
-  return `805 Shutters ${hasDepositDue ? "deposit " : ""}payment link.${amountText} Square card: ${url}. Zelle ${ZELLE_DESTINATION}. In-house plan: approved projects can split the remaining balance into 3 monthly payments. Verify this request at ${brandIdentity.domain} or ${brandIdentity.phone}.`;
+  return `805 Shutters ${hasDepositDue ? "deposit " : ""}payment link.${amountText} Card: ${url}. Zelle ${ZELLE_DESTINATION}. In-house plan: approved projects can split the remaining balance into 3 monthly payments. Verify this request at ${brandIdentity.domain} or ${brandIdentity.phone}.`;
 }
 
 export async function sendQuotePaymentLinkToCustomer(

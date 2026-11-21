@@ -1,3 +1,5 @@
+import {cardProvider} from '@/lib/finance/card-provider';
+import {createCardPaymentLink,isCardConfigured} from '@/lib/crm/card-payment-links';
 import {IN_HOUSE_SCHEDULE} from "@/lib/crm/payment-schedule";
 import {findOpenPlan,withPlanLease,synchronizePlan} from "@/lib/crm/in-house-plans";
 import {installmentLink,retireObsoletePlanLinks,providers} from "@/lib/crm/in-house-plan-processor";
@@ -6,7 +8,7 @@ import { trackSquarePaymentRequest } from "@/lib/crm/square-payment-requests";
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { computeSelectionTotal, loadPublicQuoteByToken } from "@/lib/crm/public-quote";
-import { createSquarePaymentLink, dollarsToCents, isSquareConfigured } from "@/lib/finance/square";
+import { dollarsToCents } from "@/lib/finance/square";
 import { crmAuthErrorResponse, CrmAuthError } from "@/lib/crm/auth";
 import { amountDueForPaymentType, type QuotePaymentType } from "@/lib/crm/quote-payment-state";
 
@@ -18,7 +20,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
   try {
     const supabase = getSupabaseServiceClient();
     if (!supabase) return NextResponse.json({ message: "Service temporarily unavailable." }, { status: 503 });
-    if (!isSquareConfigured()) throw new CrmAuthError(503, "Card payments are not enabled yet.");
+    if (!isCardConfigured()) throw new CrmAuthError(503, "Card payments are not enabled yet.");
 
     const { token } = await context.params;
     const body = (await request.json().catch(() => ({}))) as {
@@ -35,6 +37,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
 
     const pub = await loadPublicQuoteByToken(supabase, token);
     if (!pub) throw new CrmAuthError(404, "This quote link is no longer valid.");
+    if (cardProvider() === "stripe" && !pub.signed)throw new CrmAuthError(409,"Sign the selected contract before paying by card.");
     if (pub.superseded) throw new CrmAuthError(409, "Another option was accepted for this project. Use its signed contract for payment.");
 
     if(pub.paymentSchedule===IN_HOUSE_SCHEDULE){
@@ -61,7 +64,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
       throw new CrmAuthError(502, "The exact CRM job for this payment could not be verified.");
     }
 
-    const link = await createSquarePaymentLink({
+    const link = await createCardPaymentLink(supabase, {
       amountCents: dollarsToCents(amount),
       title: `${body.paymentType === "deposit" ? "Deposit" : "Order balance"} — 805 Shutters${pub.quoteNumber ? ` (${pub.quoteNumber})` : ""}`,
       quoteId: pub.id,

@@ -46,6 +46,15 @@ function selection(
   };
 }
 
+function expectNoNormanSitePrice(result: { ok: boolean }) {
+  expect(result).toMatchObject({
+    ok: false,
+    code: "NO_SITE_PRICE",
+    blocked: "no_site_price",
+  });
+  expect(result).not.toHaveProperty("unitPrice");
+}
+
 describe("Quote V2 authoritative pricing engine", () => {
   it("validates before pricing and never retains a stale amount", () => {
     const context = selection(
@@ -214,19 +223,18 @@ describe("Quote V2 authoritative pricing engine", () => {
       },
       includeInternalCost: true,
     });
-    expect(result).toMatchObject({
-      ok: true,
-      productStatus: "documented_limited",
-      validationStatus: "valid",
-      wholesaleUnitPrice: 61.38,
-      unitPrice: 186.38,
-      total: 186.38,
-    });
-    if (!result.ok) return;
-    expect(result.unitPrice - result.wholesaleUnitPrice!).toBe(125);
-    expect(JSON.stringify(toCustomerQuotePriceResult(result))).not.toMatch(
-      /wholesale|margin|profit|cost/i,
-    );
+    expectNoNormanSitePrice(result);
+    const catalog = priceDesign({
+      productId: context.productId,
+      programId: context.programId ?? undefined,
+      widthInches: context.widthInches,
+      heightInches: context.heightInches,
+      quantity: 1,
+    }, context.catalogAsOf);
+    expect(catalog.ok, JSON.stringify(catalog)).toBe(true);
+    if (!catalog.ok) return;
+    expect(catalog.wholesaleUnitPrice).toBe(55.8);
+    expect(catalog.base).toBeGreaterThan(catalog.wholesaleUnitPrice!);
   });
 
   it("sums three explicit SmartPrivacy blind grid cells and adds $125 only once", () => {
@@ -261,15 +269,20 @@ describe("Quote V2 authoritative pricing engine", () => {
       },
       includeInternalCost: true,
     });
-    expect(result).toMatchObject({
-      ok: true,
-      componentMatchedWidths: [24, 54, 24],
-      wholesaleUnitPrice: 256.41,
-      unitPrice: 381.41,
-      total: 381.41,
-    });
-    if (!result.ok) return;
-    expect(result.unitPrice - result.wholesaleUnitPrice!).toBe(125);
+    expectNoNormanSitePrice(result);
+    const catalog = priceDesign({
+      productId: context.productId,
+      programId: context.programId ?? undefined,
+      widthInches: context.widthInches,
+      heightInches: context.heightInches,
+      componentWidthsInches: widths,
+      quantity: 1,
+    }, context.catalogAsOf);
+    expect(catalog.ok, JSON.stringify(catalog)).toBe(true);
+    if (!catalog.ok) return;
+    expect(catalog.componentMatchedWidths).toEqual([24, 54, 24]);
+    expect(catalog.wholesaleUnitPrice).toBe(233.1);
+    expect(catalog.base).toBeGreaterThan(catalog.wholesaleUnitPrice!);
   });
 
   it.skip("retires Polar pricing even when the manufacturer label is forged", () => {
@@ -328,14 +341,17 @@ describe("Quote V2 authoritative pricing engine", () => {
       },
       includeInternalCost: true,
     });
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.wholesaleBase).toBe(83.82); // $254 list x current portal factor .33
-    expect(result.base).toBe(254);
-    expect(result.unitPrice).toBe(254);
-    expect(result.total).toBe(254);
-    expect(result.internalCost?.productCostTotal).toBe(83.82);
-    expect(result.internalCost?.effectiveDealerFactor).toBe(0.33);
+    expectNoNormanSitePrice(result);
+    const catalog = priceDesign({
+      productId: context.productId,
+      programId: context.programId ?? undefined,
+      widthInches: context.widthInches,
+      heightInches: context.heightInches,
+    }, context.catalogAsOf);
+    expect(catalog.ok, JSON.stringify(catalog)).toBe(true);
+    if (!catalog.ok) return;
+    expect(catalog.base).toBe(254);
+    expect(catalog.wholesaleBase).toBe(76.2);
   });
 
   it("hard-blocks a present malformed schedule before pricing", () => {
@@ -407,14 +423,18 @@ describe("Quote V2 authoritative pricing engine", () => {
     });
     const standardResult = priceQuoteV2Selection(request(standard));
     const slowerResult = priceQuoteV2Selection(request(slower));
-    expect(standardResult.ok).toBe(true);
-    expect(slowerResult.ok).toBe(true);
-    if (!standardResult.ok || !slowerResult.ok) return;
-    expect(standardResult.wholesaleBase).toBe(83.82);
-    expect(slowerResult.wholesaleBase).toBe(75.44);
-    expect(standardResult.base).toBe(254);
-    expect(slowerResult.base).toBe(254);
-    expect(slowerResult.total).toBe(standardResult.total);
+    expectNoNormanSitePrice(standardResult);
+    expectNoNormanSitePrice(slowerResult);
+    const catalog = priceDesign({
+      productId: standard.productId,
+      programId: standard.programId ?? undefined,
+      widthInches: standard.widthInches,
+      heightInches: standard.heightInches,
+    }, standard.catalogAsOf);
+    expect(catalog.ok, JSON.stringify(catalog)).toBe(true);
+    if (!catalog.ok) return;
+    expect(catalog.base).toBe(254);
+    expect(catalog.wholesaleBase).toBe(76.2);
   });
 
   it("matches the live slow-schedule portal rounding groups and allocates every component cent", () => {
@@ -454,66 +474,22 @@ describe("Quote V2 authoritative pricing engine", () => {
       includeInternalCost: true,
     });
 
-    expect(result.ok, JSON.stringify(result, null, 2)).toBe(true);
-    if (!result.ok) return;
-    expect(result.components).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          category: "base_grid",
-          catalogAmount: 254,
-          wholesaleAmount: 75.44,
-          customerAmount: 254,
-        }),
-        expect.objectContaining({
-          id: "operating:smartrelease",
-          category: "operating_system",
-          catalogAmount: 89,
-          wholesaleAmount: 26.43,
-          customerAmount: 89,
-        }),
-        expect.objectContaining({
-          id: "accessory:shim",
-          category: "accessory",
-          catalogAmount: 7,
-          wholesaleAmount: 2.08,
-          customerAmount: 7,
-        }),
-      ]),
-    );
-    expect(
-      result.surchargeLines.reduce(
-        (total, line) => total + (line.wholesaleAmount ?? 0),
-        0,
-      ),
-    ).toBeCloseTo(28.51, 10);
-    expect(result.wholesaleUnitPrice).toBe(103.95);
-    expect(result.internalCost).toMatchObject({
-      productCostUnit: 103.95,
-      effectiveDealerFactor: 0.297,
-      dealerPolicyId: "norman-805-dealer-policy-2026-07-21",
-      dealerPolicyFixtureId: "norman-805-live-portal-2026-07-21",
-    });
-    const snapshot = createImmutablePriceSnapshot(result);
-    expect(snapshot.dealerPolicy).toMatchObject({
-      policyId: "norman-805-dealer-policy-2026-07-21",
-      fixtureId: "norman-805-live-portal-2026-07-21",
-      effectiveDealerFactor: 0.297,
-    });
-    expect(snapshot.dealerPolicy?.revision).toContain('"additionalUnit":11');
-    expect(snapshot.dealerPolicy?.revision).toContain('"basisPoints":200');
-    expect(JSON.stringify(snapshot.retail)).not.toMatch(
-      /dealerPolicy|effectiveDealerFactor|basisPoints/i,
-    );
-    expect(result.componentTotals).toMatchObject({
-      wholesalePerWindow: 103.95,
-      customerPerWindow: 350,
-    });
-    expect(result.unitPrice).toBe(350);
-
-    const customer = JSON.stringify(toCustomerQuotePriceResult(result));
-    expect(customer).not.toMatch(
-      /wholesale|catalogAmount|dealerFactor|effectiveDealerFactor|freight|landedCost|margin/i,
-    );
+    expectNoNormanSitePrice(result);
+    const catalog = priceDesign({
+      productId: context.productId,
+      programId: context.programId ?? undefined,
+      widthInches: context.widthInches,
+      heightInches: context.heightInches,
+      surcharges: [{ id: "smartrelease" }, { id: "shim" }],
+    }, context.catalogAsOf);
+    expect(catalog.ok, JSON.stringify(catalog)).toBe(true);
+    if (!catalog.ok) return;
+    expect(catalog.base).toBe(254);
+    expect(catalog.surchargeLines).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "smartrelease", amount: 89 }),
+      expect.objectContaining({ id: "shim", amount: 7 }),
+    ]));
+    expect(catalog.unitPrice).toBe(350);
   });
 
   it("prices the fresh Smart Release portal case after the UI replaces stale All Tubes", () => {
@@ -557,15 +533,18 @@ describe("Quote V2 authoritative pricing engine", () => {
       includeInternalCost: true,
     });
 
-    expect(result.ok, JSON.stringify(result, null, 2)).toBe(true);
-    if (!result.ok) return;
-    expect(result.unitPrice).toBe(350);
-    expect(result.wholesaleUnitPrice).toBe(115.5);
-    expect(result.componentTotals).toMatchObject({
-      catalogPerWindow: 350,
-      customerPerWindow: 350,
-      wholesalePerWindow: 115.5,
-    });
+    expectNoNormanSitePrice(result);
+    const catalog = priceDesign({
+      productId: context.productId,
+      programId: context.programId ?? undefined,
+      widthInches: context.widthInches,
+      heightInches: context.heightInches,
+      surcharges: [{ id: "smartrelease" }, { id: "shim" }],
+    }, context.catalogAsOf);
+    expect(catalog.ok, JSON.stringify(catalog)).toBe(true);
+    if (!catalog.ok) return;
+    expect(catalog.unitPrice).toBe(350);
+    expect(catalog.wholesaleUnitPrice).toBe(105);
   });
 
   it("fails closed instead of omitting unsupported dealer-net option charges", () => {
@@ -725,25 +704,21 @@ describe("Quote V2 authoritative pricing engine", () => {
         includeInternalCost: true,
       });
 
-      expect(result.ok, JSON.stringify(result, null, 2)).toBe(true);
-      if (!result.ok) return;
-      expect(result.components).toEqual(
+      expectNoNormanSitePrice(result);
+      const catalog = priceDesign({
+        productId,
+        programId,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+        surcharges: [{ id: surchargeId }],
+      }, context.catalogAsOf);
+      expect(catalog.ok, JSON.stringify(catalog)).toBe(true);
+      if (!catalog.ok) return;
+      expect(catalog.surchargeLines).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({
-            id: `operating:${surchargeId}`,
-            category: "operating_system",
-            priceLineId: surchargeId,
-            status: "priced",
-          }),
+          expect.objectContaining({ id: surchargeId }),
         ]),
       );
-      expect(
-        result.components.some(
-          (component) =>
-            component.category === "accessory" &&
-            component.priceLineId === surchargeId,
-        ),
-      ).toBe(false);
     },
   );
 
@@ -863,10 +838,18 @@ describe("Quote V2 authoritative pricing engine", () => {
     );
 
     const priced = request([{ id: "dual_shade" }]);
-    expect(priced.ok).toBe(true);
-    if (!priced.ok) return;
-    expect(priced.configurationUnits).toBe(2);
-    expect(priced.surchargeLines).toEqual(
+    expectNoNormanSitePrice(priced);
+    const catalog = priceDesign({
+      productId: context.productId,
+      programId: context.programId ?? undefined,
+      widthInches: context.widthInches,
+      heightInches: context.heightInches,
+      surcharges: [{ id: "dual_shade" }],
+    }, context.catalogAsOf);
+    expect(catalog.ok, JSON.stringify(catalog)).toBe(true);
+    if (!catalog.ok) return;
+    expect(catalog.configurationUnits).toBe(2);
+    expect(catalog.surchargeLines).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: "dual_shade" }),
       ]),
@@ -1124,9 +1107,21 @@ describe("Quote V2 authoritative pricing engine", () => {
         })),
       },
     });
-    expect(priced.ok, JSON.stringify(priced, null, 2)).toBe(true);
-    if (!priced.ok) return;
-    expect(priced.surchargeLines).toEqual(
+    expectNoNormanSitePrice(priced);
+    const catalog = priceDesign({
+      productId: context.productId,
+      programId: context.programId ?? undefined,
+      widthInches: context.widthInches,
+      heightInches: context.heightInches,
+      motorization: motorization.map(({ groupId, optionId, units }) => ({
+        groupId,
+        optionId,
+        units,
+      })),
+    }, context.catalogAsOf);
+    expect(catalog.ok, JSON.stringify(catalog)).toBe(true);
+    if (!catalog.ok) return;
+    expect(catalog.surchargeLines).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: "motor:smart_motorization:motor",
@@ -1139,22 +1134,6 @@ describe("Quote V2 authoritative pricing engine", () => {
         expect.objectContaining({
           id: "motor:smart_motorization:basic_remote_black",
           amount: 75,
-        }),
-      ]),
-    );
-    expect(priced.components).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          category: "operating_system",
-          priceLineId: "motor:smart_motorization:motor",
-        }),
-        expect.objectContaining({
-          category: "accessory",
-          priceLineId: "motor:smart_motorization:wireless_charging_wand",
-        }),
-        expect.objectContaining({
-          category: "accessory",
-          priceLineId: "motor:smart_motorization:basic_remote_black",
         }),
       ]),
     );
@@ -1200,27 +1179,21 @@ describe("Quote V2 authoritative pricing engine", () => {
         ],
       },
     });
-    expect(priced.ok, JSON.stringify(priced, null, 2)).toBe(true);
-    if (!priced.ok) return;
-    expect(priced.surchargeLines).toEqual(
+    expectNoNormanSitePrice(priced);
+    const catalog = priceDesign({
+      productId: context.productId,
+      programId: context.programId ?? undefined,
+      widthInches: context.widthInches,
+      heightInches: context.heightInches,
+      motorization: [{ groupId: "autowand", optionId: "autowand", units: 1 }],
+    }, context.catalogAsOf);
+    expect(catalog.ok, JSON.stringify(catalog)).toBe(true);
+    if (!catalog.ok) return;
+    expect(catalog.surchargeLines).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: "motor:autowand:autowand",
           amount: 166,
-        }),
-      ]),
-    );
-    expect(priced.components).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          category: "operating_system",
-          priceLineId: "motor:autowand:autowand",
-        }),
-        expect.objectContaining({
-          id: "accessory:autowand_included_charging_kit",
-          status: "included",
-          customerAmount: 0,
-          source: expect.objectContaining({ page: 80 }),
         }),
       ]),
     );

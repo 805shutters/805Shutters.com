@@ -1,0 +1,1621 @@
+{
+  "source_sha256": "e42412f4efecf94cd03f6fe2e254ebf64e62798b7521b369892d4e3f21211656",
+  "products": 30,
+  "order_types": 17,
+  "sequence_rows": 1549,
+  "choice_rows": 1240,
+  "gap_rows": 376,
+  "pending_fields": [
+    {
+      "category": "sundance_sheerview",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_sheerview",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_sheerview",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_sheerview",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_sheerview",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_sheerview",
+      "field_key": "headrail",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_sheerview",
+      "field_key": "cord_option",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_sheerview",
+      "field_key": "control_side",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_sheerview",
+      "field_key": "charger",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "yesno"
+    },
+    {
+      "category": "sundance_sheerview",
+      "field_key": "mount_depth_flush",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "measure"
+    },
+    {
+      "category": "sundance_zebra",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_zebra",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_zebra",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_zebra",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_zebra",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_zebra",
+      "field_key": "control",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_zebra",
+      "field_key": "alignment_group",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_zebra",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_louvolite_zebra",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_louvolite_zebra",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_zebra",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_louvolite_zebra",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_zebra",
+      "field_key": "control",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_zebra",
+      "field_key": "alignment_group",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_roller",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_roller",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_roller",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_roller",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_roller",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_roller",
+      "field_key": "control",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_roller",
+      "field_key": "top_finish",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_roller",
+      "field_key": "tube",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_roller",
+      "field_key": "privacy_color",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_roller",
+      "field_key": "remote",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_roller",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_louvolite_roller",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_louvolite_roller",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_roller",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_louvolite_roller",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_roller",
+      "field_key": "control",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_roller",
+      "field_key": "top_finish",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_roller",
+      "field_key": "tube",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_roller",
+      "field_key": "privacy_color",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_roller",
+      "field_key": "remote",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_flat_roman",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_flat_roman",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_flat_roman",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_flat_roman",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_flat_roman",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_flat_roman",
+      "field_key": "control",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_flat_roman",
+      "field_key": "remote",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_flat_roman",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_louvolite_flat_roman",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_louvolite_flat_roman",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_flat_roman",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_louvolite_flat_roman",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_flat_roman",
+      "field_key": "control",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_flat_roman",
+      "field_key": "remote",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_europanels",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_europanels",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_europanels",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_europanels",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_europanels",
+      "field_key": "mount_type",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_europanels",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_europanels",
+      "field_key": "track_channels",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_europanels",
+      "field_key": "panel_layout",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "measure"
+    },
+    {
+      "category": "sundance_louvolite_europanels",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_louvolite_europanels",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_louvolite_europanels",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_europanels",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_louvolite_europanels",
+      "field_key": "mount_type",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_europanels",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_europanels",
+      "field_key": "track_channels",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_louvolite_europanels",
+      "field_key": "panel_layout",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "measure"
+    },
+    {
+      "category": "sundance_cellular",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_cellular",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_cellular",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_cellular",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_cellular",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_cellular",
+      "field_key": "headrail_color",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_cellular",
+      "field_key": "bottom_fabric",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_cellular",
+      "field_key": "remote",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_verticell",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_verticell",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_verticell",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_verticell",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_verticell",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_verticell",
+      "field_key": "headrail_color",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_verticell",
+      "field_key": "bottom_fabric",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_verticell",
+      "field_key": "remote",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_cellular_shapes",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_cellular_shapes",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_cellular_shapes",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_cellular_shapes",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_cellular_shapes",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_cellular_shapes",
+      "field_key": "headrail_color",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_cellular_shapes",
+      "field_key": "bottom_fabric",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_cellular_shapes",
+      "field_key": "remote",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_advantage_ii_2",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_advantage_ii_2",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_advantage_ii_2",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_advantage_ii_2",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_advantage_ii_2",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_advantage_ii_2",
+      "field_key": "wand_tilt_side",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_advantage_ii_2",
+      "field_key": "valance",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_advantage_ii_2",
+      "field_key": "tape_code",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_advantage_ii_2_5",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_advantage_ii_2_5",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_advantage_ii_2_5",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_advantage_ii_2_5",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_advantage_ii_2_5",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_advantage_ii_2_5",
+      "field_key": "wand_tilt_side",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_advantage_ii_2_5",
+      "field_key": "valance",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_advantage_ii_2_5",
+      "field_key": "tape_code",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_premium_ii_2",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_premium_ii_2",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_premium_ii_2",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_premium_ii_2",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_premium_ii_2",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_premium_ii_2",
+      "field_key": "wand_tilt_side",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_premium_ii_2",
+      "field_key": "valance",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_premium_ii_2",
+      "field_key": "tape_code",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_premium_ii_2_5",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_premium_ii_2_5",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_premium_ii_2_5",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_premium_ii_2_5",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_premium_ii_2_5",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_premium_ii_2_5",
+      "field_key": "wand_tilt_side",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_premium_ii_2_5",
+      "field_key": "valance",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_premium_ii_2_5",
+      "field_key": "tape_code",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_aluminum_1",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_aluminum_1",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_aluminum_1",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_aluminum_1",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_aluminum_1",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_aluminum_1",
+      "field_key": "wand_tilt_side",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_aluminum_1",
+      "field_key": "valance",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_aluminum_1",
+      "field_key": "tape_code",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_aluminum_2",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_aluminum_2",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_aluminum_2",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_aluminum_2",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_aluminum_2",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_aluminum_2",
+      "field_key": "wand_tilt_side",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_aluminum_2",
+      "field_key": "valance",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_aluminum_2",
+      "field_key": "tape_code",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_basicvue",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_basicvue",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_basicvue",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_basicvue",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_basicvue",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_basicvue",
+      "field_key": "wand_tilt_side",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_basicvue",
+      "field_key": "valance",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_basicvue",
+      "field_key": "tape_code",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_chateau_woods",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_chateau_woods",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_chateau_woods",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_chateau_woods",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_chateau_woods",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_chateau_woods",
+      "field_key": "wand_tilt_side",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_chateau_woods",
+      "field_key": "valance",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_chateau_woods",
+      "field_key": "tape_code",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_vertical_essence",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_vertical_essence",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_vertical_essence",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_vertical_essence",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_vertical_essence",
+      "field_key": "mount_type",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_vertical_essence",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_vertical_essence",
+      "field_key": "stack_side",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_vertical_essence",
+      "field_key": "valance_returns",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_stock_vertical",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_stock_vertical",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_stock_vertical",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_stock_vertical",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_stock_vertical",
+      "field_key": "mount_type",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_stock_vertical",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_stock_vertical",
+      "field_key": "stack_side",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_walden_premier",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_walden_premier",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_walden_premier",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_walden_premier",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_walden_premier",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_walden_premier",
+      "field_key": "chain",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_walden_premier",
+      "field_key": "wand_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_walden_premier",
+      "field_key": "edge_binding",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_walden_premier",
+      "field_key": "front_mount",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "yesno"
+    },
+    {
+      "category": "sundance_walden_select",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_walden_select",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_walden_select",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_walden_select",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_walden_select",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_walden_select",
+      "field_key": "chain",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_walden_select",
+      "field_key": "wand_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_walden_select",
+      "field_key": "edge_binding",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_walden_select",
+      "field_key": "front_mount",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "yesno"
+    },
+    {
+      "category": "sundance_portfolio_roman",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_portfolio_roman",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_portfolio_roman",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_portfolio_roman",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_portfolio_roman",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_portfolio_roman",
+      "field_key": "wand_length_color",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_portfolio_roman",
+      "field_key": "panel_alignment",
+      "reason": "no closed list in the field file",
+      "needs_live_form_check": false,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_exterior_zip",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_exterior_zip",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_exterior_zip",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_exterior_zip",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_exterior_zip",
+      "field_key": "fabric_color",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_exterior_zip",
+      "field_key": "control",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_exterior_zip",
+      "field_key": "motor_remote_accessories",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_exterior_zip",
+      "field_key": "housing_color_mount_detail",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_exterior_cable",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_exterior_cable",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_exterior_cable",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_exterior_cable",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_drapery_track",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_drapery_track",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_drapery_track",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_drapery_track",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_drapery_track",
+      "field_key": "track_width",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "measure"
+    },
+    {
+      "category": "sundance_drapery_track",
+      "field_key": "mount_type",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_wood_shutters",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_wood_shutters",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_wood_shutters",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_wood_shutters",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_wood_shutters",
+      "field_key": "shutter_options",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_vinyl_shutters",
+      "field_key": "account_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "auto"
+    },
+    {
+      "category": "sundance_vinyl_shutters",
+      "field_key": "po_number",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_vinyl_shutters",
+      "field_key": "delivery_method",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    },
+    {
+      "category": "sundance_vinyl_shutters",
+      "field_key": "ship_to_address",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "order"
+    },
+    {
+      "category": "sundance_vinyl_shutters",
+      "field_key": "shutter_options",
+      "reason": "needs live form check",
+      "needs_live_form_check": true,
+      "kind": "button"
+    }
+  ],
+  "needs_live_form_check_fields": 180
+}

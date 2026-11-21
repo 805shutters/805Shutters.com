@@ -178,6 +178,8 @@ const sources = [
     programKeys: ["roller_cordless_fabric_price_group_1_pg1"],
     productScope: {
       products: ["roller"],
+      // July 21 portal observation recorded in the committed SQL seed.
+      // Quote-engine runtime standard cost is the catalog dealerFactor 0.30.
       standardFactor: 0.33,
       slowerScheduleFactor: 0.297,
     },

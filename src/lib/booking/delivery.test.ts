@@ -202,6 +202,7 @@ it("records CAPI acceptance with the saved event ID while customer delivery is p
   const { supabase, updates } = outboxClient("meta_schedule", null, null, metaPayload);
   await processBookingOutbox(supabase);
   expect(JSON.parse(fetch.mock.calls[0][1].body).data[0].event_id).toBe(metaPayload.eventId);
+  expect(updates.find(update => update.status === "sent")?.payload).not.toHaveProperty("matching");
   expect(updates).toContainEqual(expect.objectContaining({ status: "sent", payload: expect.objectContaining({ metaReceipt: expect.objectContaining({ eventId: metaPayload.eventId, eventsReceived: 1 }) }) }));
 });
 it("retries CAPI provider failures with the original ID/time and retains a sanitized error", async () => {

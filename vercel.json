@@ -55,6 +55,10 @@
     {
       "path": "/api/cron/in-house-payments/",
       "schedule": "17 * * * *"
+    },
+    {
+      "path": "/api/cron/stripe-payments/",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

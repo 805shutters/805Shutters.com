@@ -1,3 +1,7 @@
+import { cardProvider, type CardProvider } from "@/lib/finance/card-provider";
+import { createCardPaymentLink } from "./card-payment-links";
+import { retireStripePaymentLink } from "./stripe-collection";
+import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { trackSquarePaymentRequest } from "./square-payment-requests";
 import { toE164 } from "@/lib/notify/twilio";
 import { randomUUID } from "node:crypto";
@@ -41,6 +45,7 @@ import {
 } from "./in-house-plan-model";
 
 type Link = {
+  provider?: CardProvider;
   id: string;
   plan_id: string;
   installment_id: string;
@@ -51,13 +56,25 @@ type Link = {
   status: string;
 };
 export type PlanProviders = {
-  createLink: typeof createSquarePaymentLink;
+  createLink: (
+    input: Parameters<typeof createSquarePaymentLink>[0],
+    provider?: CardProvider,
+  ) => ReturnType<typeof createSquarePaymentLink>;
   retireLink: typeof retireSquarePaymentLink;
   deliver: (m: DeliveryMessage) => Promise<DeliveryResult>;
 };
 export const providers: PlanProviders = {
-  createLink: createSquarePaymentLink,
-  retireLink: retireSquarePaymentLink,
+  createLink: async (input, provider) => {
+    const db = getSupabaseServiceClient();
+    if (!db) throw new Error("Database unavailable.");
+    return createCardPaymentLink(db, input, provider);
+  },
+  retireLink: async (id) => {
+    if (!id.startsWith("cs_")) return retireSquarePaymentLink(id);
+    const db = getSupabaseServiceClient();
+    if (!db) throw new Error("Database unavailable.");
+    return retireStripePaymentLink(db, id);
+  },
   deliver: deliverPlanMessage,
 };
 const money = (c: number) =>
@@ -78,9 +95,12 @@ async function retirePriorBalanceLinks(
     plan.quote_id || plan.bookkeeping_entry_id!,
   );
   for (const event of events) {
-    const linkId = event.metadata?.squarePaymentLinkId;
+    const linkId =
+      event.metadata?.cardPaymentLinkId || event.metadata?.squarePaymentLinkId;
     if (
-      event.action !== "square_balance_link.send" ||
+      !["square_balance_link.send", "stripe_balance_link.send"].includes(
+        event.action,
+      ) ||
       typeof linkId !== "string" ||
       event.metadata.paymentPlanRetiredAt
     )
@@ -129,26 +149,30 @@ export async function retireObsoletePlanLinks(
       continue;
     // Recover a link whose provider response was lost using the original immutable idempotency key.
     if (!link.square_link_id) {
-      const made = await io.createLink({
-        quoteId: plan.quote_id!,
-        jobId: plan.current.jobId!,
-        amountCents: link.amount_cents,
-        paymentType: installment?.number === 1 ? "deposit" : "balance",
-        inHousePlanId: plan.id,
-        inHouseInstallmentId: link.installment_id,
-        idempotencyKey: link.id,
-        title: `805 Shutters installment ${installment?.number || ""}`,
-        buyerEmail: plan.baseline.email,
-      });
+      const made = await io.createLink(
+        {
+          quoteId: plan.quote_id!,
+          jobId: plan.current.jobId!,
+          amountCents: link.amount_cents,
+          paymentType: installment?.number === 1 ? "deposit" : "balance",
+          inHousePlanId: plan.id,
+          inHouseInstallmentId: link.installment_id,
+          idempotencyKey: link.id,
+          title: `805 Shutters installment ${installment?.number || ""}`,
+          buyerEmail: plan.baseline.email,
+        },
+        link.provider || "square",
+      );
       if (!made.orderId)
         throw new Error(
-          "Square did not return an order ID; link recovery is required.",
+          "Card processor did not return a checkout ID; link recovery is required.",
         );
       link.square_link_id = made.id;
       check(
         await db
           .from(L_TABLE)
           .update({
+            provider: made.provider || "square",
             square_link_id: made.id,
             square_order_id: made.orderId || null,
             url: made.url,
@@ -186,6 +210,10 @@ export async function installmentLink(
     throw new Error(
       "Previous payment link must be retired before replacing it.",
     );
+  if (link && (link.provider || "square") !== cardProvider())
+    throw new Error(
+      "The prior processor's installment must be reviewed and retired before sending a replacement.",
+    );
   if (!link) {
     const r = await db
       .from(L_TABLE)
@@ -194,6 +222,7 @@ export async function installmentLink(
         plan_id: plan.id,
         installment_id: i.id,
         amount_cents: unpaidCents(i),
+        provider: cardProvider(),
         status: "creating",
       })
       .select("*")
@@ -202,20 +231,23 @@ export async function installmentLink(
     link = r.data as Link;
   }
   if (!link.square_link_id) {
-    const made = await io.createLink({
-      quoteId: plan.quote_id!,
-      jobId: plan.current.jobId!,
-      amountCents: link.amount_cents,
-      paymentType: i.number === 1 ? "deposit" : "balance",
-      inHousePlanId: plan.id,
-      inHouseInstallmentId: i.id,
-      idempotencyKey: link.id,
-      title: `805 Shutters installment ${i.number}`,
-      buyerEmail: plan.baseline.email,
-    });
+    const made = await io.createLink(
+      {
+        quoteId: plan.quote_id!,
+        jobId: plan.current.jobId!,
+        amountCents: link.amount_cents,
+        paymentType: i.number === 1 ? "deposit" : "balance",
+        inHousePlanId: plan.id,
+        inHouseInstallmentId: i.id,
+        idempotencyKey: link.id,
+        title: `805 Shutters installment ${i.number}`,
+        buyerEmail: plan.baseline.email,
+      },
+      link.provider || "square",
+    );
     if (!made.orderId)
       throw new Error(
-        "Square did not return an order ID; link recovery is required.",
+        "Card processor did not return a checkout ID; link recovery is required.",
       );
     await trackSquarePaymentRequest(db, made, {
       quoteId: plan.quote_id!,
@@ -228,6 +260,7 @@ export async function installmentLink(
       await db
         .from(L_TABLE)
         .update({
+          provider: made.provider || "square",
           square_link_id: made.id,
           square_order_id: made.orderId || null,
           url: made.url,
@@ -237,7 +270,7 @@ export async function installmentLink(
     );
     return made.url;
   }
-  if (!link.url) throw new Error("Square payment link is incomplete.");
+  if (!link.url) throw new Error("Card payment link is incomplete.");
   return link.url;
 }
 async function notify(
@@ -694,11 +727,12 @@ export async function flagPlanRefund(
   db: SupabaseClient,
   paymentId: string,
   io = providers,
+  provider: CardProvider = "square",
 ) {
   const r = await db
     .from("crm_quote_bookkeeping_payments")
     .select("meta,quote_id,bookkeeping_entry_id")
-    .eq("external_source", "square")
+    .eq("external_source", provider)
     .eq("external_id", paymentId)
     .maybeSingle();
   check(r);
@@ -727,8 +761,7 @@ export async function flagPlanRefund(
           p_state: {
             ...plan,
             status: plan.status === "cancelled" ? "cancelled" : "review",
-            review_reason:
-              "Square reported a refund. Reconcile the refund in the ledger before approving a new schedule.",
+            review_reason: `${provider === "stripe" ? "Stripe" : "Square"} reported a refund or dispute. Reconcile the adjustment in the ledger before approving a new schedule.`,
             allocations,
           },
           p_action: "refund_review",

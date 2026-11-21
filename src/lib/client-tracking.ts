@@ -152,6 +152,7 @@ export function trackLeadEvent(params: LeadEventParams = {}) {
   }
 
   const eventId = params.eventId;
+  if (!eventId) return;
   const eventParams = {
     event_category: "lead",
     event_label: params.interest || "consultation",
@@ -168,7 +169,7 @@ export function trackLeadEvent(params: LeadEventParams = {}) {
     send_to: googleAdsSendTo(process.env.NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL)
   });
 
-  window.fbq?.(
+  metaPixel(
     "track",
     "Lead",
     {
@@ -200,12 +201,6 @@ export function trackPhoneClick(location: string) {
     event_label: "805-806-9344",
     phone_location: location,
     send_to: googleAdsSendTo(process.env.NEXT_PUBLIC_GOOGLE_ADS_PHONE_CONVERSION_LABEL)
-  });
-
-  window.fbq?.("track", "Contact", {
-    content_name: "Phone Click",
-    content_category: "window_treatments",
-    phone_location: location
   });
 
   track("Phone Click", {

@@ -1,3 +1,4 @@
+import {isStripeConfigured,stripeConfig} from '@/lib/finance/stripe';
 import { isTwilioConfigured } from '@/lib/notify/twilio';
 import { NextRequest, NextResponse } from 'next/server';
 import { CrmAuthError, crmAuthErrorResponse, requireCrmUser } from '@/lib/crm/auth';
@@ -30,8 +31,14 @@ export async function GET(request: NextRequest) {
       loadCompleteCrmTable(supabase, 'crm_quote_bookkeeping_credits', 'created_at', 'id,amount,from_quote_id,to_quote_id,from_bookkeeping_entry_id,to_bookkeeping_entry_id'),
     ]);
     for (const result of [events, sync, quotes, entries, payments, alerts, jobs, credits]) if (result.error) throw new Error(result.error.message);
+    const stripe = isStripeConfigured() ? stripeConfig() : null;
+    const stripeRows=await Promise.all(['objects','allocations'].map(async name=>{
+      if(!stripe||!stripe.livemode)return [];
+      const result=await loadCompleteCrmTable(supabase,`crm_stripe_${name}`,name==='objects'?'occurred_at':'created_at','*',name==='objects'?'id':'payment_intent_id',[{column:'account_id',value:stripe.account},...(name==='objects'?[{column:'livemode',value:'true'},{column:'kind',value:'payment'}]:[])]);
+      if(result.error)throw new Error('Stripe payment history is unavailable.');return result.data;
+    }));
     const config = getSquareWebhookConfig();
-    return NextResponse.json({ environment, canReview: isMikePaymentAdminEmail(email), objects, allocations, bankMatches,
+    return NextResponse.json({ stripeObjects:stripeRows[0],stripeAllocations:stripeRows[1],environment, canReview: isMikePaymentAdminEmail(email), objects, allocations, bankMatches,
       requests, credits: credits.data, classifications, events: events.data, sync: sync.data, totals: squareFinanceTotals(objects, allocations),
       quotes: (quotes.data || []).map(q => ({...q, customer_name: (jobs.data || []).find(j => j.id === q.job_id)?.customer_name || 'Customer unavailable'})), entries: entries.data, payments: payments.data,
       alerts: alerts.data, smsConfigured: isTwilioConfigured(),
