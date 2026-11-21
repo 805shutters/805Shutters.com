@@ -1,0 +1,757 @@
+{
+  "/images/805-hero-window-treatments.jpg": {
+    "width": 1774,
+    "height": 887,
+    "version": "61992c2e284f"
+  },
+  "/images/805-portfolio-blinds-office.jpg": {
+    "width": 1672,
+    "height": 941,
+    "version": "63a13cbf8660"
+  },
+  "/images/805-portfolio-drapery-living-room.jpg": {
+    "width": 1672,
+    "height": 941,
+    "version": "f0ede9f069fc"
+  },
+  "/images/805-portfolio-shades-bedroom.jpg": {
+    "width": 1672,
+    "height": 941,
+    "version": "52ebb4c22846"
+  },
+  "/images/commercial-mode/commercial-conference-blackout-shades.webp": {
+    "width": 1672,
+    "height": 941,
+    "version": "b5d76f0c0821"
+  },
+  "/images/commercial-mode/commercial-local-storefront-solar-shades.webp": {
+    "width": 1672,
+    "height": 941,
+    "version": "ce37f0b92416"
+  },
+  "/images/commercial-mode/commercial-medical-privacy-shades.webp": {
+    "width": 1672,
+    "height": 941,
+    "version": "e5bf3818e2e0"
+  },
+  "/images/commercial-mode/commercial-office-faux-wood-blinds.webp": {
+    "width": 1672,
+    "height": 941,
+    "version": "d230d469b859"
+  },
+  "/images/commercial-mode/commercial-single-room-honeycomb-shades.webp": {
+    "width": 1672,
+    "height": 941,
+    "version": "2551c3440830"
+  },
+  "/images/commercial-mode/commercial-small-office-roller-shades.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "613227a3d703"
+  },
+  "/images/editorial-scroll/breakfast-room-woven-shades.jpg": {
+    "width": 1672,
+    "height": 941,
+    "version": "29cca2f0b29c"
+  },
+  "/images/editorial-scroll/coastal-living-roller-shades.jpg": {
+    "width": 1672,
+    "height": 941,
+    "version": "30e9acf03bd6"
+  },
+  "/images/editorial-scroll/garden-living-woven-shades.jpg": {
+    "width": 1798,
+    "height": 875,
+    "version": "9b9cbc5d2a99"
+  },
+  "/images/editorial-scroll/ocean-terrace-exterior-shades.jpg": {
+    "width": 1806,
+    "height": 871,
+    "version": "ead2467263d8"
+  },
+  "/images/editorial-scroll/poolside-bedroom-roller-shades.jpg": {
+    "width": 1761,
+    "height": 893,
+    "version": "a85200af384c"
+  },
+  "/images/editorial-scroll/room-darkening-honeycomb-shades.webp": {
+    "width": 1600,
+    "height": 809,
+    "version": "5e7cb1d69664"
+  },
+  "/images/editorial-scroll/sunset-patio-exterior-shades.jpg": {
+    "width": 1672,
+    "height": 941,
+    "version": "14a68d824a31"
+  },
+  "/images/homepage-flow/drapery.jpg": {
+    "width": 1672,
+    "height": 941,
+    "version": "f0ede9f069fc"
+  },
+  "/images/homepage-flow/exterior-patio-shades.jpg": {
+    "width": 1672,
+    "height": 941,
+    "version": "dc41b5ed92bf"
+  },
+  "/images/homepage-flow/layered-kitchen-shades.webp": {
+    "width": 1600,
+    "height": 800,
+    "version": "beecfb836360"
+  },
+  "/images/homepage-flow/main-homepage-photo.jpg": {
+    "width": 1600,
+    "height": 800,
+    "version": "226c9bc9fe0e"
+  },
+  "/images/homepage-flow/mini-blinds.webp": {
+    "width": 1600,
+    "height": 900,
+    "version": "47b6cad9f4b3"
+  },
+  "/images/homepage-flow/mobile-hero-arched-shutters.jpg": {
+    "width": 941,
+    "height": 1672,
+    "version": "49656b59d31e"
+  },
+  "/images/homepage-flow/mobile-hero-cellular-top-down-bottom-up.jpg": {
+    "width": 941,
+    "height": 1672,
+    "version": "06ab5ef30fb2"
+  },
+  "/images/homepage-flow/mobile-hero-plantation-shutters.jpg": {
+    "width": 941,
+    "height": 1672,
+    "version": "0408f18cb7ae"
+  },
+  "/images/homepage-flow/mobile-hero-roman-shades.jpg": {
+    "width": 941,
+    "height": 1672,
+    "version": "ba6d11490522"
+  },
+  "/images/homepage-flow/natural-shades.jpg": {
+    "width": 1672,
+    "height": 941,
+    "version": "641f496f6986"
+  },
+  "/images/homepage-flow/panel-track-shades.webp": {
+    "width": 1600,
+    "height": 900,
+    "version": "efba44268de7"
+  },
+  "/images/homepage-flow/roller-shades.jpg": {
+    "width": 1672,
+    "height": 941,
+    "version": "c1269c8d2c7c"
+  },
+  "/images/homepage-flow/sheer-shades.webp": {
+    "width": 1600,
+    "height": 900,
+    "version": "1564ca8193f8"
+  },
+  "/images/homepage-flow/shutters.webp": {
+    "width": 1600,
+    "height": 900,
+    "version": "defeccb2aac2"
+  },
+  "/images/homepage-flow/skylight-shades.webp": {
+    "width": 1600,
+    "height": 900,
+    "version": "b48ebfacfdd3"
+  },
+  "/images/homepage-flow/skylight-shutters.webp": {
+    "width": 1600,
+    "height": 900,
+    "version": "4558e8f6185d"
+  },
+  "/images/homepage-flow/stained-wood-library-shutters.webp": {
+    "width": 1600,
+    "height": 900,
+    "version": "41d8efd01582"
+  },
+  "/images/homepage-flow/vertical-blinds.webp": {
+    "width": 1600,
+    "height": 900,
+    "version": "e56f7825f627"
+  },
+  "/images/homepage-flow/vertical-cellular-shades.webp": {
+    "width": 1600,
+    "height": 900,
+    "version": "ae50e39020da"
+  },
+  "/images/legacy-wordpress/about-blue-blinds-full.jpg": {
+    "width": 700,
+    "height": 900,
+    "version": "89fed269f8ba"
+  },
+  "/images/legacy-wordpress/about-blue-blinds.jpg": {
+    "width": 700,
+    "height": 719,
+    "version": "2880e3233b92"
+  },
+  "/images/legacy-wordpress/about-legacy-home-slider.jpg": {
+    "width": 1600,
+    "height": 901,
+    "version": "7ee647272167"
+  },
+  "/images/legacy-wordpress/about-legacy-shades-header.jpg": {
+    "width": 2000,
+    "height": 800,
+    "version": "5c0315b77ffa"
+  },
+  "/images/portfolio-enhanced/arched-bedroom-plantation-shutters-detail-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "3d29d6a5d3fb"
+  },
+  "/images/portfolio-enhanced/arched-bedroom-plantation-shutters-room-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "287d9c3a7a52"
+  },
+  "/images/portfolio-enhanced/arched-plantation-shutters-living-room-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "44c07514519f"
+  },
+  "/images/portfolio-enhanced/arched-window-custom-shutters-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "0717caa5734c"
+  },
+  "/images/portfolio-enhanced/arched-window-custom-shutters-wide.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "b84f25fba1c5"
+  },
+  "/images/portfolio-enhanced/bay-window-plantation-shutters-angle-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "9754d3daccc1"
+  },
+  "/images/portfolio-enhanced/bay-window-plantation-shutters-angle-wide.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "7ec2faac969e"
+  },
+  "/images/portfolio-enhanced/bay-window-plantation-shutters-front-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "df5e137f00f2"
+  },
+  "/images/portfolio-enhanced/bay-window-plantation-shutters-front-wide.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "7b3bc2549143"
+  },
+  "/images/portfolio-enhanced/bedroom-horizontal-blinds-before-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "b6bc5d281062"
+  },
+  "/images/portfolio-enhanced/bedroom-plantation-shutters-after-front-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "216692fd4fc7"
+  },
+  "/images/portfolio-enhanced/bedroom-plantation-shutters-after-room-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "a5667aa2b310"
+  },
+  "/images/portfolio-enhanced/bedroom-plantation-shutters-angle-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "4565a9df0707"
+  },
+  "/images/portfolio-enhanced/bedroom-plantation-shutters-single-window-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "045432bfdab7"
+  },
+  "/images/portfolio-enhanced/bedroom-plantation-shutters-straight-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "66e98f5570e0"
+  },
+  "/images/portfolio-enhanced/bedroom-plantation-shutters-wide-angle-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "7888450d7669"
+  },
+  "/images/portfolio-enhanced/dark-wood-plantation-shutters-reading-room-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "9f0477b40dbc"
+  },
+  "/images/portfolio-enhanced/dark-wood-plantation-shutters-reading-room-wide.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "f25dafebb278"
+  },
+  "/images/portfolio-enhanced/exterior-patio-shades-detail-card.jpg": {
+    "width": 900,
+    "height": 675,
+    "version": "d7b5322a75f8"
+  },
+  "/images/portfolio-enhanced/exterior-patio-shades-pergola-card.jpg": {
+    "width": 900,
+    "height": 675,
+    "version": "4668e7b36a1b"
+  },
+  "/images/portfolio-enhanced/exterior-patio-shades-wide-card.jpg": {
+    "width": 900,
+    "height": 675,
+    "version": "befb798880d4"
+  },
+  "/images/portfolio-enhanced/fabric-roller-shade-valance-detail-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "6d85feab67d9"
+  },
+  "/images/portfolio-enhanced/kitchen-roman-shade-lowered-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "65237f716b72"
+  },
+  "/images/portfolio-enhanced/kitchen-roman-shade-lowered-wide.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "68df6d9e53e9"
+  },
+  "/images/portfolio-enhanced/kitchen-roman-shade-raised-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "a2905603a135"
+  },
+  "/images/portfolio-enhanced/plantation-shutters-dining-room-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "2b09b5c38ce5"
+  },
+  "/images/portfolio-enhanced/plantation-shutters-dining-room-wide.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "c39cc5b19345"
+  },
+  "/images/portfolio-enhanced/recent-arched-window-plantation-shutters-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "ce055957458b"
+  },
+  "/images/portfolio-enhanced/recent-bay-window-plantation-shutters-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "bddbe4398eeb"
+  },
+  "/images/portfolio-enhanced/recent-bedroom-plantation-shutters-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "7a8f06b599f8"
+  },
+  "/images/portfolio-enhanced/recent-dining-room-plantation-shutters-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "e59fdc2bdd7c"
+  },
+  "/images/portfolio-enhanced/recent-patio-door-plantation-shutters-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "ceb4053677b8"
+  },
+  "/images/portfolio-enhanced/recent-patterned-roller-shades-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "394b1c8deb89"
+  },
+  "/images/portfolio-enhanced/recent-solar-roller-shade-detail-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "1d828894f10f"
+  },
+  "/images/portfolio-enhanced/recent-tall-window-blinds-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "909286729bc0"
+  },
+  "/images/portfolio-enhanced/recent-two-story-arch-plantation-shutters-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "492b8464b175"
+  },
+  "/images/portfolio-enhanced/recent-two-story-arch-plantation-shutters-wide.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "86921ab33d7c"
+  },
+  "/images/portfolio-enhanced/roller-shade-large-window-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "beb907091486"
+  },
+  "/images/portfolio-enhanced/roller-shade-large-window-wide.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "bda9ba0cc611"
+  },
+  "/images/portfolio-enhanced/skylight-plantation-shutters-closed-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "401ab2a40221"
+  },
+  "/images/portfolio-enhanced/skylight-plantation-shutters-open-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "ff10a8315a02"
+  },
+  "/images/portfolio-enhanced/specialty-arch-window-shutters-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "648772056b5c"
+  },
+  "/images/portfolio-enhanced/specialty-arch-window-shutters-wide.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "badc773be7af"
+  },
+  "/images/portfolio-enhanced/split-tilt-shutters-detail-card.jpg": {
+    "width": 1000,
+    "height": 1071,
+    "version": "cf03f1f7af25"
+  },
+  "/images/portfolio-enhanced/split-tilt-shutters-light-control-card.jpg": {
+    "width": 1000,
+    "height": 750,
+    "version": "ce79a0acb0cc"
+  },
+  "/images/portfolio-enhanced/split-tilt-shutters-living-room-card.jpg": {
+    "width": 1000,
+    "height": 750,
+    "version": "99d2a4fb15fd"
+  },
+  "/images/portfolio-enhanced/split-tilt-shutters-open-card.jpg": {
+    "width": 1000,
+    "height": 750,
+    "version": "677d95c16cdf"
+  },
+  "/images/portfolio-enhanced/top-down-bottom-up-shades-bathroom-detail-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "adf957fa4eda"
+  },
+  "/images/portfolio-enhanced/top-down-bottom-up-shades-bathroom-wide-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "ebbd31aaacbb"
+  },
+  "/images/portfolio-enhanced/top-down-bottom-up-shades-bedroom-angle-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "1bf2f71cc677"
+  },
+  "/images/portfolio-enhanced/top-down-bottom-up-shades-bedroom-detail-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "90c089717b62"
+  },
+  "/images/portfolio-enhanced/top-down-bottom-up-shades-bedroom-front-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "18f5a351ddca"
+  },
+  "/images/portfolio-enhanced/top-down-bottom-up-shades-office-pair-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "bf0ff09934b1"
+  },
+  "/images/portfolio-enhanced/two-story-shutter-installation-detail-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "771272b4b334"
+  },
+  "/images/portfolio-enhanced/uploaded-arched-shutter-detail-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "be398adf9b9e"
+  },
+  "/images/portfolio-enhanced/uploaded-bedroom-cellular-shades-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "52186bbd90c3"
+  },
+  "/images/portfolio-enhanced/uploaded-corner-cellular-shades-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "b41f51647358"
+  },
+  "/images/portfolio-enhanced/uploaded-corner-room-cellular-shades-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "63fff7f2fc9b"
+  },
+  "/images/portfolio-enhanced/uploaded-full-height-cellular-shades-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "d649e835426c"
+  },
+  "/images/portfolio-enhanced/uploaded-shutter-panel-detail-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "4d4a2315b812"
+  },
+  "/images/portfolio-enhanced/uploaded-shutter-panel-detail-wide.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "9081cb75a779"
+  },
+  "/images/portfolio-enhanced/uploaded-single-arch-shutter-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "8e5629da787f"
+  },
+  "/images/portfolio-enhanced/uploaded-stacked-arch-shutters-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "594cc3116fe5"
+  },
+  "/images/portfolio-enhanced/uploaded-stacked-arch-shutters-wide.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "a6e3fda145c2"
+  },
+  "/images/portfolio-enhanced/uploaded-twin-cellular-shades-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "d977c5b353c5"
+  },
+  "/images/portfolio-enhanced/uploaded-two-story-living-room-shutters-card.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "df694b870e01"
+  },
+  "/images/product-previews/aluminum-blinds-window.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "15d6fe713c72"
+  },
+  "/images/product-previews/commercial-glare-control-shades.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "e94c1dd0e9d5"
+  },
+  "/images/product-previews/commercial-heat-control-shades.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "9b8d36e5a3d4"
+  },
+  "/images/product-previews/commercial-industrial-warehouse.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "102789f4c123"
+  },
+  "/images/product-previews/commercial-rental-turn-blinds.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "8d6bb31e393c"
+  },
+  "/images/product-previews/commercial-socal-office-hero.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "f5d6ab06e00c"
+  },
+  "/images/product-previews/commercial-socal-property-managers.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "f02177ae7969"
+  },
+  "/images/product-previews/commercial-socal-school.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "ace175bf223a"
+  },
+  "/images/product-previews/commercial-socal-storefront-corner.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "282677f9b947"
+  },
+  "/images/product-previews/commercial-staff-area-blinds.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "154681a0e232"
+  },
+  "/images/product-previews/commercial-warehouse-tenant-improvement.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "ec8c6ffa0ea5"
+  },
+  "/images/product-previews/drapery-french-pleat-closeup.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "d0b06a59e879"
+  },
+  "/images/product-previews/drapery-goblet-pleat-closeup.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "a7c27b464552"
+  },
+  "/images/product-previews/drapery-grommet-closeup.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "a7e1d487163e"
+  },
+  "/images/product-previews/drapery-inverted-box-pleat-closeup.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "8c13a70df818"
+  },
+  "/images/product-previews/drapery-pinch-pleat-closeup.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "c6ee17ba6d41"
+  },
+  "/images/product-previews/drapery-ripplefold-closeup.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "63529644436c"
+  },
+  "/images/product-previews/drapery-rod-pocket-closeup.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "c0b361e0aed7"
+  },
+  "/images/product-previews/vertical-blinds-sliding-door.jpg": {
+    "width": 1920,
+    "height": 1080,
+    "version": "e5a71cd71428"
+  },
+  "/images/shutters-portfolio/door-bifold.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "0d683733191d"
+  },
+  "/images/shutters-portfolio/door-bypass.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "ebfb4cd8ed48"
+  },
+  "/images/shutters-portfolio/door-french.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "fe1587089b27"
+  },
+  "/images/shutters-portfolio/louver-1-7-8.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "67b416686c50"
+  },
+  "/images/shutters-portfolio/louver-2-1-2.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "ba05cbdf11a7"
+  },
+  "/images/shutters-portfolio/louver-3-1-2.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "f646041c5326"
+  },
+  "/images/shutters-portfolio/louver-4-1-2.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "e17f4f813318"
+  },
+  "/images/shutters-portfolio/louver-5-1-2.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "2706d5078d9a"
+  },
+  "/images/shutters-portfolio/material-mdf-composite.jpg": {
+    "width": 1200,
+    "height": 675,
+    "version": "162be4a7695b"
+  },
+  "/images/shutters-portfolio/material-painted-wood.jpg": {
+    "width": 1200,
+    "height": 675,
+    "version": "95bac4496c65"
+  },
+  "/images/shutters-portfolio/material-poly-composite.jpg": {
+    "width": 1200,
+    "height": 675,
+    "version": "60812b980435"
+  },
+  "/images/shutters-portfolio/material-stained-wood.jpg": {
+    "width": 1200,
+    "height": 675,
+    "version": "de73e83069a9"
+  },
+  "/images/shutters-portfolio/specialty-arched.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "bdd6e5f02b7e"
+  },
+  "/images/shutters-portfolio/specialty-circle.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "4520a2b001d8"
+  },
+  "/images/shutters-portfolio/specialty-custom-shapes.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "6c0496c616d4"
+  },
+  "/images/shutters-portfolio/specialty-octagon.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "db80e3127d9f"
+  },
+  "/images/shutters-portfolio/specialty-oval.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "d8107d1a8895"
+  },
+  "/images/shutters-portfolio/specialty-raked.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "8af5b5d5b060"
+  },
+  "/images/shutters-portfolio/specialty-sunburst.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "999e1c16b3c7"
+  },
+  "/images/shutters-portfolio/style-contemporary-flat.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "2873f2c21fdb"
+  },
+  "/images/shutters-portfolio/style-traditional-beaded.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "fc4fd7ffe287"
+  },
+  "/images/video-posters/motorized-roller-shades-living-room-view.jpg": {
+    "width": 1280,
+    "height": 720,
+    "version": "a71cd42a3665"
+  },
+  "/images/video-posters/motorized-roller-shades-patio-view.jpg": {
+    "width": 900,
+    "height": 1125,
+    "version": "d2ed0a269912"
+  },
+  "/images/video-posters/recent-bedroom-roller-shades-patio-view.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "a2b91c45339d"
+  },
+  "/images/video-posters/recent-living-room-roller-shades.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "3fc4549b030a"
+  },
+  "/images/video-posters/ventura-county-roller-shades-bedroom-live.jpg": {
+    "width": 1600,
+    "height": 900,
+    "version": "9b7c4a21d874"
+  }
+}

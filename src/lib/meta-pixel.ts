@@ -15,6 +15,28 @@ type Pixel = ((...args: unknown[]) => void) & {
   version?: string;
 };
 let initialized = false;
+let scriptRequested = false;
+
+function loadPixelScript() {
+  if (scriptRequested || !metaTrackingAllowed()) return;
+  scriptRequested = true;
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = "https://connect.facebook.net/en_US/fbevents.js";
+  document.head.appendChild(script);
+}
+
+function deferPixelScript() {
+  const schedule = () => {
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(loadPixelScript, { timeout: 1500 });
+    } else {
+      setTimeout(loadPixelScript, 0);
+    }
+  };
+  if (document.readyState === "complete") schedule();
+  else window.addEventListener("load", schedule, { once: true });
+}
 
 // Install the queue synchronously so route and conversion events are retained
 // while Meta's external script downloads. Private CRM routes never call this.
@@ -30,15 +52,18 @@ export function metaPixel(...args: unknown[]) {
       queue.version = "2.0";
       window.fbq = queue;
       (window as Window & { _fbq?: Pixel })._fbq = queue;
-      const script = document.createElement("script");
-      script.async = true;
-      script.src = "https://connect.facebook.net/en_US/fbevents.js";
-      document.head.appendChild(script);
+      deferPixelScript();
+    } else {
+      // An existing pixel owns its loader; do not inject a second copy.
+      scriptRequested = true;
     }
     window.fbq("init", getMetaPixelId());
     initialized = true;
   }
   window.fbq?.(...args);
+  // Conversion/contact events must not wait for an idle slot. Queued page views
+  // keep their original event IDs, including the IDs used by server-side events.
+  if (args[0] === "track" && args[1] !== "PageView") loadPixelScript();
 }
 
 export function trackPairedInteraction(eventName: "PageView" | "Contact", pathname: string) {

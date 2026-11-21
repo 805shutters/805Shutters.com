@@ -44,7 +44,7 @@ function freeConsultationAction(pageUrl: string, name: string) {
     name,
     target: {
       "@type": "EntryPoint",
-      urlTemplate: `${site.baseUrl}/free-window-treatment-consultation/`,
+      urlTemplate: `${site.baseUrl}/book-consultation/`,
       actionPlatform: [
         "https://schema.org/DesktopWebPlatform",
         "https://schema.org/MobileWebPlatform"
@@ -118,6 +118,14 @@ export function localBusinessJsonLd() {
         image: `${site.baseUrl}/images/805-hero-window-treatments.jpg`,
         logo: `${site.baseUrl}/brand/805-shutters-logo.png`,
         hasMap: site.googleMaps.url,
+        // Locality only: the public mailing address is not a walk-in showroom.
+        address: {
+          "@type": "PostalAddress",
+          addressLocality: site.mailingAddress.addressLocality,
+          addressRegion: site.mailingAddress.addressRegion,
+          postalCode: site.mailingAddress.postalCode,
+          addressCountry: site.mailingAddress.addressCountry
+        },
         identifier: {
           "@type": "PropertyValue",
           propertyID: "Google Maps CID",

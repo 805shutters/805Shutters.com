@@ -207,6 +207,18 @@ const publicVercelHostRedirect = {
   permanent: true
 };
 
+// Page URLs reach the canonical host and trailing slash in one response.
+// Asset and API paths retain their original normalization rules.
+const canonicalPageHostRedirects = [
+  "/:page((?!api(?:/|$))(?:[^/]+/)*[^/.]+)",
+  "/:page((?!api(?:/|$))(?:[^/]+/)*[^/.]+)/"
+].map((source) => ({
+  source,
+  has: canonicalHostRedirect.has,
+  destination: "https://www.805shutters.com/:page/",
+  permanent: true
+}));
+
 const malformedPhoneRedirects = ["/TEL\\:8058069344/", "/tel\\:8058069344/"].map((source) => ({
   source,
   destination: "/contact/",
@@ -261,6 +273,12 @@ const trailingSlashRedirects = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  images: {
+    localPatterns: [{ pathname: "/images/**" }, { pathname: "/brand/**" }, { pathname: "/**", search: "" }],
+    formats: ["image/avif", "image/webp"],
+    qualities: [75, 85],
+    deviceSizes: [390, 640, 750, 828, 1080, 1200, 1440, 1920]
+  },
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core", "pdf-parse", "@napi-rs/canvas"],
   outputFileTracingIncludes: {
     "/api/booking/confirmation-image": ["./public/images/team/jessica-design-consultant.png", "./public/brand/805-shutters-logo-header.png"],
@@ -280,6 +298,14 @@ const nextConfig = {
   skipProxyUrlNormalize: true,
   async headers() {
     return [
+      ...["/", "/shutters/:path*", "/shades/:path*", "/blinds/:path*", "/drapery/:path*", "/window-coverings/:path*", "/window-treatments/:path*", "/reviews/", "/gallery/", "/about/", "/contact/"].map((source) => ({
+        source,
+        headers: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }]
+      })),
+      ...["/images/:path*", "/brand/:path*"].map((source) => ({
+        source,
+        headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }]
+      })),
       {
         source: "/quote/:path*",
         headers: [
@@ -305,13 +331,15 @@ const nextConfig = {
           {
             key: "Referrer-Policy",
             value: "strict-origin-when-cross-origin"
-          }
+          },
+          { key: "Permissions-Policy", value: "browsing-topics=()" },
+          { key: "Content-Security-Policy-Report-Only", value: "object-src 'none'; base-uri 'self'; frame-ancestors 'self'" }
         ]
       }
     ];
   },
   async redirects() {
-    return [...shortUrlRedirects, ...geoConsolidationRedirects, ...trailingSlashRedirects, canonicalHostRedirect, publicVercelHostRedirect, ...malformedPhoneRedirects, ...legacyRedirects];
+    return [...shortUrlRedirects, ...geoConsolidationRedirects, ...canonicalPageHostRedirects, ...trailingSlashRedirects, canonicalHostRedirect, publicVercelHostRedirect, ...malformedPhoneRedirects, ...legacyRedirects];
   }
 };
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { CustomerReviews } from "./CustomerReviews";
+import { MarketingImage } from "./MarketingImage";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CitySearchIntro, CityServiceLinks } from "./CityServiceContent";
@@ -43,7 +45,7 @@ type InstalledPortfolioPhoto = {
   video?: string;
 };
 
-const HOME_PHOTO_FLOW_PRIORITY_COUNT = 4;
+const HOME_PHOTO_FLOW_PRIORITY_COUNT = 0;
 
 const portfolioStories: PortfolioStory[] = [
   {
@@ -997,7 +999,7 @@ export function PageSections({ page, editorial }: { page: SitePage; editorial?: 
             </div>
           </div>
           <div className="page-editorial-media">
-            <img src={activePage.image} alt={activePage.imageAlt} />
+            <MarketingImage src={activePage.image} alt={activePage.imageAlt} loading="eager" fetchPriority="high" />
           </div>
         </div>
       </section>
@@ -1009,7 +1011,7 @@ export function PageSections({ page, editorial }: { page: SitePage; editorial?: 
               {item.video ? (
                 <LazyVideo aria-label={item.imageAlt} poster={item.image} src={item.video} />
               ) : (
-                <img src={item.image} alt={item.imageAlt} loading="lazy" decoding="async" />
+                <MarketingImage src={item.image} alt={item.imageAlt} loading="lazy" decoding="async" />
               )}
               {item.label ? <figcaption className="page-gallery-label">{item.label}</figcaption> : null}
             </figure>
@@ -1017,6 +1019,7 @@ export function PageSections({ page, editorial }: { page: SitePage; editorial?: 
         </section>
       ) : null}
 
+      {page.path === "/reviews/" && <CustomerReviews />}
       <CitySearchIntro path={page.path} />
 
       {activePage.path === "/" ? <ServiceGrid commercialMode={isCommercialMode} /> : null}
@@ -1119,7 +1122,7 @@ function ShuttersCategoryPage({ page, editorial }: { page: SitePage; editorial?:
             </div>
           </div>
           <figure className="page-editorial-media shutters-hero-media">
-            <img src={page.image} alt={page.imageAlt} />
+            <MarketingImage src={page.image} alt={page.imageAlt} loading="eager" fetchPriority="high" />
             <figcaption>
               <span>Custom measured</span>
               <strong>Plantation shutters for standard windows, doors, and specialty shapes</strong>
@@ -1159,7 +1162,7 @@ function ShuttersCategoryPage({ page, editorial }: { page: SitePage; editorial?:
                   </ul>
                 </div>
                 <figure className="shutter-detail-media">
-                  <img
+                  <MarketingImage
                     src={group.options[0].image}
                     alt={group.options[0].imageAlt}
                     loading={index < 1 ? "eager" : "lazy"}
@@ -1170,7 +1173,7 @@ function ShuttersCategoryPage({ page, editorial }: { page: SitePage; editorial?:
               <div className="shutter-option-gallery" aria-label={`${group.label} photo examples`}>
                 {group.options.map((option) => (
                   <figure className="shutter-portfolio-card" key={option.label}>
-                    <img src={option.image} alt={option.imageAlt} loading="lazy" decoding="async" />
+                    <MarketingImage src={option.image} alt={option.imageAlt} loading="lazy" decoding="async" />
                     <figcaption>
                       <span>{group.label}</span>
                       <strong>{option.label}</strong>
@@ -1252,7 +1255,7 @@ function CommercialSeoPage({ page, editorial }: { page: SitePage; editorial?: Re
             </div>
           </div>
           <figure className="page-editorial-media commercial-seo-hero-media">
-            <img src={page.image} alt={page.imageAlt} />
+            <MarketingImage src={page.image} alt={page.imageAlt} loading="eager" fetchPriority="high" />
             <figcaption>
               <span>30+ years local experience</span>
               <strong>Ventura County commercial measuring and installation</strong>
@@ -1280,7 +1283,7 @@ function CommercialSeoPage({ page, editorial }: { page: SitePage; editorial?: Re
         <div className="content-wrap commercial-application-grid">
           {commercialApplications.map((application) => (
             <article className="commercial-application-card" key={application.title}>
-              <img src={application.image} alt={application.imageAlt} loading="lazy" decoding="async" />
+              <MarketingImage src={application.image} alt={application.imageAlt} loading="lazy" decoding="async" />
               <div>
                 <p className="eyebrow">{application.eyebrow}</p>
                 <h3>{application.title}</h3>
@@ -1398,6 +1401,7 @@ function HomePageSections({ page, commercialMode, editorial }: { page: SitePage;
       <section className="home-editorial">
         <div className="home-editorial-panel">
           <HomeHeroCarousel
+            aboveFold={commercialMode || !editorial}
             slides={heroMediaSlides}
             mobileSlides={commercialMode ? undefined : mobileHomeHeroSlides}
           />
@@ -1424,12 +1428,12 @@ function HomePageSections({ page, commercialMode, editorial }: { page: SitePage;
                 {story.video ? (
                   <LazyVideo aria-label={story.imageAlt} poster={story.image} src={story.video} />
                 ) : (
-                  <img
+                  <MarketingImage
                     src={story.image}
                     alt={story.imageAlt}
                     width={story.imageWidth}
                     height={story.imageHeight}
-                    loading={index === 0 ? "eager" : "lazy"}
+                    loading="lazy"
                     decoding="async"
                   />
                 )}
@@ -1456,11 +1460,11 @@ function HomePageSections({ page, commercialMode, editorial }: { page: SitePage;
               {photo.video ? (
                 <LazyVideo aria-label={photo.imageAlt} poster={photo.image} src={photo.video} />
               ) : (
-                <img
+                <MarketingImage
                   src={photo.image}
                   alt={photo.imageAlt}
-                  loading={index === 0 ? "eager" : "lazy"}
-                  fetchPriority={index === 0 ? "high" : undefined}
+                  loading="lazy"
+                  fetchPriority="auto"
                   decoding="async"
                 />
               )}
@@ -1539,7 +1543,7 @@ function HomePageSections({ page, commercialMode, editorial }: { page: SitePage;
 
               return (
                 <figure className="home-photo-flow-item" key={slide.label || slide.image}>
-                  <img
+                  <MarketingImage
                     src={slide.image}
                     alt={slide.imageAlt}
                     loading={prioritizePhoto ? "eager" : "lazy"}
@@ -1559,6 +1563,7 @@ function HomePageSections({ page, commercialMode, editorial }: { page: SitePage;
         </>
       ) : null}
 
+      {!commercialMode && <CustomerReviews />}
       <section className="cta-band">
         <div className="content-wrap cta-layout">
           <div>

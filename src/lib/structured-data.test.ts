@@ -56,7 +56,7 @@ describe("structured data", () => {
       "@type": "ReserveAction",
       target: {
         "@type": "EntryPoint",
-        urlTemplate: `${site.baseUrl}/free-window-treatment-consultation/`
+        urlTemplate: `${site.baseUrl}/book-consultation/`
       }
     });
 
@@ -69,7 +69,7 @@ describe("structured data", () => {
       potentialAction: {
         "@type": "ReserveAction",
         target: {
-          urlTemplate: `${site.baseUrl}/free-window-treatment-consultation/`
+          urlTemplate: `${site.baseUrl}/book-consultation/`
         }
       }
     });

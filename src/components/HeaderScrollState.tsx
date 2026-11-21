@@ -38,6 +38,13 @@ export function getHeaderScrollClassState(currentScrollY: number, lastScrollY: n
 
 export function HeaderScrollState() {
   useEffect(() => {
+    const header = document.querySelector(".site-header-shell");
+    const measureHeader = () => {
+      if (header) document.documentElement.style.setProperty("--site-header-h", `${header.getBoundingClientRect().height}px`);
+    };
+    const observer = new ResizeObserver(measureHeader);
+    if (header) observer.observe(header);
+    measureHeader();
     let frame = 0;
     let lastScrollY = window.scrollY;
     const isHomePage = Boolean(document.querySelector(".home-editorial"));
@@ -70,6 +77,7 @@ export function HeaderScrollState() {
     window.addEventListener("resize", scheduleUpdate);
 
     return () => {
+      observer.disconnect();
       if (frame) window.cancelAnimationFrame(frame);
       window.removeEventListener("scroll", scheduleUpdate);
       window.removeEventListener("resize", scheduleUpdate);

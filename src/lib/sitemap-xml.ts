@@ -3,12 +3,7 @@ import type { MetadataRoute } from "next";
 import { answerPages } from "@/lib/llm-search-pages";
 import { allPages, site } from "@/lib/site-data";
 
-// Stable date for the marketing/service pages. Bump this when their content
-// is meaningfully updated. Using a fixed date (instead of `new Date()`) keeps
-// <lastmod> honest — a sitemap that claims every page changed "right now" on
-// every crawl trains Google to ignore the lastmod signal.
-export const CONTENT_LAST_UPDATED = new Date("2026-08-04");
-
+// Omit lastmod where no verified per-page content date is available.
 const COMPARISON_GUIDE_PATH = "/window-treatment-comparison-guide/";
 
 function absoluteImageUrl(image: string) {
@@ -27,7 +22,6 @@ export function buildSitemapEntries(): MetadataRoute.Sitemap {
 
     return {
       url: `${site.baseUrl}${page.path}`,
-      lastModified: CONTENT_LAST_UPDATED,
       changeFrequency: page.path === "/" || isCommercialPage ? "weekly" : "monthly",
       priority: page.path === "/" ? 1 : isCommercialFocusPage ? 0.9 : isCommercialPage ? 0.8 : 0.7,
       images: imageUrls([page.image, ...(page.gallery ?? []).map((item) => item.image)])
@@ -36,7 +30,6 @@ export function buildSitemapEntries(): MetadataRoute.Sitemap {
 
   const bookingEntry: MetadataRoute.Sitemap[number] = {
     url: `${site.baseUrl}/book-consultation/`,
-    lastModified: CONTENT_LAST_UPDATED,
     changeFrequency: "weekly",
     priority: 0.9,
     images: imageUrls(["/images/805-hero-window-treatments.jpg"])
@@ -44,7 +37,6 @@ export function buildSitemapEntries(): MetadataRoute.Sitemap {
 
   const officialIdentityEntry: MetadataRoute.Sitemap[number] = {
     url: `${site.baseUrl}${site.officialPath}`,
-    lastModified: CONTENT_LAST_UPDATED,
     changeFrequency: "monthly",
     priority: 0.8,
     images: imageUrls(["/brand/805-shutters-logo-exact-transparent.png"])
@@ -52,7 +44,6 @@ export function buildSitemapEntries(): MetadataRoute.Sitemap {
 
   const comparisonGuideEntry: MetadataRoute.Sitemap[number] = {
     url: `${site.baseUrl}${COMPARISON_GUIDE_PATH}`,
-    lastModified: CONTENT_LAST_UPDATED,
     changeFrequency: "monthly",
     priority: 0.86,
     images: imageUrls(["/images/805-hero-window-treatments.jpg"])
