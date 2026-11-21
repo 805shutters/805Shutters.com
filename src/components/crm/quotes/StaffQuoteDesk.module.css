@@ -79,5 +79,13 @@
 .otherQuote { opacity:.7; }
 .otherQuote:focus-within,.otherQuote:hover { opacity:1; }
 .otherLabel { margin-left:auto; font-size:10px; }
+.frontDoor { margin:0 0 22px; }
+.frontDoorList { display:grid; gap:12px; }
+.frontDoorCard { background:#1d1d1b; border:1px solid #8a6f28; border-radius:13px; padding:16px; min-width:0; }
+.frontDoorCard header { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+.frontDoorCard header strong { color:#f3d48a; font-size:12px; letter-spacing:.04em; text-transform:uppercase; }
+.frontDoorCard header span { color:#f3d48a; border:1px solid #8a6f28; border-radius:20px; padding:3px 8px; font-size:11px; }
+.desk .frontDoorCard h3 { margin:10px 0 0; }
+.desk .frontDoorCard pre { margin:12px 0 0; white-space:pre-wrap; font:13px/1.5 var(--crm-ui-font, sans-serif); color:#fbfbfa; }
 @media(max-width:1050px) { .customerBox { grid-template-columns:1fr; gap:12px; }.customerHeader { display:flex; gap:6px 16px; align-items:baseline; flex-wrap:wrap; }.customerHeader > span { margin:0 0 0 auto; }.desk .customerHeader p { flex-basis:100%; order:1; margin:0; } }
 @media(max-width:750px) { .customerBox { padding:12px; }.customerQuotes { grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr)); }.desk .quoteTile button { min-height:40px; } }

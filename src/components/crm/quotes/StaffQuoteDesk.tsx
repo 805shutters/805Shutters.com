@@ -3,6 +3,7 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { ArrowUpRight, Check, Circle, Plus, Search, Trash2 } from "lucide-react";
 import type { QuoteTableRow } from "@mts/components/crm/quote-builder/QuotesTable";
+import { visibleFrontDoorDrafts, type FrontDoorDraftCard } from "@/lib/crm/quote-front-door-draft-view";
 import { staffNextSteps, staffQuoteAmount, staffQuoteStage, staffStageLabels, type StaffQuoteFilter } from "./staff-quote-view";
 import { staffCustomerQuoteView, staffQuoteLetter } from "./staff-quote-groups";
 import { quoteColor } from "@/app/quote/[token]/quoteColors";
@@ -19,6 +20,8 @@ type Props = {
   onNewQuote: () => void;
   onNewNormanQuote?: () => void;
   onOpenTools: () => void;
+  frontDoorDrafts?: FrontDoorDraftCard[];
+  frontDoorDraftsError?: string | null;
 };
 
 function Status({ quote }: { quote: QuoteTableRow }) {
@@ -30,7 +33,7 @@ function Status({ quote }: { quote: QuoteTableRow }) {
   </span>;
 }
 
-export function StaffQuoteDesk({ quotes, isLoading, isError, isFetching, onRetry, onOpen, onDelete, onNewQuote, onNewNormanQuote, onOpenTools }: Props) {
+export function StaffQuoteDesk({ quotes, isLoading, isError, isFetching, onRetry, onOpen, onDelete, onNewQuote, onNewNormanQuote, onOpenTools, frontDoorDrafts = [], frontDoorDraftsError = null }: Props) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const deleteQuote = async (quote: QuoteTableRow) => {
@@ -58,6 +61,7 @@ export function StaffQuoteDesk({ quotes, isLoading, isError, isFetching, onRetry
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const { counts, matching, customers, matchingIds } = useMemo(() => staffCustomerQuoteView(quotes, filter, search), [quotes, filter, search]);
+  const frontDoor = useMemo(() => visibleFrontDoorDrafts(frontDoorDrafts, filter, search), [frontDoorDrafts, filter, search]);
   const pageCount = Math.max(1, Math.ceil(customers.length / 25));
   const currentPage = Math.min(page, pageCount - 1);
   const visible = customers.slice(currentPage * 25, (currentPage + 1) * 25);
@@ -89,6 +93,20 @@ export function StaffQuoteDesk({ quotes, isLoading, isError, isFetching, onRetry
       <label className={styles.search}><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search staff quotes" placeholder="Search name or quote" value={search} onChange={event => { setSearch(event.target.value); setPage(0); }} /></label>
     </div>
     {deleteError && <p role="alert" className={styles.deleteError}>{deleteError}</p>}
+    {frontDoorDraftsError && <p role="alert" className={styles.deleteError}>{frontDoorDraftsError}</p>}
+    {frontDoor.length > 0 && <section className={styles.frontDoor} aria-label="Front-door drafts">
+      <div className={styles.resultsHeader}><h2>Front-door drafts</h2><span>{frontDoor.length} read only</span></div>
+      <div className={styles.frontDoorList}>
+        {frontDoor.map(draft => <article key={draft.id} className={styles.frontDoorCard} aria-label={`Front-door draft for ${draft.customerName}`}>
+          <header><strong>Front-door draft</strong><span>Read only</span></header>
+          <h3>{draft.customerName}</h3>
+          {draft.customerAddress && <p>{draft.customerAddress}</p>}
+          {draft.customerPhone && <p>{draft.customerPhone}</p>}
+          <p>{draft.manufacturer} {draft.category} · Multiplier {draft.multiplier}</p>
+          <pre>{draft.readBack}</pre>
+        </article>)}
+      </div>
+    </section>}
     {isLoading ? <div role="status" className={styles.empty}>Loading quotes…</div> : isError ? <div role="alert" className={styles.empty}><h2>Quote history could not be loaded</h2><p>Retry to see the complete list.</p><button type="button" disabled={isFetching} onClick={onRetry}>{isFetching ? "Retrying…" : "Retry loading quotes"}</button></div> : <>
       <div className={styles.resultsHeader}><h2>{filtered ? staffStageLabels[filter] + " quotes" : "Customer quotes"}</h2><span>{customers.length} {customers.length === 1 ? "customer" : "customers"} · {matching.length} {matching.length === 1 ? "quote" : "quotes"}{filtered || search.trim() ? " matching" : ""}{isFetching ? " · Refreshing…" : ""}</span></div>
       {!visible.length ? <div role="status" className={styles.empty}>No quotes match this view.<button type="button" onClick={() => { setSearch(""); changeFilter("all"); }}>Show all quotes</button></div> : <div className={styles.customers}>
