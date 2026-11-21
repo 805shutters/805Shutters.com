@@ -25,6 +25,28 @@ it.each(["Contact", "PageView"])("pairs %s with its browser ID and four raw matc
       client_ip_address:"192.0.2.7", client_user_agent:"Test browser" },
   });
 });
+it("includes META_TEST_EVENT_CODE only when that env var is set, and does not call Meta without a token", async () => {
+  vi.stubEnv("VERCEL_ENV", "production");
+  vi.stubEnv("META_CAPI_TEST_EVENT_CODE", "legacy-code");
+  const fetch = vi.fn().mockImplementation(() => Promise.resolve(Response.json({ events_received: 1 })));
+  vi.stubGlobal("fetch", fetch);
+  expect((await POST(request("PageView"))).status).toBe(502);
+  expect(fetch).not.toHaveBeenCalled();
+  vi.stubEnv("META_CAPI_ACCESS_TOKEN", "test");
+  expect((await POST(request("PageView"))).status).toBe(204);
+  expect(JSON.parse(fetch.mock.calls[0][1].body)).not.toHaveProperty("test_event_code");
+  vi.stubEnv("META_TEST_EVENT_CODE", "explicit-code");
+  expect((await POST(request("Contact"))).status).toBe(204);
+  expect(JSON.parse(fetch.mock.calls[1][1].body).test_event_code).toBe("explicit-code");
+});
+it("skips bots and prefetch without calling Meta", async () => {
+  vi.stubEnv("META_CAPI_ACCESS_TOKEN", "test");
+  const fetch = vi.fn();
+  vi.stubGlobal("fetch", fetch);
+  expect((await POST(request("PageView", "/", { "user-agent": "facebookexternalhit/1.1" }))).status).toBe(204);
+  expect((await POST(request("Contact", "/", { purpose: "prefetch" }))).status).toBe(204);
+  expect(fetch).not.toHaveBeenCalled();
+});
 it("rejects conversion names, private pages and foreign origins and respects GPC", async () => {
   const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
   for (const name of ["Schedule", "Lead"]) expect((await POST(request(name))).status).toBe(400);
