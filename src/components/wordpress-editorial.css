@@ -3,3 +3,12 @@
 .wp-studio .brandlink{text-decoration:none}.wp-studio .explore{width:min(88%,1200px);margin:-30px auto 70px;display:flex;gap:24px;flex-wrap:wrap}.wp-studio .explore a,.wp-studio .story-link a{text-underline-offset:5px}.wp-studio .guide{max-width:900px}.wp-studio .guide h2{margin-bottom:26px}.wp-studio .guide>.wp-block-image{margin:32px 0}.wp-studio .guide img{width:100%;height:auto;display:block}.wp-studio .copy-item{padding:24px 0;border-top:1px solid #cfcfc3}.wp-studio .copy-item h3{font-size:34px;margin-bottom:10px}.wp-studio .story-link{margin-top:24px}.wp-studio .detail-hero h1{max-width:980px;font-size:clamp(48px,6.7vw,96px)}.wp-studio .detail-hero .intro{max-width:580px}.wp-studio .navlinks{font-size:15px}@media(max-width:480px){.wp-studio .mast{width:92%}.wp-studio .navlinks{font-size:12px}.wp-studio .wordmark{font-size:23px}.wp-studio .explore{display:grid}.wp-studio .hero .intro{max-width:32ch}}
 
 .wp-article{max-width:78ch;line-height:1.65}.wp-article h2{margin:2rem 0 .6rem}.wp-article h2:first-child{margin-top:0}.wp-article p,.wp-article ul{margin:0 0 1.05rem}.wp-article a{text-decoration:underline;text-underline-offset:.18em}.wp-article img{max-width:100%;height:auto}
+
+/* Reserve the fixed header's space before the first-screen content. */
+body:has(.home-editorial) .wp-studio .hero { padding-top: calc(var(--site-header-h, 215px) + 24px); }
+body:has(.home-editorial) .wp-studio .hero h1 { font-size: clamp(42px, 5.4vw, 78px); max-width: 950px; }
+body:has(.home-editorial) .wp-studio .hero .proof-line { margin-top: 20px; font-size: 15px; line-height: 1.5; max-width: 54ch; }
+@media(max-width:620px) {
+  body:has(.home-editorial) .wp-studio .hero { padding-top: calc(var(--site-header-h, 148px) + 24px); }
+  body:has(.home-editorial) .wp-studio .hero h1 { font-size: clamp(38px, 10vw, 58px); }
+}

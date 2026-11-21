@@ -6,7 +6,7 @@
   --soft: #eeeeeb;
   --brand: #0b0b0b;
   --brand-dark: #0b0b0b;
-  --accent: #7d7a72;
+  --accent: #6b6860;
   --platinum: #e5e4e2;
   --platinum-soft: #f4f4f2;
   --platinum-deep: #b8b6ae;
@@ -18626,3 +18626,17 @@ body.quote-lab-active .assistant-widget {
   opacity: .6;
   cursor: wait;
 }
+
+/* Keyboard-only entry point remains visible above fixed navigation. */
+.skip-link { position: fixed; top: 8px; left: 8px; z-index: 1000; padding: 12px 20px; background: #fff; color: #111; transform: translateY(-160%); }
+.skip-link:focus { transform: translateY(0); outline: 3px solid #111; }
+.site-footer .yelp-text { color: var(--ink); }
+
+.customer-reviews { padding-block: 56px; }
+.customer-reviews h2 { font-size: clamp(30px, 4vw, 48px); margin: 12px 0; }
+.customer-review-links { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 20px; }
+.customer-review-links a, .customer-review-grid a { text-decoration: underline; text-underline-offset: 4px; }
+.customer-review-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 24px; margin-top: 28px; }
+.customer-review-grid figure { margin: 0; padding: 24px; border: 1px solid var(--platinum-deep); }
+.customer-review-grid blockquote { margin: 0 0 16px; }
+.customer-review-grid figcaption { font-size: 14px; }

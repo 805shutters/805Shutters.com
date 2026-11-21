@@ -51,7 +51,7 @@ it("loads the calendar immediately and clears a failed request after automatic r
   expect(host.textContent).toContain(failure);
   await act(async () => window.dispatchEvent(new Event("focus")));
   expect(host.textContent).not.toContain(failure);
-  expect(host.querySelector<HTMLButtonElement>('[aria-label^="Monday, September 28"]')?.disabled).toBe(false);
+  expect(host.querySelector<HTMLButtonElement>('[aria-label^="28, Monday, September 28"]')?.disabled).toBe(false);
 });
 
 it("starts with only the calendar, then reveals and scrolls to the selected day's times", async () => {
@@ -151,7 +151,7 @@ it("refreshes daypart badges and removes stale badges after an availability fail
   fetchMock.mockResolvedValue({ ok: false, json: async () => ({ message: "Availability is temporarily unavailable." }) });
   await act(async () => window.dispatchEvent(new Event("focus")));
   expect(badges()).toEqual([]);
-  expect(host.querySelector<HTMLButtonElement>('[aria-label^="Monday, September 28"]')?.disabled).toBe(true);
+  expect(host.querySelector<HTMLButtonElement>('[aria-label^="28, Monday, September 28"]')?.disabled).toBe(true);
 });
 
 it("shows contact details only after time selection and preserves the time across revision and address checks", async () => {

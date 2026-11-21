@@ -1,3 +1,4 @@
+import { MarketingImage } from "./MarketingImage";
 import Link from "next/link";
 import { commercialServices } from "@/lib/commercial-mode-data";
 import { services } from "@/lib/site-data";
@@ -12,7 +13,7 @@ export function ServiceGrid({ commercialMode = false }: { commercialMode?: boole
       <div className="service-grid">
         {activeServices.map((service) => (
           <article className="service-card" key={`${service.slug}-${service.title}`}>
-            <img src={service.image} alt={service.imageAlt} loading="lazy" decoding="async" />
+            <MarketingImage src={service.image} alt={service.imageAlt} loading="lazy" decoding="async" />
             <div>
               <h3>{service.title}</h3>
               <p>{service.description}</p>

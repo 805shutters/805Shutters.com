@@ -350,7 +350,7 @@ export function ConsultationBooking({ active = true, className = "", heading,
               const availablePeriods = timePeriods.filter(period => openSlots.some(slot => slotPeriod(slot.time) === period.label));
               const periods = availablePeriods.filter(period => period.label !== "Other times" || availablePeriods.length === 1);
               return <button type="button" key={day.date}
-                aria-label={`${dateLabel(day.date)}${periods.length ? `. ${periods.map(period => period.label).join(" and ")} available` : ""}`}
+                aria-label={`${day.day}, ${dateLabel(day.date)}${periods.length ? `. ${periods.map(period => period.label).join(" and ")} available` : ""}`}
                 aria-pressed={selection.date === day.date}
                 disabled={!day.available || loading || submitting || Boolean(availabilityError)} onClick={() => chooseDate(day.date)}>
                 <span className="consultation-booking__date-number">{day.day}</span>
