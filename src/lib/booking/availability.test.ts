@@ -111,21 +111,31 @@ describe("Jessica published availability", () => {
     expect([1, 5, 6, 20, 21, 500].map(bookingDurationForWindowCount)).toEqual([
       60, 60, 120, 120, 180, 180,
     ]);
+    const onHour = (
+      count: number,
+      extra: Partial<CrmCalendarEvent>,
+    ) =>
+      Array.from({ length: count }, (_, i) =>
+        event(`${i + 8}:00`, `${i + 9}:00`, { id: `${extra.assigned_to}-${extra.event_type}-${i}`, ...extra }),
+      );
+    const jessica = onHour(4, { assigned_to: "Jessica", event_type: "sales_consult" });
+    expect(reason("15:00", jessica)).toBe("daily_limit");
+    expect(reason("15:00", jessica.slice(0, 3))).toBeNull();
+    expect(reason("15:00", onHour(4, { assigned_to: "Unassigned", event_type: "measure" }))).toBe("daily_limit");
+    expect(reason("15:00", onHour(4, { assigned_to: "Mike", event_type: "sales_consult" }))).toBeNull();
+    const installs = [
+      ...onHour(5, { assigned_to: "MTS Installations", event_type: "install" }),
+      event("13:00", "14:00", { id: "jessica-install", assigned_to: "Jessica", event_type: "install" }),
+    ];
+    expect(reason("15:00", installs)).toBeNull();
+    expect(reason("15:00", [...installs, ...jessica])).toBe("daily_limit");
+    const blocks = onHour(6, { assigned_to: "Jessica", event_type: "block" });
+    expect(reason("15:00", blocks)).toBeNull();
+    expect(reason("08:00", [blocks[0]])).toBe("appointment_conflict");
     expect(
-      reason(
-        "15:00",
-        Array.from({ length: 4 }, (_, i) =>
-          event(`0${i + 8}:00`, `0${i + 9}:00`, {
-            id: String(i),
-            assigned_to: "Mike",
-          }),
-        ).map((e, i) => ({
-          ...e,
-          start_at: at(`${i + 8}:00`),
-          end_at: at(`${i + 9}:00`),
-        })),
-      ),
-    ).toBe("daily_limit");
+      buildBookingAvailability("2035-10", installs, [range()], { now }).days.find((day) => day.date === date)
+        ?.slots.find((slot) => slot.time === "15:00")?.available,
+    ).toBe(true);
     expect(reason("15:00", [], [range()], 180)).toBe("closed_hours");
   });
   it("keeps half-hour start increments", () => {
