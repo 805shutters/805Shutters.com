@@ -13,6 +13,7 @@ import {
   type TapResult,
 } from "@/lib/crm/quote-front-door";
 import { CrmAuthError } from "@/lib/crm/auth";
+import { frontDoorDraftCard, type FrontDoorDraftCard } from "@/lib/crm/quote-front-door-draft-view";
 
 /**
  * Staff CRM calls reach this store through the service client after requireCrmUser.
@@ -42,6 +43,19 @@ type QuoteFrontDoorFilter = {
   order(column: string, options: { ascending: boolean }): QuoteFrontDoorFilter;
   limit(count: number): Promise<{ data: unknown[] | null; error: { message: string } | null }>;
 };
+
+export async function listQuoteFrontDoorDrafts(db: QuoteFrontDoorDb): Promise<FrontDoorDraftCard[]> {
+  const { data, error } = await db
+    .from("crm_quote_front_door_drafts")
+    .select("id, created_at, customer_name, customer_phone, customer_address, manufacturer, category, multiplier, read_back, status")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw new CrmAuthError(502, "Front-door drafts could not be loaded.");
+  return (data ?? []).flatMap((row) => {
+    const card = frontDoorDraftCard(row);
+    return card ? [card] : [];
+  });
+}
 
 export function quoteFrontDoorStore(db: QuoteFrontDoorDb): QuoteFrontDoorStore {
   return {

@@ -13,6 +13,7 @@ import { POST as nextField } from "./next-field/route";
 import { POST as validateTap } from "./validate/route";
 import { POST as readBack } from "./read-back/route";
 import { POST as saveDraft } from "./draft/route";
+import { GET as listDrafts } from "./drafts/route";
 
 const catalog = "order-form:norman:roller:v1";
 
@@ -75,6 +76,8 @@ describe("quote front door routes", () => {
     mocks.auth.mockRejectedValue(new CrmAuthError(401, "CRM session is required."));
     expect((await nextField(post("/api/crm/quote-front-door/next-field", {}))).status).toBe(401);
     expect((await saveDraft(post("/api/crm/quote-front-door/draft", {}))).status).toBe(401);
+    expect((await listDrafts(new NextRequest("http://localhost/api/crm/quote-front-door/drafts"))).status).toBe(401);
+    expect(isKenCrmRequestAllowed("khill31@msn.com", "GET", "/api/crm/quote-front-door/drafts")).toBe(false);
     expect(isKenCrmRequestAllowed("khill31@msn.com", "POST", "/api/crm/quote-front-door/draft")).toBe(false);
     expect(isKenCrmRequestAllowed("805shutters@gmail.com", "POST", "/api/crm/quote-front-door/draft")).toBe(true);
   });
