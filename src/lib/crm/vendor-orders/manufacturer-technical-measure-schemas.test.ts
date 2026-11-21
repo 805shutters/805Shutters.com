@@ -5,7 +5,7 @@ import { resolveManufacturerTechnicalMeasureSchema } from "@/lib/crm/vendor-orde
 describe("manufacturer technical measure schemas", () => {
   it("resolves one dedicated technical-measure schema for every registered order form", () => {
     const entries = Object.values(manufacturerOrderFormRegistry().manufacturers).flat();
-    expect(entries).toHaveLength(43);
+    expect(entries).toHaveLength(73);
     for (const entry of entries) {
       const schema = resolveManufacturerTechnicalMeasureSchema({
         manufacturer: entry.manufacturer,

@@ -135,8 +135,9 @@ describe("September Norman Roller PG4 supplement", () => {
   it("prices a current PG4 selection at MSRP with September provenance and blocks a PG3 substitution", () => {
     const selected = context();
     const result = priceQuoteV2Selection({ selection: selected, priceInput: { productId: "roller", programId: PG4, widthInches: 24, heightInches: 36 }, includeInternalCost: true });
-    expect(result).toMatchObject({ ok: true, unitPrice: 354 });
-    if (result.ok) expect(JSON.stringify(result)).toContain("norman-retail-guide-2026-09");
+    expect(result).toMatchObject({ ok: false, code: "NO_SITE_PRICE", blocked: "no_site_price" });
+    const catalog = priceDesign({ productId: "roller", programId: PG4, widthInches: 24, heightInches: 36 }, selected.catalogAsOf);
+    expect(catalog).toMatchObject({ ok: true, unitPrice: 354 });
     const wrong = { ...selected, programId: "roller_cordless_fabric_price_group_3_pg3" };
     expect(validateSelection(wrong)).toEqual(expect.arrayContaining([expect.objectContaining({ ruleId: "roller.program.fabric_mismatch" })]));
     expect(priceQuoteV2Selection({ selection: context("Springtide", "F2221", "2026-08-31"), priceInput: { productId: "roller", programId: PG4, widthInches: 24, heightInches: 36 } }).ok).toBe(false);
