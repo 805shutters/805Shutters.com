@@ -45,6 +45,8 @@ export interface SalesQuote {
   account_id: string;
   status: QuoteStatus;
   customer_name: string;
+  side_mark?: string | null;
+  side_mark_overridden?: boolean | null;
   customer_email: string | null;
   customer_phone: string | null;
   customer_address: string | null;

@@ -1,4 +1,5 @@
 import { quoteFixedCustomerCharges } from "./quote-money";
+import { sideMarkForNewQuote } from "@/lib/crm/quote-id";
 // Quote builder domain layer.
 //
 // Server-authoritative pricing: every design's unit_price + breakdown is computed
@@ -916,10 +917,29 @@ export async function createQuoteForJob(
     return { quoteId: existing.id, created: false };
   }
 
+  const { data: job, error: jobError } = await supabase
+    .from("crm_jobs")
+    .select("customer_name")
+    .eq("id", jobId)
+    .maybeSingle();
+  if (jobError || !job) throw new CrmAuthError(502, "The job for this quote could not be loaded.");
+  const { data: quoteNumber, error: numberError } = await supabase.rpc("allocate_805_quote_id", {
+    p_source: "crm_quote",
+  });
+  if (numberError || typeof quoteNumber !== "string") {
+    throw new CrmAuthError(502, numberError?.message || "A new 805 quote ID could not be issued.");
+  }
+  const customerName = String(job.customer_name || "");
+  const sideMark = sideMarkForNewQuote(customerName, quoteNumber);
+
   const { data, error } = await supabase
     .from("crm_quotes")
     .insert({
       job_id: jobId,
+      quote_number: quoteNumber,
+      customer_name: customerName,
+      side_mark: sideMark.sideMark,
+      side_mark_overridden: sideMark.overridden,
       status: "draft",
       quote_total: 0,
       materials_cost: 0,
