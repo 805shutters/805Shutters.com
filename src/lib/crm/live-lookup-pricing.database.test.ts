@@ -2,7 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { buildNormanPriceRecord, quoteLineSpecHash } from "./price-record";
+import { buildNormanPriceRecord, buildPriceRecord, quoteLineSpecHash } from "./price-record";
 
 const db = new PGlite({ extensions: { pgcrypto } });
 const id = (n: number) => `20000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -40,6 +40,7 @@ beforeAll(async () => {
     end if;
   end $$;`);
   await db.exec(readFileSync("supabase/migrations/20261121180000_shared_price_record.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/20261121234500_onyx_sundance_price_records.sql", "utf8"));
   // Production already has these checks. The migrations do not create the
   // components check, line_total >= 0, or product_cost >= 0. Install the
   // production expression when it is absent. Do not weaken it.
@@ -547,4 +548,236 @@ it("lets the price bot record and read a receipt, and blocks update or delete", 
   }
   await expect(db.query("delete from crm_vendor_price_receipts where id = $1", [recordId])).rejects.toThrow(/append-only/);
   await expect(db.query("update crm_vendor_price_receipts set captured_by = captured_by where id = $1", [recordId])).rejects.toThrow(/append-only/);
+});
+
+function manufacturerReceipt(vendor: "onyx" | "sundance", line: number, specHashValue: string, net: number, account = "test-unseeded") {
+  return buildPriceRecord({
+    vendor,
+    account,
+    lineId: id(line),
+    specHash: specHashValue,
+    dealerNetBasePrice: net,
+    capturedAt: "2026-11-21T17:00:00Z",
+    capturedBy: vendor,
+    sourceUrl: vendor === "onyx"
+      ? "https://admin.onyxshutters.com/Login.aspx"
+      : "https://sundance.blindata.app",
+  });
+}
+
+it("matches Onyx and Sundance spec hashes with the shared Norman hasher", async () => {
+  await seed(20, 201, "Shutters");
+  await db.query(
+    "update sales_quote_line_items set width_whole = 36, width_fraction = '1/16', height_whole = 48, height_fraction = '0' where id = $1",
+    [id(201)],
+  );
+  const onyxOptions = {
+    manufacturer: " Onyx ",
+    product: " Painted Basswood ",
+    "Frame Type": "L Frame",
+    louver: " 2.5 ",
+    grand_total: "999.00",
+    width_a: { whole: 36, fraction: "1/8" },
+  };
+  await db.query(
+    "insert into sales_quote_designs (line_item_id, variant, product_type, options_json) values ($1, 'A', 'Shutters', $2::jsonb)",
+    [id(201), JSON.stringify(onyxOptions)],
+  );
+  expect(await hash(201)).toBe(quoteLineSpecHash({
+    productType: "Shutters",
+    widthWhole: 36,
+    widthFraction: "1/16",
+    heightWhole: 48,
+    heightFraction: "0",
+    options: onyxOptions,
+  }));
+
+  await seed(21, 211, "Sheer Shades");
+  const sundanceOptions = {
+    manufacturer: "Sundance",
+    product: "Sheer View",
+    "Motor Type": "GLYDEA",
+    suggested_retail: "552.00",
+  };
+  await db.query(
+    "insert into sales_quote_designs (line_item_id, variant, product_type, options_json) values ($1, 'A', 'Sheer Shades', $2::jsonb)",
+    [id(211), JSON.stringify(sundanceOptions)],
+  );
+  expect(await hash(211)).toBe(quoteLineSpecHash({
+    productType: "Sheer Shades",
+    options: sundanceOptions,
+  }));
+});
+
+it("fails closed for Onyx and Sundance when the switch is off or no account exists", async () => {
+  await seed(22, 221, "Shutters");
+  await db.query(
+    "insert into sales_quote_designs (line_item_id, variant, product_type, options_json) values ($1, 'A', 'Shutters', $2::jsonb)",
+    [id(221), JSON.stringify({ manufacturer: "onyx", product: "painted_basswood", frame_type: "L Frame" })],
+  );
+  const onyxHash = await hash(221);
+  const onyxBody = manufacturerReceipt("onyx", 221, onyxHash, 210);
+  await expect(db.query(
+    "select record_vendor_price_receipt($1, 1, $2::jsonb, 'mike')",
+    [id(22), JSON.stringify(onyxBody)],
+  )).rejects.toThrow(/no_vendor_account/);
+  await expect(db.query(
+    "select record_vendor_price_receipt($1, 1, $2::jsonb, 'mike')",
+    [id(22), JSON.stringify({ ...onyxBody, source_url: "https://example.com/price" })],
+  )).rejects.toThrow(/manufacturer portal/);
+
+  await seed(25, 251, "Sheer Shades");
+  await db.query(
+    "insert into sales_quote_designs (line_item_id, variant, product_type, options_json) values ($1, 'A', 'Sheer Shades', $2::jsonb)",
+    [id(251), JSON.stringify({ manufacturer: "sundance", product: "sundance_sheerview" })],
+  );
+  const sundanceHash = await hash(251);
+  await expect(db.query(
+    "select record_vendor_price_receipt($1, 1, $2::jsonb, 'mike')",
+    [id(25), JSON.stringify(manufacturerReceipt("sundance", 251, sundanceHash, 76.2))],
+  )).rejects.toThrow(/no_vendor_account/);
+
+  const stored = await db.query<{ count: string }>(
+    "select count(*) from crm_vendor_price_receipts where quote_id in ($1, $2)",
+    [id(22), id(25)],
+  );
+  expect(Number(stored.rows[0].count)).toBe(0);
+  const switches = await db.query<{ vendor: string; enabled: boolean }>(
+    "select vendor, enabled from crm_live_lookup_switch where vendor in ('onyx', 'sundance') order by vendor",
+  );
+  expect(switches.rows).toEqual([
+    { vendor: "onyx", enabled: false },
+    { vendor: "sundance", enabled: false },
+  ]);
+  await expect(db.query(
+    "select price_line_from_receipt($1, $2, 'A', $3, 1, $4)",
+    [id(22), id(221), id(90), id(++request)],
+  )).rejects.toThrow(/switch_off/);
+  const priced = await db.query<{ count: string }>(
+    "select count(*) from crm_supplier_workflow_line_prices where quote_id in ($1, $2)",
+    [id(22), id(25)],
+  );
+  expect(Number(priced.rows[0].count)).toBe(0);
+});
+
+it("raises spec_changed for Onyx and appends a Sundance re-price revision", async () => {
+  await db.query(
+    `insert into crm_vendor_accounts (vendor, account_label, account_number, site, active)
+     values
+       ('onyx', 'test only, not a vendor account', 'test-unseeded', 'https://admin.onyxshutters.com/Login.aspx', true),
+       ('sundance', 'test only, not a vendor account', 'test-unseeded', 'https://sundance.blindata.app', true)`,
+  );
+  try {
+    await seed(23, 231, "Shutters");
+    await db.query(
+      "update sales_quote_line_items set width_whole = 36, width_fraction = '0', height_whole = 48, height_fraction = '0' where id = $1",
+      [id(231)],
+    );
+    await db.query(
+      "insert into sales_quote_designs (line_item_id, variant, product_type, options_json) values ($1, 'A', 'Shutters', $2::jsonb)",
+      [id(231), JSON.stringify({ manufacturer: "onyx", product: "Sycamore", color: "100_Pure White" })],
+    );
+    const onyxHash = await hash(231);
+    expect(onyxHash).toBe(quoteLineSpecHash({
+      productType: "Shutters",
+      widthWhole: 36,
+      widthFraction: "0",
+      heightWhole: 48,
+      heightFraction: "0",
+      options: { manufacturer: "onyx", product: "Sycamore", color: "100_Pure White" },
+    }));
+    await expect(db.query(
+      "select record_vendor_price_receipt($1, 1, $2::jsonb, 'mike')",
+      [id(23), JSON.stringify(manufacturerReceipt("onyx", 231, onyxHash, 210, "OTHER"))],
+    )).rejects.toThrow(/805 account/);
+    const recorded = await db.query<{ result: { records: { record_id: string }[] } }>(
+      "select record_vendor_price_receipt($1, 1, $2::jsonb, 'mike') as result",
+      [id(23), JSON.stringify(manufacturerReceipt("onyx", 231, onyxHash, 210))],
+    );
+    const onyxRecord = recorded.rows[0].result.records[0].record_id;
+    await expect(db.query(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4)",
+      [id(23), id(231), onyxRecord, id(++request)],
+    )).rejects.toThrow(/switch_off/);
+    await db.query("update crm_live_lookup_switch set enabled = true where vendor = 'onyx'");
+    await db.query("select set_quote_live_margin($1, 2, 'mike', 1)", [id(23)]);
+    await db.query("update sales_quote_line_items set width_whole = 37 where id = $1", [id(231)]);
+    await expect(db.query(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4)",
+      [id(23), id(231), onyxRecord, id(++request)],
+    )).rejects.toThrow(/spec_changed/);
+    const blocked = await db.query<{ count: string }>(
+      "select count(*) from crm_supplier_workflow_line_prices where quote_id = $1",
+      [id(23)],
+    );
+    expect(Number(blocked.rows[0].count)).toBe(0);
+    await db.query("update sales_quote_line_items set width_whole = 36 where id = $1", [id(231)]);
+    const onyxPriced = await db.query<{ result: { unitPrice: number; installation: number; shipping: number } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4) as result",
+      [id(23), id(231), onyxRecord, id(++request)],
+    );
+    expect(onyxPriced.rows[0].result).toMatchObject({ unitPrice: 420, installation: 0, shipping: 0 });
+
+    await seed(24, 241, "Sheer Shades");
+    await db.query(
+      "insert into sales_quote_designs (line_item_id, variant, product_type, options_json) values ($1, 'A', 'Sheer Shades', $2::jsonb)",
+      [id(241), JSON.stringify({ manufacturer: "sundance", product: "sundance_sheerview", motor_type: "GLYDEA" })],
+    );
+    const sundanceHash = await hash(241);
+    const firstRecorded = await db.query<{ result: { records: { record_id: string }[] } }>(
+      "select record_vendor_price_receipt($1, 1, $2::jsonb, 'jessica') as result",
+      [id(24), JSON.stringify(manufacturerReceipt("sundance", 241, sundanceHash, 76.2))],
+    );
+    const firstId = firstRecorded.rows[0].result.records[0].record_id;
+    await db.query("update crm_live_lookup_switch set enabled = true where vendor = 'sundance'");
+    await db.query("select set_quote_live_margin($1, 2.5, 'jessica', 1)", [id(24)]);
+    const firstPrice = await db.query<{ result: { unitPrice: number; installation: number; shipping: number } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4) as result",
+      [id(24), id(241), firstId, id(++request)],
+    );
+    expect(firstPrice.rows[0].result).toMatchObject({ unitPrice: 190.5, installation: 25, shipping: 14 });
+    const original = await db.query<{ net_unit_price: string; line_total: string }>(
+      "select net_unit_price::text, line_total::text from crm_supplier_workflow_line_prices where line_id = $1",
+      [id(241)],
+    );
+    expect(original.rows).toHaveLength(1);
+    expect(original.rows[0]).toEqual({ net_unit_price: "76.20", line_total: "229.50" });
+    const revision = await db.query<{ quote_v2_revision: string }>(
+      "select quote_v2_revision::text from sales_quotes where id = $1",
+      [id(24)],
+    );
+    const secondRecorded = await db.query<{ result: { records: { record_id: string }[] } }>(
+      "select record_vendor_price_receipt($1, $2, $3::jsonb, 'mike') as result",
+      [id(24), revision.rows[0].quote_v2_revision, JSON.stringify(manufacturerReceipt("sundance", 241, sundanceHash, 80))],
+    );
+    const secondId = secondRecorded.rows[0].result.records[0].record_id;
+    const repriced = await db.query<{ result: { unitPrice: number; installation: number; shipping: number } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, $4, $5) as result",
+      [id(24), id(241), secondId, revision.rows[0].quote_v2_revision, id(++request)],
+    );
+    expect(repriced.rows[0].result).toMatchObject({ unitPrice: 200, installation: 25, shipping: 14 });
+    const unchanged = await db.query<{ net_unit_price: string; line_total: string }>(
+      "select net_unit_price::text, line_total::text from crm_supplier_workflow_line_prices where line_id = $1",
+      [id(241)],
+    );
+    expect(unchanged.rows).toEqual([{ net_unit_price: "76.20", line_total: "229.50" }]);
+    const appended = await db.query<{ net_unit_price: string; line_total: string }>(
+      "select net_unit_price::text, line_total::text from crm_live_lookup_line_price_revisions where line_id = $1",
+      [id(241)],
+    );
+    expect(appended.rows).toEqual([{ net_unit_price: "80.00", line_total: "239.00" }]);
+  } finally {
+    await db.query("update crm_live_lookup_switch set enabled = false where vendor in ('onyx', 'sundance')");
+    await db.query(
+      "update crm_vendor_accounts set active = false where account_number = 'test-unseeded' and vendor in ('onyx', 'sundance')",
+    );
+  }
+  const switches = await db.query<{ enabled: boolean }>(
+    "select enabled from crm_live_lookup_switch order by vendor",
+  );
+  expect(switches.rows.map((row) => row.enabled)).toEqual([false, false, false, false]);
+  const active = await db.query<{ count: string }>(
+    "select count(*) from crm_vendor_accounts where vendor in ('onyx', 'sundance') and active",
+  );
+  expect(Number(active.rows[0].count)).toBe(0);
 });
