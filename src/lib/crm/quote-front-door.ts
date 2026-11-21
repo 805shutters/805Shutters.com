@@ -127,10 +127,17 @@ export type QuoteFrontDoorReadBack = {
 };
 
 /** Arguments for the existing create_quote_v2_draft(p_idempotency_key, p_actor_id, p_quote_patch). */
+export type FrontDoorReadBackRecord = {
+  summary: string;
+  customerId: string | null;
+  jobId: string | null;
+};
+
 export type QuoteV2DraftCreate = {
   idempotencyKey: string;
   actorId: string;
   quotePatch: Record<string, unknown>;
+  readBack: FrontDoorReadBackRecord;
 };
 
 export type QuoteFrontDoorStore = {
@@ -516,7 +523,6 @@ export function frontDoorQuotePatch(input: {
   appointmentDate: string | null;
   customerId: string | null;
   jobId: string | null;
-  readBack: string;
 }) {
   return {
     customerName: input.customerName,
@@ -526,11 +532,6 @@ export function frontDoorQuotePatch(input: {
     appointmentDate: input.appointmentDate,
     customerId: input.customerId,
     jobId: input.jobId,
-    installerNotes: JSON.stringify({
-      __quoteFrontDoorReadBack: input.readBack,
-      __quoteFrontDoorCustomerId: input.customerId,
-      __quoteFrontDoorJobId: input.jobId,
-    }),
   };
 }
 
@@ -592,12 +593,17 @@ export async function saveQuoteFrontDoorDraft(
     appointmentDate: appointmentDay(selected),
     customerId: selected?.customerId ?? null,
     jobId: selected?.jobId ?? null,
-    readBack: readBack.summary,
   });
+  const readBackRecord = {
+    summary: readBack.summary,
+    customerId: selected?.customerId ?? null,
+    jobId: selected?.jobId ?? null,
+  };
   const created = await store.createQuoteV2Draft({
-    idempotencyKey: frontDoorIdempotencyKey(input.idempotencyKey, actorId, quotePatch),
+    idempotencyKey: frontDoorIdempotencyKey(input.idempotencyKey, actorId, { ...quotePatch, frontDoorReadBack: readBackRecord.summary }),
     actorId,
     quotePatch,
+    readBack: readBackRecord,
   });
   return {
     saved: true as const,

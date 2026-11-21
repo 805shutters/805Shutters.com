@@ -65,18 +65,30 @@ describe("front-door side table removal", () => {
       `insert into public.${table} (customer_name, manufacturer, category, spec, multiplier, read_back)
        values ('Jane Smith', 'Norman', 'roller', '{}'::jsonb, 2.5, 'Norman roller')`,
     );
-    await expect(blocked.exec(migration("20261122040000_drop_empty_front_door_side_table"))).rejects.toThrow(/has 1 row\(s\); refusing to drop the table/);
+    await blocked.exec("create table public.sales_quotes (id uuid primary key, installer_notes text)");
+    await expect(blocked.exec(migration("20261122035000_drop_empty_front_door_side_table"))).rejects.toThrow(/has 1 row\(s\); refusing to drop the table/);
     expect(await sideTableCount(blocked)).toBe(1);
+    const added = await blocked.query<{ column_name: string }>(`
+      select column_name from information_schema.columns
+       where table_schema = 'public' and table_name = 'sales_quotes' and column_name = 'front_door_readback'
+    `);
+    expect(added.rows).toEqual([]);
     const stillThere = await blocked.query<{ name: string }>(`select customer_name as name from public.${table}`);
     expect(stillThere.rows).toEqual([{ name: "Jane Smith" }]);
   });
 
   it("drops the side table, its policies, and its grants when the table is empty", async () => {
     await installSideTable(empty);
-    await empty.exec(migration("20261122040000_drop_empty_front_door_side_table"));
+    await empty.exec("create table public.sales_quotes (id uuid primary key, installer_notes text)");
+    await empty.exec(migration("20261122035000_drop_empty_front_door_side_table"));
     const table = sideTableName();
     const left = await empty.query<{ name: string | null }>("select to_regclass($1) as name", [`public.${table}`]);
     expect(left.rows[0]?.name).toBeNull();
+    const column = await empty.query<{ data_type: string }>(`
+      select data_type from information_schema.columns
+       where table_schema = 'public' and table_name = 'sales_quotes' and column_name = 'front_door_readback'
+    `);
+    expect(column.rows).toEqual([{ data_type: "jsonb" }]);
   });
 });
 
@@ -125,7 +137,8 @@ describe("front-door draft creates one sales quote", () => {
         quote_v2_revision bigint,
         quote_v2_last_priced_at timestamptz,
         sent_at timestamptz,
-        signed_at timestamptz
+        signed_at timestamptz,
+        front_door_readback jsonb
       );
       create table public.sales_quote_v2_events (
         id uuid primary key default gen_random_uuid(),
@@ -175,18 +188,30 @@ describe("front-door draft creates one sales quote", () => {
               },
               async is(column: string, value: null) {
                 filters.push({ column, value });
-                if (table !== "sales_quotes" || values.created_job_id == null) {
+                const id = filters.find((item) => item.column === "id")?.value;
+                const actor = filters.find((item) => item.column === "created_by")?.value;
+                if (table !== "sales_quotes" || value !== null || !id || !actor) {
                   return { error: { message: "Unexpected quote update." } };
                 }
-                await db.query(
-                  `update public.sales_quotes
-                      set created_job_id = $1
-                    where id = $2
-                      and created_by = $3
-                      and created_job_id is null`,
-                  [values.created_job_id, filters[0]?.value, filters[1]?.value],
-                );
-                return { error: null };
+                if ("front_door_readback" in values && column === "front_door_readback") {
+                  await db.query(
+                    `update public.sales_quotes
+                        set front_door_readback = $1::jsonb
+                      where id = $2 and created_by = $3 and front_door_readback is null`,
+                    [JSON.stringify(values.front_door_readback), id, actor],
+                  );
+                  return { error: null };
+                }
+                if (values.created_job_id != null && column === "created_job_id") {
+                  await db.query(
+                    `update public.sales_quotes
+                        set created_job_id = $1
+                      where id = $2 and created_by = $3 and created_job_id is null`,
+                    [values.created_job_id, id, actor],
+                  );
+                  return { error: null };
+                }
+                return { error: { message: "Unexpected quote update." } };
               },
             };
             return chain;
@@ -292,13 +317,14 @@ describe("front-door draft creates one sales quote", () => {
       quote_v2_backend: boolean;
       created_by: string;
       created_job_id: string;
-      installer_notes: string;
+      installer_notes: string | null;
+      front_door_readback: { summary?: string; customerId?: string | null; jobId?: string | null } | null;
       sent_at: string | null;
       quote_number: string;
     }>(`
       select customer_name, customer_phone, customer_email, customer_address, appointment_date::text,
              status, quote_v2_status, quote_v2_backend, created_by::text, created_job_id::text,
-             installer_notes, sent_at::text, quote_number
+             installer_notes, front_door_readback, sent_at::text, quote_number
         from public.sales_quotes
     `);
     expect(quote.rows).toHaveLength(1);
@@ -313,14 +339,15 @@ describe("front-door draft creates one sales quote", () => {
       quote_v2_backend: true,
       created_by: actorId,
       created_job_id: jobId,
+      installer_notes: null,
       sent_at: null,
       quote_number: saved.quote?.quoteNumber,
     });
-    expect(quote.rows[0]?.installer_notes).toContain("Norman roller");
-    expect(quote.rows[0]?.installer_notes).toContain("Room: Office");
-    expect(quote.rows[0]?.installer_notes).toContain("Multiplier: 2.5");
-    expect(quote.rows[0]?.installer_notes).toContain(customerId);
-    expect(quote.rows[0]?.installer_notes).toContain(jobId);
+    expect(quote.rows[0]?.front_door_readback?.summary).toContain("Norman roller");
+    expect(quote.rows[0]?.front_door_readback?.summary).toContain("Room: Office");
+    expect(quote.rows[0]?.front_door_readback?.summary).toContain("Multiplier: 2.5");
+    expect(quote.rows[0]?.front_door_readback?.customerId).toBe(customerId);
+    expect(quote.rows[0]?.front_door_readback?.jobId).toBe(jobId);
     const events = await db.query<{ event_type: string; actor_id: string; idempotency_key: string; event_payload: { requestHash?: string; result?: { quoteId?: string; status?: string } } }>(`
       select event_type, actor_id::text, idempotency_key, event_payload
         from public.sales_quote_v2_events

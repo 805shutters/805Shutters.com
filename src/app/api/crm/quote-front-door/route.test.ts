@@ -17,7 +17,7 @@ import { POST as saveDraft } from "./draft/route";
 const catalog = "order-form:norman:roller:v1";
 
 function database() {
-  const calls: Array<{ type: string; table?: string; fn?: string; args?: Record<string, unknown> }> = [];
+  const calls: Array<{ type: string; table?: string; fn?: string; args?: Record<string, unknown>; row?: Record<string, unknown> }> = [];
   const filter = (table: string) => {
     const api = {
       eq: () => api,
@@ -58,8 +58,15 @@ function database() {
     from(table: string) {
       return {
         select: () => filter(table),
-        update: () => {
-          throw new Error("A new customer does not update a quote.");
+        update: (row: Record<string, unknown>) => {
+          const update = {
+            eq: () => update,
+            is: async () => {
+              calls.push({ type: "update", table, row });
+              return { error: null };
+            },
+          };
+          return update;
         },
       };
     },
@@ -136,7 +143,11 @@ describe("quote front door routes", () => {
       p_actor_id: actorId,
       p_quote_patch: { customerName: "New Person" },
     });
+    expect(created[0]?.args?.p_quote_patch).not.toHaveProperty("installerNotes");
     expect(created[0]?.args?.p_actor_id).toBe(actorId);
+    const readBackWrite = db.calls.find((call) => call.type === "update");
+    expect(readBackWrite?.row).toMatchObject({ front_door_readback: { summary: expect.stringContaining("Norman roller") } });
+    expect(readBackWrite?.row).not.toHaveProperty("installer_notes");
     expect(db.calls.some((call) => call.type === "insert")).toBe(false);
     expect(db.calls.some((call) => call.table === "crm_customers" && call.type === "insert")).toBe(false);
     expect(db.calls.filter((call) => call.fn === "quote_validate_tapped_value")).toHaveLength(1);

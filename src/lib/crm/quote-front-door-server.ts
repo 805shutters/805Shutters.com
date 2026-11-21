@@ -100,6 +100,16 @@ async function createQuoteV2Draft(db: QuoteFrontDoorDb, input: QuoteV2DraftCreat
   if (!quoteId || result.status !== "draft" || result.quoteV2Status !== "draft") {
     throw new CrmAuthError(502, "The draft quote could not be saved.");
   }
+  if ("installerNotes" in input.quotePatch) {
+    throw new CrmAuthError(400, "A front-door draft does not write installer notes.");
+  }
+  const recorded = await db
+    .from("sales_quotes")
+    .update({ front_door_readback: input.readBack })
+    .eq("id", quoteId)
+    .eq("created_by", actorId)
+    .is("front_door_readback", null);
+  if (recorded.error) throw new CrmAuthError(502, "The draft quote could not be saved.");
   const jobId = text(input.quotePatch.jobId);
   if (jobId && STAFF_ACTOR_ID.test(jobId)) {
     const linked = await db

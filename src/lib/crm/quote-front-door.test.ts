@@ -319,8 +319,10 @@ describe("quote front door customer lookup", () => {
       jobId: "j1",
       appointmentDate: "2026-11-22",
     });
-    expect(String(db.creates[0]?.quotePatch.installerNotes)).toContain("Norman roller");
-    expect(String(db.creates[0]?.quotePatch.installerNotes)).toContain("Multiplier: 2.5");
+    expect(db.creates[0]?.quotePatch).not.toHaveProperty("installerNotes");
+    expect(db.creates[0]?.readBack.summary).toContain("Norman roller");
+    expect(db.creates[0]?.readBack.summary).toContain("Room: Office");
+    expect(db.creates[0]?.readBack.summary).toContain("Multiplier: 2.5");
     expect(db.creates[0]?.quotePatch).not.toHaveProperty("status");
 
     const fresh = store();
@@ -335,6 +337,8 @@ describe("quote front door customer lookup", () => {
     expect(created.sent).toBe(false);
     expect(fresh.creates[0]?.actorId).toBe(actor.userId);
     expect(fresh.creates[0]?.quotePatch).toMatchObject({ customerName: "New Person", customerId: null, jobId: null });
+    expect(fresh.creates[0]?.quotePatch).not.toHaveProperty("installerNotes");
+    expect(fresh.creates[0]?.readBack.summary).toContain("Norman roller");
   });
 
   it("writes nothing when customer details are missing", async () => {
@@ -364,6 +368,8 @@ describe("quote front door customer lookup", () => {
     await saveQuoteFrontDoorDraft(db, input, actor);
     expect(db.creates.map((create) => create.idempotencyKey)).toEqual(["front-door-repeat-1", "front-door-repeat-1"]);
     expect(db.creates[0]?.quotePatch).toEqual(db.creates[1]?.quotePatch);
+    expect(db.creates[0]?.quotePatch).not.toHaveProperty("installerNotes");
+    expect(db.creates[0]?.readBack).toEqual(db.creates[1]?.readBack);
   });
 
   it("does not save a draft before the multiplier", async () => {
@@ -401,7 +407,7 @@ describe("quote front door boundaries", () => {
     const created = readFileSync("supabase/migrations/20261121233000_quote_front_door_drafts.sql", "utf8");
     expect(created).not.toMatch(/\bdrop\s+(table|column|schema|function)\b/i);
     expect(created).not.toMatch(/\bdelete\s+from\b/i);
-    const removed = readFileSync("supabase/migrations/20261122040000_drop_empty_front_door_side_table.sql", "utf8");
+    const removed = readFileSync("supabase/migrations/20261122035000_drop_empty_front_door_side_table.sql", "utf8");
     expect(removed).toMatch(/raise exception/i);
     expect(removed).not.toMatch(/\bdelete\s+from\b/i);
   });
@@ -505,9 +511,12 @@ describe("quote front door database adapter", () => {
       p_actor_id: actorId,
       p_quote_patch: { customerName: "New Person", customerId: null, jobId: null },
     });
-    expect(String((created?.args?.p_quote_patch as { installerNotes?: string }).installerNotes)).toContain("Norman roller");
+    expect(created?.args?.p_quote_patch).not.toHaveProperty("installerNotes");
     expect(calls.some((call) => call.type === "insert")).toBe(false);
-    expect(calls.some((call) => call.type === "update")).toBe(false);
+    const readBackWrite = calls.find((call) => call.type === "update");
+    expect(readBackWrite).toMatchObject({ table: "sales_quotes" });
+    expect(readBackWrite?.row).not.toHaveProperty("installer_notes");
+    expect(String((readBackWrite?.row?.front_door_readback as { summary?: string } | undefined)?.summary)).toContain("Norman roller");
     expect(calls.some((call) => call.table === "crm_customers" && call.type !== "select")).toBe(false);
 
     calls.length = 0;
@@ -555,7 +564,11 @@ describe("quote front door database adapter", () => {
       customerEmail: "jane@example.com",
       customerAddress: "1 Main St",
     });
-    const jobLink = calls.find((call) => call.type === "update");
-    expect(jobLink).toMatchObject({ table: "sales_quotes", row: { created_job_id: jobId } });
+    const writes = calls.filter((call) => call.type === "update");
+    expect(writes.map((call) => call.row && Object.keys(call.row)[0])).toEqual(["front_door_readback", "created_job_id"]);
+    expect(writes[0]?.row).not.toHaveProperty("installer_notes");
+    expect(writes[1]).toMatchObject({ table: "sales_quotes", row: { created_job_id: jobId } });
+    expect((writes[0]?.row?.front_door_readback as { summary?: string; customerId?: string }).summary).toContain("Norman roller");
+    expect((writes[0]?.row?.front_door_readback as { customerId?: string }).customerId).toBe(customerId);
   });
 });
