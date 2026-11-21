@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { quoteLineSpecHash } from "@/lib/crm/price-record";
 import {
   UNPRICED_PENDING_NORMAN_LIVE_LOOKUP_NOTE,
-  designNoteAfterLivePrice,
   liveLookupStoredSpecIsCurrent,
   portalDraftIdFromReceipt,
+  quoteLivePriceMayUpdateQuote,
   quoteStatusAfterSuccessfulLivePrice,
   staleQuoteStatusBackfillApplies,
 } from "@/lib/quote/live-lookup-current";
@@ -63,13 +63,17 @@ describe("quote status after a live price", () => {
   });
 });
 
-describe("system design note", () => {
-  it("clears only the exact unpriced placeholder", () => {
-    expect(designNoteAfterLivePrice(UNPRICED_PENDING_NORMAN_LIVE_LOOKUP_NOTE)).toBeNull();
-    expect(designNoteAfterLivePrice("Customer wants ivory")).toBe("Customer wants ivory");
-    expect(designNoteAfterLivePrice(`${UNPRICED_PENDING_NORMAN_LIVE_LOOKUP_NOTE}.`)).toBe(`${UNPRICED_PENDING_NORMAN_LIVE_LOOKUP_NOTE}.`);
-    expect(designNoteAfterLivePrice(null)).toBeNull();
-    expect(migration).toContain(UNPRICED_PENDING_NORMAN_LIVE_LOOKUP_NOTE);
+describe("quote row guard", () => {
+  it("updates only an open draft and leaves sent and archived quotes alone", () => {
+    expect(quoteLivePriceMayUpdateQuote("draft", "stale")).toBe(true);
+    expect(quoteLivePriceMayUpdateQuote("draft", "priced")).toBe(true);
+    expect(quoteLivePriceMayUpdateQuote("sent", "sent")).toBe(false);
+    expect(quoteLivePriceMayUpdateQuote("archived", "priced")).toBe(false);
+    expect(quoteLivePriceMayUpdateQuote("draft", "sent")).toBe(false);
+    expect(migration).toContain("quote_not_draft");
+    expect(migration).toContain("quote_v2_status in ('draft', 'stale', 'priced', 'blocked')");
+    expect(migration).not.toContain("set notes = null");
+    expect(migration).not.toContain("design.notes =");
   });
 });
 

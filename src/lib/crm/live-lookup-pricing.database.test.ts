@@ -108,7 +108,7 @@ function receipt(line: number, specHashValue: string, net: number, patch: Record
   };
 }
 async function seed(quote: number, line: number, product: string) {
-  await db.query("insert into sales_quotes(id, quote_v2_backend, quote_v2_revision, status) values($1, true, 1, 'draft')", [id(quote)]);
+  await db.query("insert into sales_quotes(id, quote_v2_backend, quote_v2_revision, quote_v2_status, status) values($1, true, 1, 'draft', 'draft')", [id(quote)]);
   await db.query("insert into sales_quote_line_items(id, quote_id, product_type, quantity) values($1, $2, $3, 1)", [id(line), id(quote), product]);
 }
 async function record(quote: number, line: number, net: number, patch: Record<string, unknown> = {}) {
@@ -873,7 +873,7 @@ it("copies portal_draft_id from the receipt JSON and backfills only null columns
   expect(second.rows[0].result.workflow_portal_draft_ids).toBe(0);
 });
 
-it("recomputes quote status and clears only the system design note when a line is priced", async () => {
+it("recomputes a draft quote status and leaves design notes unchanged", async () => {
   await db.query("update crm_live_lookup_switch set enabled = true where vendor = 'norman'");
   try {
     await seed(42, 421, "Roller Shades");
@@ -901,7 +901,7 @@ it("recomputes quote status and clears only the system design note when a line i
       [id(421)],
     );
     expect(notes.rows).toEqual([
-      { variant: "A", notes: null },
+      { variant: "A", notes: "Unpriced pending Norman live lookup" },
       { variant: "B", notes: "Customer wants ivory" },
     ]);
     const draft = await db.query<{ portal_draft_id: string }>(
@@ -970,7 +970,6 @@ it("backfills stale live-priced quotes once and leaves human notes and other sta
     "select backfill_current_live_price_fields() as result",
   );
   expect(first.rows[0].result.quote_statuses).toBe(1);
-  expect(first.rows[0].result.design_notes).toBe(1);
   expect(first.rows[0].result.workflow_portal_draft_ids).toBeGreaterThanOrEqual(1);
 
   const priced = await db.query<{ quote_v2_status: string; portal_draft_id: string }>(
@@ -986,7 +985,7 @@ it("backfills stale live-priced quotes once and leaves human notes and other sta
     [id(431)],
   );
   expect(notes.rows).toEqual([
-    { variant: "A", notes: null },
+    { variant: "A", notes: "Unpriced pending Norman live lookup" },
     { variant: "B", notes: "Unpriced pending Norman live lookup." },
   ]);
   const stillStale = await db.query<{ id: string; quote_v2_status: string }>(
@@ -1003,15 +1002,96 @@ it("backfills stale live-priced quotes once and leaves human notes and other sta
   );
   expect(untouched.rows[0]).toEqual({ notes: "Unpriced pending Norman live lookup", spec_hash: oldHash });
 
-  const second = await db.query<{ result: { portal_draft_ids: number; workflow_portal_draft_ids: number; quote_statuses: number; design_notes: number } }>(
+  const second = await db.query<{ result: { portal_draft_ids: number; workflow_portal_draft_ids: number; quote_statuses: number } }>(
     "select backfill_current_live_price_fields() as result",
   );
   expect(second.rows[0].result).toEqual({
     portal_draft_ids: 0,
     workflow_portal_draft_ids: 0,
     quote_statuses: 0,
-    design_notes: 0,
   });
+});
+
+it("leaves a sent quote and an archived quote unchanged and still prices a draft", async () => {
+  const human = "Line ref L1. INTERNAL TEST. Unpriced pending Norman live lookup. Amelia discontinued 12/31/2026";
+  await db.query("update crm_live_lookup_switch set enabled = true where vendor = 'norman'");
+  try {
+    await seed(60, 601, "Roller Shades");
+    await db.query(
+      `update sales_quotes
+       set status = 'sent', quote_v2_status = 'sent', live_margin = 2.5, live_margin_set_by = 'mike',
+           total_amount = 10, manufacturer_cost = 1, product_cost = 2
+       where id = $1`,
+      [id(60)],
+    );
+    await db.query(
+      "insert into sales_quote_designs (line_item_id, variant, product_type, notes) values ($1, 'A', 'Roller Shades', $2)",
+      [id(601), human],
+    );
+    const sentRecord = await record(60, 601, 115.2);
+    const sentPriced = await db.query<{ result: { quoteStatus: string; unitPrice: number; revision: number } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4) as result",
+      [id(60), id(601), sentRecord, id(++request)],
+    );
+    expect(sentPriced.rows[0].result).toMatchObject({ quoteStatus: "quote_not_draft", unitPrice: 288, revision: 1 });
+    const sentQuote = await db.query<{ status: string; quote_v2_status: string; total_amount: string; manufacturer_cost: string; product_cost: string; quote_v2_revision: string }>(
+      "select status, quote_v2_status, total_amount::text, manufacturer_cost::text, product_cost::text, quote_v2_revision::text from sales_quotes where id = $1",
+      [id(60)],
+    );
+    expect(sentQuote.rows[0].status).toBe("sent");
+    expect(sentQuote.rows[0].quote_v2_status).toBe("sent");
+    expect(sentQuote.rows[0].quote_v2_revision).toBe("1");
+    expect(Number(sentQuote.rows[0].total_amount)).toBe(10);
+    expect(Number(sentQuote.rows[0].manufacturer_cost)).toBe(1);
+    expect(Number(sentQuote.rows[0].product_cost)).toBe(2);
+    const sentNote = await db.query<{ notes: string }>("select notes from sales_quote_designs where line_item_id = $1", [id(601)]);
+    expect(sentNote.rows[0].notes).toBe(human);
+    const sentLine = await db.query<{ count: string }>("select count(*) from crm_supplier_workflow_line_prices where line_id = $1", [id(601)]);
+    expect(Number(sentLine.rows[0].count)).toBe(1);
+
+    await seed(61, 611, "Roller Shades");
+    await db.query(
+      `update sales_quotes
+       set status = 'archived', quote_v2_status = 'priced', live_margin = 2.5, live_margin_set_by = 'jessica',
+           total_amount = 99, manufacturer_cost = 4, product_cost = 5, quote_v2_revision = 1
+       where id = $1`,
+      [id(61)],
+    );
+    const archivedRecord = await record(61, 611, 76.2);
+    const archivedPriced = await db.query<{ result: { quoteStatus: string } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4) as result",
+      [id(61), id(611), archivedRecord, id(++request)],
+    );
+    expect(archivedPriced.rows[0].result.quoteStatus).toBe("quote_not_draft");
+    const archivedQuote = await db.query<{ status: string; quote_v2_status: string; total_amount: string; quote_v2_revision: string }>(
+      "select status, quote_v2_status, total_amount::text, quote_v2_revision::text from sales_quotes where id = $1",
+      [id(61)],
+    );
+    expect(archivedQuote.rows[0]).toEqual({
+      status: "archived",
+      quote_v2_status: "priced",
+      total_amount: "99",
+      quote_v2_revision: "1",
+    });
+
+    await seed(62, 621, "Roller Shades");
+    const draftRecord = await record(62, 621, 115.2);
+    await db.query("select set_quote_live_margin($1, 2.5, 'mike', 1)", [id(62)]);
+    const draftPriced = await db.query<{ result: { quoteStatus: string; unitPrice: number } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4) as result",
+      [id(62), id(621), draftRecord, id(++request)],
+    );
+    expect(draftPriced.rows[0].result).toMatchObject({ quoteStatus: "priced", unitPrice: 288 });
+    const draftQuote = await db.query<{ status: string; quote_v2_status: string; total_amount: string }>(
+      "select status, quote_v2_status, total_amount::text from sales_quotes where id = $1",
+      [id(62)],
+    );
+    expect(draftQuote.rows[0].status).toBe("draft");
+    expect(draftQuote.rows[0].quote_v2_status).toBe("priced");
+    expect(Number(draftQuote.rows[0].total_amount)).toBeGreaterThan(10);
+  } finally {
+    await db.query("update crm_live_lookup_switch set enabled = false where vendor = 'norman'");
+  }
 });
 
 it("keeps Onyx and Sundance closed and still prices Norman after the follow-up migration", async () => {

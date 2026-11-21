@@ -2,9 +2,9 @@
 -- record_vendor_price_receipt and price_line_from_receipt keep every
 -- Onyx and Sundance check from that migration, including no_vendor_account,
 -- the manufacturer portal URL checks, and price_record_line_spec_hash.
--- This file adds portal_draft_id from receipt->>'portal_draft_id', quote
--- status recompute, and the system design-note clear. It does not replace
--- price_record_line_spec_hash.
+-- This file adds portal_draft_id from receipt->>'portal_draft_id' and the
+-- draft quote status recompute. It does not replace price_record_line_spec_hash
+-- and it does not change design notes. Those notes are left for a human.
 
 -- Current live prices use price_record_line_spec_hash.
 -- Additive. No DELETE, DROP, or TRUNCATE. Old live_lookup_spec_hash values
@@ -27,18 +27,21 @@
 -- A manual-only line, an old revision hash, or a missing price leaves the
 -- quote stale. Sent and non-draft quotes are not changed.
 --
--- Design-note backfill predicate:
---   sales_quote_designs.notes equals 'Unpriced pending Norman live lookup'
---   and that line's current price source is live_site.
--- Any other note is a human note and is not updated.
+-- The sales_quotes update (costs, totals, revision, and quote_v2_status) runs
+-- only when status = 'draft' and quote_v2_status is draft, stale, priced, or
+-- blocked. A sent or archived quote is left untouched and the result is
+-- quote_not_draft. The receipt and the line price record are still kept.
+-- Design notes are not modified.
 --
 -- Expected rows on production, from the live prices already saved for
 -- 805-0592 A ($327.00) and 805-0593 A ($277.50). This file does not apply
 -- itself to production.
 --   portal_draft_id: those quotes' receipt and workflow rows whose column is
 --     null and whose receipt JSON has portal_draft_id.
---   quote_v2_status: 805-0592 A and 805-0593 A, stale -> priced.
---   design notes: 805-0592 A (and 805-0593 A only if it has that exact text).
+--   quote_v2_status: 805-0592 A and 805-0593 A, stale -> priced, only if they
+--     are still drafts. Sent 805-0152 and archived 805-0273, 805-0274, and
+--     805-0443 are not updated.
+--   design notes: none. 805-0592 A's note is left for a human.
 
 create or replace function public.price_record_portal_draft_id(p_receipt jsonb)
 returns text
@@ -415,10 +418,6 @@ begin
   end if;
   update public.sales_quote_designs as design
   set unit_price = v_unit,
-      notes = case
-        when design.notes = 'Unpriced pending Norman live lookup' then null
-        else design.notes
-      end,
       options_json = coalesce(options_json, '{}'::jsonb) || jsonb_build_object(
         'price_source', 'live_site', 'live_margin', q.live_margin, 'live_net_unit_price', vendor_receipt.net_unit_price,
         'manual_customer_charge_policy', case when charges is null then null else 'blind-shade-install-ship-v2-setting' end
@@ -465,16 +464,23 @@ begin
   from public.sales_quote_line_items li
   where li.quote_id = q.id
     and public.live_line_current_price_source(li.id) is null;
-  next_status := case
-    when not q.quote_v2_backend then q.quote_v2_status
-    when line_count > 0 and open_count = 0 then 'priced'
-    else 'blocked'
-  end;
-  update public.sales_quotes
-  set manufacturer_cost = round(manufacturer, 2), product_cost = product, total_amount = round(total, 2),
-      quote_v2_revision = case when q.quote_v2_backend then v_revision else quote_v2_revision end,
-      quote_v2_status = next_status
-  where id = q.id;
+  if q.status = 'draft' and q.quote_v2_status in ('draft', 'stale', 'priced', 'blocked') then
+    next_status := case
+      when not q.quote_v2_backend then q.quote_v2_status
+      when line_count > 0 and open_count = 0 then 'priced'
+      else 'blocked'
+    end;
+    update public.sales_quotes
+    set manufacturer_cost = round(manufacturer, 2), product_cost = product, total_amount = round(total, 2),
+        quote_v2_revision = case when quote_v2_backend then v_revision else quote_v2_revision end,
+        quote_v2_status = next_status
+    where id = q.id
+      and status = 'draft'
+      and quote_v2_status in ('draft', 'stale', 'priced', 'blocked');
+  else
+    next_status := 'quote_not_draft';
+    v_revision := coalesce(q.quote_v2_revision, 0);
+  end if;
   actor := '00000000-0000-4000-8000-000000000050'::uuid;
   outcome := jsonb_build_object(
     'designId', d.id, 'unitPrice', v_unit, 'installation', v_install, 'shipping', v_ship,
@@ -554,7 +560,6 @@ declare
   portal_count integer := 0;
   workflow_count integer := 0;
   status_count integer := 0;
-  note_count integer := 0;
 begin
   -- portal_draft_id from receipt->>'portal_draft_id' only where the column is null.
   update public.crm_vendor_price_receipts
@@ -583,20 +588,10 @@ begin
     );
   get diagnostics status_count = row_count;
 
-  -- Exact system placeholder only, and only on a line that now has a current live price.
-  update public.sales_quote_designs d
-  set notes = null
-  from public.sales_quote_line_items li
-  where d.line_item_id = li.id
-    and d.notes = 'Unpriced pending Norman live lookup'
-    and public.live_line_current_price_source(li.id) = 'live_site';
-  get diagnostics note_count = row_count;
-
   return jsonb_build_object(
     'portal_draft_ids', portal_count,
     'workflow_portal_draft_ids', workflow_count,
-    'quote_statuses', status_count,
-    'design_notes', note_count
+    'quote_statuses', status_count
   );
 end $live$;
 

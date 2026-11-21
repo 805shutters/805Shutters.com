@@ -24,18 +24,18 @@ export function portalDraftIdFromReceipt(receipt: unknown): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
-/** Exact system placeholder. Any other design note is a human note. */
-export const UNPRICED_PENDING_NORMAN_LIVE_LOOKUP_NOTE = "Unpriced pending Norman live lookup";
+const QUOTE_STATUSES_A_LIVE_PRICE_MAY_UPDATE = new Set(["draft", "stale", "priced", "blocked"]);
 
-export function designNoteAfterLivePrice(note: string | null | undefined): string | null {
-  if (note === UNPRICED_PENDING_NORMAN_LIVE_LOOKUP_NOTE) return null;
-  return note ?? null;
+/** A live price may rewrite the quote row only for an open draft in one of these v2 statuses. */
+export function quoteLivePriceMayUpdateQuote(status: string | null, quoteV2Status: string | null): boolean {
+  return status === "draft" && quoteV2Status != null && QUOTE_STATUSES_A_LIVE_PRICE_MAY_UPDATE.has(quoteV2Status);
 }
 
 /**
- * After a live price is saved, every line that has a current price
- * (live site hash match, or a manual price) makes the quote priced.
- * A line that is still open makes the quote blocked.
+ * After a live price is saved on an open draft, every line that has a current
+ * price (live site hash match, or a manual price) makes the quote priced.
+ * A line that is still open makes the quote blocked. Sent and archived quotes
+ * are not updated.
  */
 export function quoteStatusAfterSuccessfulLivePrice(input: {
   backend: boolean;
