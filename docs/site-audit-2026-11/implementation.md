@@ -9,7 +9,7 @@ Repository: `805shutters/805Shutters.com`. Vercel project: `805`.
 
 The live homepage uses the editorial image `recent-two-story-arch-plantation-shutters-wide.jpg` on its first screen. The later carousel is a separate component. At 390px the fixed header extends to y=184 while the hero kicker begins at y=110. At 1440px the header extends to y=252 while the kicker begins at y=203.
 
-The live Yelp endpoint reports `configured: false` and returns no reviews. The supplied owner link is `https://biz.yelp.com/r2r/JRTEVI7fB_mn_HGKL6asdg`; no review text could be retrieved from it in this workspace. Never substitute invented quotations or ratings.
+The live Yelp endpoint reports `configured: false` and returns no reviews. The supplied owner link is `https://biz.yelp.com/r2r/JRTEVI7fB_mn_HGKL6asdg`. The owner subsequently supplied a screenshot containing Melitta’s November 17 review and Jen D.’s October 9 review. Exact excerpts, displayed names, dates, and individual star ratings are now used with public Yelp profile attribution. Individual review permalinks were not visible.
 
 ## Implementation
 
@@ -20,7 +20,7 @@ The live Yelp endpoint reports `configured: false` and returns no reviews. The s
 - One-day browser cache plus stale-while-revalidate for image/brand sources. Replacements used by optimized marketing images receive new content-version URLs. Unversioned legacy sources may retain the prior version for the cache period.
 - Header size measurement and responsive fallback spacing separate the first-screen copy from fixed navigation.
 - Descriptive homepage heading and proof line using existing published business facts.
-- Reviews component on homepage and reviews page accepts real attributed Yelp data; otherwise provides direct Google/Yelp links. Actual quotations are pending accessible review data.
+- Reviews component on homepage and reviews page renders two actual Yelp excerpts from the owner-provided screenshot without an additional widget or API dependency. No aggregate rating/count or self-serving review schema is added.
 - Skip-to-main link, darker accent, footer Yelp contrast, booking accessible names beginning with the visible day, and navigable product sub-items.
 - Locality-only PostalAddress. No private street address or fabricated storefront/coordinates. Preserve established schema IDs and existing verified directory profile normalization.
 - Schema reservation action points directly to `/book-consultation/`.
@@ -31,7 +31,7 @@ The live Yelp endpoint reports `configured: false` and returns no reviews. The s
 
 ## Remaining decisions / evidence
 
-1. Actual Yelp review excerpts, reviewer names, and source URLs. Provider configuration is not changed; no secrets requested in chat.
+1. Two actual Yelp excerpts are included. More excerpts and individual permalinks can be added when accessible. Provider configuration is not changed; no secrets requested in chat.
 2. Genuine city-specific installations, photos, and review attribution. Existing assets are not falsely assigned to individual cities. No fabricated local projects.
 3. Current search/lead evidence and a concrete redirect map before new city-page consolidation. September records already implemented ten consolidations and explicitly held two city shade pages; preserve those decisions. No additional noindex or page mergers in this change.
 4. A coordinated end-to-end test booking and Google/Meta event-manager verification. Automated tests cover booking recovery and conversion deduplication, but no real appointment has been submitted.

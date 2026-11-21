@@ -18640,3 +18640,4 @@ body.quote-lab-active .assistant-widget {
 .customer-review-grid figure { margin: 0; padding: 24px; border: 1px solid var(--platinum-deep); }
 .customer-review-grid blockquote { margin: 0 0 16px; }
 .customer-review-grid figcaption { font-size: 14px; }
+.customer-review-rating { color: #8b251f; letter-spacing: 3px; margin: 0 0 16px; }

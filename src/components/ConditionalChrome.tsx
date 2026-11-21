@@ -16,7 +16,7 @@ export function ConditionalChrome({ children }: { children: ReactNode }) {
 
   // Preserve the existing CRM shell while keeping it free of public website chrome.
   if (isCrmRoute) {
-    return <main id="main-content" tabIndex={-1}>{children}</main>;
+    return <main>{children}</main>;
   }
 
   // Customer quote routes show only the contract experience.
