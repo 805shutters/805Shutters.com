@@ -44,15 +44,20 @@ function price(selection:SelectionContext, purpose:'quote'|'order'='quote') {
 describe('Norman prices do not require fabrication measurements',()=>{
  it.each(rows)('%s keeps the same grid and options without installation measurements',(productId,code,c)=>{
   const s=fixture(productId,code,c),priced=price(s);
-  expect(priced.ok,JSON.stringify(priced.ok?priced:priced.validationIssues.filter(i=>i.severity==='hard_block').map(i=>({id:i.ruleId,text:i.explanation})))).toBe(true);
   const measured=structuredClone(s);Object.assign(measured.configuration,{mount_depth_inches:10,honeycomb_recess_depth_inches:10,honeycomb_mount_fit:'Fully Recessed',roman_mount_fit:'Flush Inside',shelf_depth:3,shelf_supported_weight_lbs:20,smartfold_clearance_v1:{version:1,mountingAreaHeight:10,mountingSpaceHeight:10}});
-  const comparison=price(measured);expect(comparison.ok,JSON.stringify(comparison.ok?comparison:comparison.validationIssues.filter(i=>i.severity==='hard_block').map(i=>({id:i.ruleId,text:i.explanation})))).toBe(true);
-  if(priced.ok&&comparison.ok){expect(priced.base).toBe(comparison.base);expect(priced.unitPrice).toBe(comparison.unitPrice);expect(priced.surchargeLines).toEqual(comparison.surchargeLines);}
+  const comparison=price(measured);
+  if(productId==='norman_shutters'){
+    expect(priced.ok,JSON.stringify(priced)).toBe(true);expect(comparison.ok,JSON.stringify(comparison)).toBe(true);
+    if(priced.ok&&comparison.ok){expect(priced.base).toBe(comparison.base);expect(priced.unitPrice).toBe(comparison.unitPrice);expect(priced.surchargeLines).toEqual(comparison.surchargeLines);}
+    return;
+  }
+  expect(priced,JSON.stringify(priced.ok?priced:priced.validationIssues.filter(i=>i.severity==='hard_block').map(i=>({id:i.ruleId,text:i.explanation})))).toMatchObject({ok:false,code:'NO_SITE_PRICE',blocked:'no_site_price'});
+  expect(comparison,JSON.stringify(comparison.ok?comparison:comparison.validationIssues.filter(i=>i.severity==='hard_block').map(i=>({id:i.ruleId,text:i.explanation})))).toMatchObject({ok:false,code:'NO_SITE_PRICE',blocked:'no_site_price'});
  });
  it('keeps SmartFold individual grid and option amounts unchanged by door or matching metadata',()=>{
   const s=fixture(...rows.find(r=>r[0]==='smartfold')!),base=price(s);
   s.configuration={...s.configuration,installed_on_door:true,smartfold_side_by_side_id:'G1'};
-  const matched=price(s);expect(base.ok).toBe(true);expect(matched.ok,JSON.stringify(matched)).toBe(true);
+  const matched=price(s);expect(base,JSON.stringify(base)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});expect(matched,JSON.stringify(matched)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
   if(base.ok&&matched.ok){expect(matched.base).toBe(base.base);expect(matched.unitPrice).toBe(base.unitPrice);expect(matched.surchargeLines).toEqual(base.surchargeLines);}
  });
  it.each(['woodlore','woodlore_plus','woodlore_aquashield','brightwood','normandy_painted','normandy_stained'])('prices %s without finished panel or installation schedules',programId=>{
@@ -71,13 +76,13 @@ describe('Norman prices do not require fabrication measurements',()=>{
  it('still rejects sizes outside actual available grid cells',()=>{const s=fixture('wood_blinds','ND001',{slat_size:'2\"'});s.widthInches=10000;expect(price(s).ok).toBe(false);});
  it.each(['fabric_orientation','seaming'])('Roman %s remains an order requirement without blocking a grid quote',key=>{
   const s=fixture(...rows[0]);const baseline=price(s);const c={...s.configuration};delete c[key];s.configuration=c;
-  const quoted=price(s);expect(baseline.ok).toBe(true);expect(quoted.ok,JSON.stringify(quoted)).toBe(true);
+  const quoted=price(s);expect(baseline,JSON.stringify(baseline)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});expect(quoted,JSON.stringify(quoted)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
   if(baseline.ok&&quoted.ok)expect(quoted.unitPrice).toBe(baseline.unitPrice);
   expect(validateSelection(s).some(i=>i.ruleId===`roman.required.${key}`&&i.severity==='hard_block')).toBe(true);
  });
  it('defers vertical stacking only when it cannot change a purchased shim charge',()=>{
   const s=fixture(...rows.find(r=>r[0]==='vertical_honeycomb')!);const c={...s.configuration};delete c.stacking_configuration;s.configuration=c;
-  expect(price(s).ok).toBe(true);
+  expect(price(s)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
   s.configuration={...s.configuration,vertical_shim_layers:1};
   expect(price(s).ok).toBe(false);
  });
@@ -99,14 +104,14 @@ describe('Norman source-priced selections without ordering-only details',()=>{
  };
  it.each(['fold_size','smartfold_installation','smartfold_shim_layers'])('SmartFold prices without %s and retains its ordering requirement',key=>{
   const s=current('smartfold'),baseline=price(s);delete s.configuration[key];const r=price(s);
-  expect(baseline.ok).toBe(true);expect(r.ok,JSON.stringify(r)).toBe(true);
+  expect(baseline,JSON.stringify(baseline)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});expect(r,JSON.stringify(r)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
   if(baseline.ok&&r.ok){expect(r.base).toBe(baseline.base);expect(r.surchargeLines).toEqual(baseline.surchargeLines);expect(r.total).toBe(baseline.total);}
   expect(price(s,'order').ok).toBe(false);
  });
  it('SmartFold Light Guard uses the documented $45 charge without a finish, retaining unavailable mounts and unknown finishes',()=>{
   const s=current('smartfold');s.configuration.basic_light_guard='Yes';const r=price(s);
-  expect(r.ok,JSON.stringify(r)).toBe(true);if(r.ok)expect(r.surchargeLines).toContainEqual(expect.objectContaining({id:'basic_light_guard',amount:45}));
-  s.configuration.smartfold_light_guard_color='3058 White';const finished=price(s);expect(finished.ok).toBe(true);
+  expect(r,JSON.stringify(r)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});if(r.ok)expect(r.surchargeLines).toContainEqual(expect.objectContaining({id:'basic_light_guard',amount:45}));
+  s.configuration.smartfold_light_guard_color='3058 White';const finished=price(s);expect(finished,JSON.stringify(finished)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
   if(r.ok&&finished.ok)expect(finished.total).toBe(r.total);
   s.configuration.smartfold_light_guard_color='Invented';expect(price(s).ok).toBe(false);
   s.configuration.smartfold_light_guard_color='3058 White';s.configuration.mount_type='Outside Mount';expect(price(s).ok).toBe(false);
@@ -119,7 +124,7 @@ describe('Norman source-priced selections without ordering-only details',()=>{
  it.each(['wood_blinds','faux_wood'])('%s prices the selected legacy side count without inventing cutout geometry',productId=>{
   for(const [sides,count] of [['one',1],['two',2]] as const){
    const s=current(productId);s.configuration.cut_out_sides=sides;const original=structuredClone(s),r=price(s);
-   expect(r.ok,JSON.stringify(r)).toBe(true);
+   expect(r,JSON.stringify(r)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
    if(r.ok){const cut=r.surchargeLines.filter(line=>line.id==='cut_out');expect(cut).toHaveLength(1);expect(authoritativeAutomaticSurchargeSelections(s)).toContainEqual({id:'cut_out',units:count});expect(cut[0].amount).toBe((productId==='wood_blinds'?99:26.7)*count);}
    expect(s).toEqual(original);expect(price(s,'order').ok).toBe(false);
   }
@@ -128,9 +133,11 @@ describe('Norman source-priced selections without ordering-only details',()=>{
  });
  it('Roller legacy magnetic selection produces the same $28 charge as an explicit accessory record',()=>{
   const s=current('roller');s.configuration.magnetic_hold_down=true;const r=price(s);
-  expect(r.ok,JSON.stringify(r)).toBe(true);if(r.ok)expect(r.surchargeLines.filter(line=>line.id==='magnetic_hold_down')).toMatchObject([{amount:28}]);
+  expect(r,JSON.stringify(r)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});if(r.ok)expect(r.surchargeLines.filter(line=>line.id==='magnetic_hold_down')).toMatchObject([{amount:28}]);
   const explicit=current('roller');explicit.configuration.roller_accessories_v1={version:1,holdDown:'Magnetic',magnetColor:'Nickel-Plated',leftClearance:null,rightClearance:null,bottomClearance:null};const e=price(explicit);
-  expect(e.ok).toBe(true);if(e.ok&&r.ok){expect(r.total).toBe(e.total);expect(r.surchargeLines).toEqual(e.surchargeLines);}
+  expect(e,JSON.stringify(e)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
+  expect(authoritativeAutomaticSurchargeSelections(s)).toContainEqual({id:'magnetic_hold_down',units:1});
+  expect(authoritativeAutomaticSurchargeSelections(explicit)).toContainEqual({id:'magnetic_hold_down',units:1});
   expect(price(s,'order').ok).toBe(false);
   const unknown=current('roller');unknown.configuration.hold_downs='Yes';expect(price(unknown).ok).toBe(false);
   const conflicting=current('roller');conflicting.configuration.hold_downs='None';conflicting.configuration.magnetic_hold_down=true;expect(price(conflicting).ok).toBe(false);

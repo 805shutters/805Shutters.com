@@ -50,7 +50,8 @@ export type PriceErrorCode =
   | "MANUAL_PRICE_REQUIRED"
   | "CUSTOMER_RETAIL_UNDEFINED"
   | "PRODUCT_UNAVAILABLE"
-  | "LIVE_LOOKUP_REQUIRED";
+  | "LIVE_LOOKUP_REQUIRED"
+  | "NO_SITE_PRICE";
 
 export type SurchargeSelection = {
   id: string;

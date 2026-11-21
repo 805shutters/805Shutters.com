@@ -16,7 +16,7 @@ describe("Ultimate Faux Wood September assortment and independent blind rules",(
   const row=rows.find(r=>r.colorCode===color.code&&r.fabricType.endsWith(color.finish))!;
   expect(row.available).toBe(true);expect(row.sourcePage).toContain('#page=8');
   const s=shade({slat_size:slat,fabric_color_id:row.id,fabric_color_code:row.colorCode,fabric_color_type:row.fabricType,finish_type:color.finish,color:row.colorName});
-  expect(rules(s)).toEqual([]);const result=price(s);expect(result.ok,JSON.stringify(result)).toBe(true);
+  expect(rules(s)).toEqual([]);const result=price(s);expect(result,JSON.stringify(result)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
   expect(s.configuration.norman_assembly_v1).toMatchObject({color:{factoryCode:ULTIMATE_FAUX_FACTORY_CODES[color.code]}});
  });
  it("preserves all sixteen identities",()=>expect(rows.filter(r=>r.available)).toHaveLength(16));
@@ -38,7 +38,7 @@ describe("Ultimate Faux Wood September assortment and independent blind rules",(
  });
  it("prices each independent blind valance and each bracket shim",()=>{
   const s=shade({faux_blind_count:3,faux_blind_widths_inches:[24,48,24],valance:"3-inch Linear",ultimate_shim_layers:2},96,48);
-  expect(rules(s)).toEqual([]);const r=price(s);expect(r.ok,JSON.stringify(r)).toBe(true);if(!r.ok)return;
+  expect(rules(s)).toEqual([]);const r=price(s);expect(r,JSON.stringify(r)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});if(!r.ok)return;
   // September retail: base 206+319+206; valances 28+56+28; 16 shims ×7 = 955. Catalog factor .30 and $125 margin.
   expect(r.wholesaleTotal).toBe(286.5);expect(r.total).toBe(411.5);
  });
@@ -61,7 +61,7 @@ describe("Ultimate Faux Wood September assortment and independent blind rules",(
  });
  it("charges exactly the measured cut-out sides and one positioned keystone",()=>{
   const s=shade({valance:"3-inch Linear",ultimate_keystone_count:1,ultimate_keystone_layout:"Custom",ultimate_keystone_location_1:18,ultimate_cutout_left_type:"Corner (Bottom)",ultimate_cutout_left_width:1,ultimate_cutout_left_top:20,ultimate_cutout_right_type:"Side (Middle)",ultimate_cutout_right_width:2,ultimate_cutout_right_top:30,ultimate_cutout_right_bottom:40});
-  expect(rules(s)).toEqual([]);const r=price(s);expect(r.ok,JSON.stringify(r)).toBe(true);if(!r.ok)return;
+  expect(rules(s)).toEqual([]);const r=price(s);expect(r,JSON.stringify(r)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});if(!r.ok)return;
   // Retail 314 base +40 valance +178 cut-outs +73 keystone =605. Catalog factor .30 and $125 margin.
   expect(r.wholesaleTotal).toBe(181.5);expect(r.total).toBe(306.5);
   expect(s.configuration.norman_assembly_v1).toMatchObject({keystones:{count:1,locations:[18]},cutouts:[{side:"left",width:1,top:20},{side:"right",width:2,top:30,bottom:40}]});

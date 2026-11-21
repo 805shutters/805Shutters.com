@@ -68,26 +68,31 @@ function priced(context: SelectionContext) {
 }
 
 describe("Norman dealer cost factor", () => {
-  it("uses the catalog 0.30 factor as the only standard cost factor", () => {
+  it("keeps the old catalog factor on file and does not apply it", () => {
     const catalogFactors = [
       ...new Set(normanCatalog.products.map((product) => product.dealerFactor)),
     ];
     expect(catalogFactors).toEqual([0.3]);
-    expect(NORMAN_805_DEALER_POLICY.dealerFactors.standard).toBe(0.3);
-    expect(
-      NORMAN_805_DEALER_POLICY.schedules.standard.effectivePortalFactor,
-    ).toBe(normanCatalog.products[0].dealerFactor);
-    expect(NORMAN_805_DEALER_POLICY.dealerFactors.shutterLeadTime).toBe(0.297);
-    expect(portalFixture.shutterLeadTime.effectivePortalFactor).toBe(0.297);
     expect(portalFixture.standard.effectivePortalFactor).toBe(0.33);
-    expect(NORMAN_805_DEALER_POLICY.dealerFactors.standard).toBe(
-      getProduct("roller")?.dealerFactor,
-    );
+    expect(portalFixture.shutterLeadTime.effectivePortalFactor).toBe(0.297);
+    const context = selection("roller", "roller_cordless_fabric_price_group_1_pg1", {
+      mount_type: "Inside Mount", roller_region_scope: "ca_ma", roller_application: "Single Shade",
+      lift_system: "Cordless", fabric_collection: "Brook", fabric_color_code: "F1120",
+      roller_top_treatment: "No Top Treatment", roller_tube: "All Tubes",
+    });
+    const blocked = priceQuoteV2Selection({
+      selection: context,
+      priceInput: { productId: "roller", programId: context.programId ?? undefined, widthInches: 24, heightInches: 36, quantity: 1 },
+      includeInternalCost: true,
+    });
+    expect(blocked).toMatchObject({ ok: false, code: "NO_SITE_PRICE", blocked: "no_site_price" });
+    expect(blocked).not.toHaveProperty("unitPrice");
+    expect(JSON.stringify(blocked)).not.toMatch(/0\.30|0\.33|76\.2/);
   });
 
-  it("prices a Norman Brook roller 24x36 at $76.20", () => {
-    const result = priced(
-      selection("roller", "roller_cordless_fabric_price_group_1_pg1", {
+  it("does not price a Norman Brook roller from list x 0.30", () => {
+    const result = priceQuoteV2Selection({
+      selection: selection("roller", "roller_cordless_fabric_price_group_1_pg1", {
         mount_type: "Inside Mount",
         roller_region_scope: "ca_ma",
         roller_application: "Single Shade",
@@ -97,15 +102,13 @@ describe("Norman dealer cost factor", () => {
         roller_top_treatment: "No Top Treatment",
         roller_tube: "All Tubes",
       }),
-    );
-    expect(result.base).toBe(254);
-    expect(result.wholesaleBase).toBe(76.2);
-    expect(result.internalCost?.productCostTotal).toBe(76.2);
-    expect(result.internalCost?.effectiveDealerFactor).toBe(0.3);
-    expect(result.unitPrice).toBe(254);
+      priceInput: { productId: "roller", programId: "roller_cordless_fabric_price_group_1_pg1", widthInches: 24, heightInches: 36 },
+    });
+    expect(result).toMatchObject({ ok: false, code: "NO_SITE_PRICE" });
+    expect(result).not.toHaveProperty("wholesaleBase");
   });
 
-  it("prices a Bali roller at list x 0.30", () => {
+  it("does not price a Bali roller from list x 0.30", () => {
     const catalog = priceDesign({
       productId: "roller",
       fabric: "Bali",
@@ -115,9 +118,9 @@ describe("Norman dealer cost factor", () => {
     expect(catalog).toMatchObject({ ok: true });
     if (!catalog.ok) return;
     expect(catalog.programId).toBe("roller_cordless_fabric_price_group_2_pg2");
-    expect(catalog.wholesaleBase).toBe(Math.round(catalog.base * 0.3 * 100) / 100);
-    const sameProgram = priced(
-      selection("roller", "roller_cordless_fabric_price_group_2_pg2", {
+    expect(catalog.base).toBeGreaterThan(0);
+    const sameProgram = priceQuoteV2Selection({
+      selection: selection("roller", "roller_cordless_fabric_price_group_2_pg2", {
         mount_type: "Inside Mount",
         roller_region_scope: "ca_ma",
         roller_application: "Single Shade",
@@ -127,10 +130,9 @@ describe("Norman dealer cost factor", () => {
         roller_top_treatment: "No Top Treatment",
         roller_tube: "All Tubes",
       }),
-    );
-    expect(sameProgram.base).toBe(catalog.base);
-    expect(sameProgram.wholesaleBase).toBe(catalog.wholesaleBase);
-    expect(sameProgram.internalCost?.effectiveDealerFactor).toBe(0.3);
+      priceInput: { productId: "roller", programId: "roller_cordless_fabric_price_group_2_pg2", widthInches: 24, heightInches: 36 },
+    });
+    expect(sameProgram).toMatchObject({ ok: false, code: "NO_SITE_PRICE", blocked: "no_site_price" });
   });
 
   it("prices a motorized honeycomb with wireless charging wand 40x46 at $400.20", () => {
@@ -154,8 +156,8 @@ describe("Norman dealer cost factor", () => {
         units: 1,
       },
     ];
-    const result = priced(
-      selection(
+    const result = priceQuoteV2Selection({
+      selection: selection(
         "honeycomb",
         "honeycomb_3_8in_cordless_single_and_3_4in_single",
         {
@@ -174,39 +176,16 @@ describe("Norman dealer cost factor", () => {
         },
         { widthInches: 40, heightInches: 46 },
       ),
-    );
-    expect(result.base).toBe(424);
-    const motor = result.surchargeLines.find(
-      (line) => line.id === "motor:smart_motorization:motor",
-    );
-    const wand = result.surchargeLines.find(
-      (line) => line.id === "motor:smart_motorization:wireless_charging_wand",
-    );
-    const remote = result.surchargeLines.find(
-      (line) => line.id === "motor:smart_motorization:basic_remote_black",
-    );
-    expect(motor).toMatchObject({ amount: 482, wholesaleAmount: 144.6 });
-    expect(wand).toMatchObject({ amount: 428, wholesaleAmount: 128.4 });
-    expect(remote).toMatchObject({ amount: 75, wholesaleAmount: 22.5 });
-    // Base $424 + motor $482 + wand $428 = $1,334 list. At 0.30 that merchandise
-    // is $400.20. A valid motorized honeycomb also requires the $75 remote.
-    expect(
-      Math.round(
-        ((result.wholesaleBase ?? 0) +
-          (motor?.wholesaleAmount ?? 0) +
-          (wand?.wholesaleAmount ?? 0)) *
-          100,
-      ) / 100,
-    ).toBe(400.2);
-    expect(result.unitPrice).toBe(1409);
-    expect(result.wholesaleUnitPrice).toBe(422.7);
-    expect(result.internalCost?.productCostTotal).toBe(422.7);
-    expect(result.internalCost?.effectiveDealerFactor).toBe(0.3);
+      priceInput: { productId: "honeycomb", widthInches: 40, heightInches: 46 },
+    });
+    expect(result.ok).toBe(false);
+    expect(result).not.toHaveProperty("unitPrice");
+    expect(JSON.stringify(result)).not.toContain("400.2");
   });
 
-  it("keeps the shutter lead-time schedule at 0.297 for a non-shutter product", () => {
-    const result = priced(
-      selection(
+  it("does not apply the 0.297 shutter lead-time factor to a non-shutter product", () => {
+    const result = priceQuoteV2Selection({
+      selection: selection(
         "roller",
         "roller_cordless_fabric_price_group_1_pg1",
         {
@@ -221,10 +200,10 @@ describe("Norman dealer cost factor", () => {
         },
         { options: { schedule_discount_percent: 28.5 } },
       ),
-    );
-    expect(result.base).toBe(254);
-    expect(result.wholesaleBase).toBe(75.44);
-    expect(result.internalCost?.effectiveDealerFactor).toBe(0.297);
+      priceInput: { productId: "roller", programId: "roller_cordless_fabric_price_group_1_pg1", widthInches: 24, heightInches: 36 },
+    });
+    expect(result).toMatchObject({ ok: false, code: "NO_SITE_PRICE", blocked: "no_site_price" });
+    expect(result).not.toHaveProperty("wholesaleBase");
   });
 
   it("prices Norman shutters from square-foot cost", () => {

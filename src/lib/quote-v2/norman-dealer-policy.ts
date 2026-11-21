@@ -46,11 +46,10 @@ export type NormanDealerSchedule = Readonly<{
  * belongs to a different dealer account, not 805. Nothing in this runtime policy derives
  * from that artifact.
  *
- * The standard schedule is the catalog dealer factor (0.30 × list) for
- * non-shutter products, add-ons, and valances. The July fixture's observed
- * 0.33 standard factor is not applied. The shutter lead-time schedule stays
- * at the fixture's 0.297. Norman shutter product cost does not follow list ×
- * either factor; shutter programs price from their own square-foot cost.
+ * The standard 0.30 and shutter-lead-time 0.297 figures below are historical
+ * portal observations. Quote pricing does not multiply Norman list by either
+ * factor. Non-shutter Norman cost is the website price. Shutters stay on
+ * their stored square-foot rates.
  */
 export const NORMAN_805_DEALER_POLICY = Object.freeze({
   id: "norman-805-dealer-policy-2026-07-21",

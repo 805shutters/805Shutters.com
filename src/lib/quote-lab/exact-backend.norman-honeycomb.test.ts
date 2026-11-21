@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
+import { priceDesign } from "@/lib/quote/pricing";
+import { honeycombDualFabrics } from "@/lib/quote-v2/norman-honeycomb-dual";
 import { repriceExactQuoteBuilderForServerDate } from "./exact-backend";
 import { expectedHoneycombProgramId, expectedVerticalHoneycombProgramId } from "@/lib/quote-v2/catalog";
 import { normanHoneycombV2Source } from "@/lib/quote-v2/generated/norman-honeycomb-v2.generated";
 import { customerConfigurationFromSelection, v2CustomerConfigurationOptions } from "@/lib/crm/sales-quote-v2-customer-configuration";
 import { getQuoteDesignDetails } from "@mts/lib/quoteDesignDetails";
 import { getMtsProductColorRows } from "@mts/lib/productColorCatalog";
+
+function noSite(result: {ok:boolean}, label?: unknown) {
+ expect(result, typeof label === "string" ? label : JSON.stringify(result)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
+ expect(result).not.toHaveProperty("unitPrice");
+}
 
 function price(q: ReturnType<typeof dualQuote>, date = "2026-09-19") {
  const p=repriceExactQuoteBuilderForServerDate(q,date);
@@ -34,7 +41,7 @@ describe("Norman Honeycomb multiple-fabric authoritative pricing",()=>{
     for(const rear of [false,true]){
      const q=dualQuote(rear?color.family:"Light Filtering",rear?"Light Filtering":color.family,cell);
      q.designs[0].options_json={...q.designs[0].options_json,[rear?"back_fabric_color_code":"fabric_color_code"]:color.customerColorCode};
-     const d=price(q);expect(d.result.ok,`${color.family}/${color.customerColorCode}/${cell}/${rear?"rear":"front"}: ${JSON.stringify(d.result)}`).toBe(true);
+     const d=price(q);noSite(d.result, `${color.family}/${color.customerColorCode}/${cell}/${rear?"rear":"front"}: ${JSON.stringify(d.result)}`);
     }
     routes++;
    }
@@ -59,10 +66,10 @@ describe("Norman Honeycomb multiple-fabric authoritative pricing",()=>{
   ["Designer Fabric (RD) (Ashton)","Light Filtering",1447.4],
  ])("prices the exact grids for %s plus %s",(front,rear,total)=>{
   const q=dualQuote(rear,front);q.lines[0].quantity=3;
-  const d=price(q);expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
-  if(!d.result.ok)throw new Error("Expected price");
-  expect(d.result.total).toBeCloseTo(total*3,2);expect(d.result.configurationUnits).toBe(2);
-  expect(d.result.componentTotals.catalogPerWindow).toBe(total);
+  const d=price(q);noSite(d.result, JSON.stringify(d.result));
+  
+  // Retired quote dollar: expect(d.result.total).toBeCloseTo(total*3,2);expect(d.result.configurationUnits).toBe(2);
+  // Retired quote dollar: expect(d.result.componentTotals.catalogPerWindow).toBe(total);
   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({type:"honeycomb_smartfit_dual",fabrics:[{family:front},{family:rear}]});
   const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};
   expect(price(reopened)).toEqual(d);
@@ -73,7 +80,7 @@ describe("Norman Honeycomb multiple-fabric authoritative pricing",()=>{
  it.each([[8.5,12,true],[8.4375,12,false],[50,86,true],[50.0625,60,false],[36,86.0625,false],[72,86,true],[72.0625,60,false]])("enforces both shades at %s by %s",(w,h,ok)=>{
   const q=dualQuote(w===50||w===50.0625?"Breeze AB0658":"Light Filtering");
   q.lines[0].width_whole=Math.floor(w);q.lines[0].width_fraction=w%1===0.5?"1/2":w%1?`${Math.round(w%1*16)}/16`:"0";q.lines[0].height_whole=Math.floor(h);q.lines[0].height_fraction=h%1?`${Math.round(h%1*16)}/16`:"0";
-  expect(price(q).result.ok).toBe(ok);
+  const sized=price(q).result;if(ok)noSite(sized);else{expect(sized.ok).toBe(false);if(!sized.ok)expect(sized).not.toMatchObject({code:'NO_SITE_PRICE'});}
  });
  it("does not let a forged rear class evade the Breeze 50-inch limit",()=>{
   const q=dualQuote("Breeze AB0658");q.lines[0].width_whole=60;
@@ -81,7 +88,7 @@ describe("Norman Honeycomb multiple-fabric authoritative pricing",()=>{
   expect(price(q).result.ok).toBe(false);
  });
  it("retains the prior date behavior without rewriting historical quote snapshots",()=>{
-  expect(price(dualQuote("Room Darkening"),"2026-09-18").result).toMatchObject({ok:true,total:1174});
+  noSite(price(dualQuote("Room Darkening"),"2026-09-18").result); // catalog list was total:1174;
  });
  it("blocks unsupported horizontal Day and Night price assumptions",()=>{
   const q=dualQuote("Room Darkening");q.designs[0].lift_system="Cordless Day & Night";
@@ -91,10 +98,10 @@ describe("Norman Honeycomb multiple-fabric authoritative pricing",()=>{
  it("charges both full-size SmartFit shades and the dual operating surcharge",()=>{
   const p=repriceExactQuoteBuilderForServerDate(dualQuote(),"2026-09-19");
   if(!("backend" in p)||p.backend!=="v2")throw new Error("Expected V2");
-  expect(p.designs[0].result.ok,JSON.stringify(p.designs[0].result)).toBe(true);
-  if(!p.designs[0].result.ok)throw new Error("Expected price");
-  // September retail PDF p10: 36 x 60 is $415 per fabric; Dual SmartFit is $178.
-  expect(p.designs[0].result.total).toBe(415+415+178);
+  noSite(p.designs[0].result, JSON.stringify(p.designs[0].result));
+  const dual=honeycombDualFabrics(p.designs[0].selection)!;
+  const list=priceDesign({productId:"honeycomb",programId:dual.priceComponents[0].programId,widthInches:36,heightInches:60,honeycombFabricComponents:dual.priceComponents,surcharges:[{id:"smartfit_dual_shade"}]},"2026-09-19");
+  expect(list).toMatchObject({ok:true,total:415+415+178});
  });
  it("rejects a forged second color instead of pricing one shade",()=>{
   const q=dualQuote();q.designs[0].options_json={...q.designs[0].options_json,back_fabric_color_code:"C9999"};
@@ -105,9 +112,10 @@ describe("Norman Honeycomb multiple-fabric authoritative pricing",()=>{
  it("prices the room-darkening premium only on the selected rear shade",()=>{
   const p=repriceExactQuoteBuilderForServerDate(dualQuote("Room Darkening"),"2026-09-19");
   if(!("backend"in p)||p.backend!=="v2")throw new Error("Expected V2");
-  expect(p.designs[0].result.ok,JSON.stringify(p.designs[0].result)).toBe(true);
-  if(!p.designs[0].result.ok)throw new Error("Expected price");
-  expect(p.designs[0].result.total).toBe(415+498+178);
+  noSite(p.designs[0].result, JSON.stringify(p.designs[0].result));
+  const dual=honeycombDualFabrics(p.designs[0].selection)!;
+  const list=priceDesign({productId:"honeycomb",programId:dual.priceComponents[0].programId,widthInches:36,heightInches:60,honeycombFabricComponents:dual.priceComponents,surcharges:[{id:"smartfit_dual_shade"},{id:"room_darkening"}]},"2026-09-19");
+  expect(list).toMatchObject({ok:true,total:415+498+178});
  });
 });
 
@@ -117,9 +125,9 @@ describe("Norman Patio Door Vertical routing",()=>{
   const q=dualQuote();q.designs[0].lift_system="Patio Door Vertical";
   q.designs[0].options_json={...q.designs[0].options_json,honeycomb_application:"Patio Door Vertical",split_splice:"Left Stack",vertical_mounting:"Installation Brackets"};
   const d=price(q);
-  expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+  noSite(d.result, JSON.stringify(d.result));
   expect(d.selection.productId).toBe("vertical_honeycomb");
-  if(d.result.ok)expect(d.result.total).toBe(869);
+  // Retired quote dollar: if(d.result.ok)expect(d.result.total).toBe(869);
  });
 });
 
@@ -137,26 +145,26 @@ describe("Vertical Honeycomb assortment and hardware",()=>{
    const q=verticalQuote(color.family,cell);q.designs[0].options_json={...q.designs[0].options_json,fabric_color_code:color.customerColorCode};
    const rows=getMtsProductColorRows("Honeycomb Shades",{quote_v2_backend:true,honeycomb_application:"Patio Door Vertical",lift_system:"Patio Door Vertical",cell_size:cell});
    expect(rows.some(r=>(r.colorCode===color.customerColorCode||r.colorCode===color.factoryColorCode)&&r.programId===program),`${color.customerColorCode}/${cell} picker`).toBe(true);
-   const d=price(q);expect(d.result.ok,`${color.customerColorCode}/${cell}: ${JSON.stringify(d.result)}`).toBe(true);expect(d.selection.programId).toBe(program);routes++;
+   const d=price(q);noSite(d.result, `${color.customerColorCode}/${cell}: ${JSON.stringify(d.result)}`);expect(d.selection.programId).toBe(program);routes++;
   }
   expect(routes).toBe(266);
  }, 20_000);
  it.each([["Light Filtering",869],["Room Darkening",1042.8],["Sheer",1042.8],["Flame Resistant (LF)",1519]])("prices %s from the vertical retail page",(family,total)=>{
-  const d=price(verticalQuote(family));expect(d.result).toMatchObject({ok:true,total});
+  const d=price(verticalQuote(family));noSite(d.result); // catalog list was total;
  });
  it.each([[39,2],[39.0625,3],[66,3],[66.0625,4],[93,4],[93.0625,5],[120,5],[120.0625,6]])("derives bracket count at width %s",(w,count)=>{
   const q=verticalQuote();q.lines[0].width_whole=Math.floor(w);q.lines[0].width_fraction=w%1?"1/16":"0";q.designs[0].options_json={...q.designs[0].options_json,vertical_shim_layers:2};
-  const d=price(q);expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+  const d=price(q);noSite(d.result, JSON.stringify(d.result));
   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({mountingBracketCount:count,floorBracketCount:1,shimQuantity:2*(count+1)});
  });
  it("charges only derived shims and preserves its server-owned assembly after reopening",()=>{
   const q=verticalQuote();q.designs[0].options_json={...q.designs[0].options_json,vertical_shim_layers:2,norman_assembly_v1:{shimQuantity:999}};
-  const d=price(q);expect(d.result).toMatchObject({ok:true,total:911});
+  const d=price(q);noSite(d.result); // catalog list was total:911;
   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({shimQuantity:6,finishedWidth:35.8125,finishedHeight:59.375});
   const saved=JSON.parse(JSON.stringify(q));saved.designs[0].options_json={...saved.designs[0].options_json,...d.selection.configuration};expect(price(saved)).toEqual(d);
  });
  it.each([[29.9375,60,false],[30,24,true],[146,120,true],[146.0625,60,false],[36,120.0625,false]])("enforces %s by %s",(w,h,ok)=>{
-  const q=verticalQuote();q.lines[0].width_whole=Math.floor(w);q.lines[0].width_fraction=w%1?`${Math.round(w%1*16)}/16`:"0";q.lines[0].height_whole=Math.floor(h);q.lines[0].height_fraction=h%1?`${Math.round(h%1*16)}/16`:"0";expect(price(q).result.ok).toBe(ok);
+  const q=verticalQuote();q.lines[0].width_whole=Math.floor(w);q.lines[0].width_fraction=w%1?`${Math.round(w%1*16)}/16`:"0";q.lines[0].height_whole=Math.floor(h);q.lines[0].height_fraction=h%1?`${Math.round(h%1*16)}/16`:"0";const sized=price(q).result;if(ok)noSite(sized);else{expect(sized.ok).toBe(false);if(!sized.ok)expect(sized).not.toMatchObject({code:'NO_SITE_PRICE'});}
  });
  it("rejects horizontal operating systems on the vertical grid",()=>{const q=verticalQuote();q.designs[0].lift_system="SmartRise Cordless";expect(price(q).result.ok).toBe(false);});
  it("rejects shims with pre-drilled mounting",()=>{const q=verticalQuote();q.designs[0].options_json={...q.designs[0].options_json,vertical_mounting:"Pre-Drilled Headrail",vertical_shim_layers:1};expect(price(q).result.ok).toBe(false);});
@@ -165,7 +173,7 @@ describe("Vertical Honeycomb assortment and hardware",()=>{
 describe("Vertical Honeycomb splice and unavailable selections",()=>{
  it.each([[97.5,60,false],[97.625,60,true],[100,103,false],[100,100,true]])("derives the source splice threshold at %s by %s",(w,h,spliced)=>{
   const q=verticalQuote();q.lines[0].width_whole=Math.floor(w);q.lines[0].width_fraction=w%1===.5?"1/2":w%1?"5/8":"0";q.lines[0].height_whole=h;
-  const d=price(q);expect(d.result.ok,JSON.stringify(d.result)).toBe(true);expect(d.selection.configuration.norman_assembly_v1).toMatchObject({headrailSpliced:spliced,includedKeystoneCount:spliced?1:0});
+  const d=price(q);noSite(d.result, JSON.stringify(d.result));expect(d.selection.configuration.norman_assembly_v1).toMatchObject({headrailSpliced:spliced,includedKeystoneCount:spliced?1:0});
  });
  it.each(["Windsong AB0632","Breeze AB0658","Solus","Designer Fabric (LF) (Ashton)"])("rejects unavailable vertical %s",family=>expect(price(verticalQuote(family)).result.ok).toBe(false));
  it("rejects an unknown exact vertical color",()=>{const q=verticalQuote();q.designs[0].options_json={...q.designs[0].options_json,fabric_color_code:"C9999"};expect(price(q).result.ok).toBe(false);});
@@ -180,20 +188,20 @@ function horizontalQuote(options: Record<string,unknown> = {}, lift="SmartRise C
 describe("Honeycomb accessory charges and persistence",()=>{
  it("charges both poles, the separate Light Guard, and width-derived shims",()=>{
   const q=horizontalQuote({poles:"Pole with Attachment",honeycomb_pole_length:"60",honeycomb_pole_quantity:"2",honeycomb_light_guard:"Yes",honeycomb_light_guard_color:"3058 White",honeycomb_shim_layers:"2"});
-  const d=price(q);expect(d.result).toMatchObject({ok:true,total:666});
+  const d=price(q);noSite(d.result); // catalog list was total:666;
   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({hardware:{mountingBracketCount:2,shimQuantity:4,pole:{quantity:2,length:"60",head:"Movable",holderIncluded:true}}});
   const saved=JSON.parse(JSON.stringify(q));saved.designs[0].options_json={...saved.designs[0].options_json,...d.selection.configuration};expect(price(saved)).toEqual(d);
   expect(v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection)).join(" ")).toContain("Pole length: 60");
  });
  it("charges a Light Guard and an attachment independently despite their shared retail price identifier",()=>{
-  expect(price(horizontalQuote({poles:"Attachment Only",honeycomb_pole_quantity:1,honeycomb_light_guard:"Yes",honeycomb_light_guard_color:"3212 Black Ink"})).result).toMatchObject({ok:true,total:505});
+  noSite(price(horizontalQuote({poles:"Attachment Only",honeycomb_pole_quantity:1,honeycomb_light_guard:"Yes",honeycomb_light_guard_color:"3212 Black Ink"})).result); // catalog list was total:505;
  });
  it("charges magnetic hold-downs only once per shade",()=>{
-  const q=horizontalQuote({hold_downs:"Magnetic",honeycomb_magnet_color:"Black",honeycomb_shim_layers:2});q.designs[0].mount_type="Outside Mount";expect(price(q).result).toMatchObject({ok:true,total:471});
+  const q=horizontalQuote({hold_downs:"Magnetic",honeycomb_magnet_color:"Black",honeycomb_shim_layers:2});q.designs[0].mount_type="Outside Mount";noSite(price(q).result); // catalog list was total:471;
  });
  it.each([[43,2],[43.0625,3],[72,3],[72.0625,4],[101,4],[101.0625,5]])("derives cordless mounting brackets at %s",(w,count)=>{
   const q=horizontalQuote({honeycomb_shim_layers:1});q.lines[0].width_whole=Math.floor(w);q.lines[0].width_fraction=w%1?"1/16":"0";
-  const d=price(q);expect(d.result.ok,JSON.stringify(d.result)).toBe(true);expect(d.selection.configuration.norman_assembly_v1).toMatchObject({hardware:{mountingBracketCount:count,shimQuantity:count}});
+  const d=price(q);noSite(d.result, JSON.stringify(d.result));expect(d.selection.configuration.norman_assembly_v1).toMatchObject({hardware:{mountingBracketCount:count,shimQuantity:count}});
  });
  it.each([
   [{poles:"Pole with Attachment",honeycomb_pole_length:48}],
@@ -203,7 +211,7 @@ describe("Honeycomb accessory charges and persistence",()=>{
   [{hold_downs:"Magnetic"}],
  ])("rejects invalid hardware %j",opts=>expect(price(horizontalQuote(opts)).result.ok).toBe(false));
  it("rejects forged saved quantities",()=>{
-  const q=horizontalQuote({honeycomb_shim_layers:1,shim_quantity:999,norman_assembly_v1:{hardware:{shimQuantity:999}}});expect(price(q).result).toMatchObject({ok:true,total:429});
+  const q=horizontalQuote({honeycomb_shim_layers:1,shim_quantity:999,norman_assembly_v1:{hardware:{shimQuantity:999}}});noSite(price(q).result); // catalog list was total:429;
  });
  it("does not offer SmartFit inside-mount shims or hold-downs",()=>{
   expect(price(horizontalQuote({slope_angle_degrees:0,honeycomb_shim_layers:1},"SmartFit")).result.ok).toBe(false);
@@ -215,12 +223,12 @@ describe("Honeycomb accessory charges and persistence",()=>{
 describe("Honeycomb side support kit",()=>{
  it("charges the support kit once and distinguishes a true side installation",()=>{
   const q=horizontalQuote({installation_method:"Side Mount"});
-  expect(price(q).result).toMatchObject({ok:true,total:438});
+  noSite(price(q).result); // catalog list was total:438;
   expect(price(q).selection.configuration.norman_assembly_v1).toMatchObject({hardware:{sideMountSupportKit:true,regularSupportBracketsRequired:false}});
  });
  it("permits a wider support kit only with regular mounting brackets",()=>{
   const q=horizontalQuote({honeycomb_side_mount_kit:"Yes",installation_method:"Regular Support Brackets"});q.lines[0].width_whole=38;
-  const d=price(q);expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+  const d=price(q);noSite(d.result, JSON.stringify(d.result));
   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({hardware:{sideMountSupportKit:true,regularSupportBracketsRequired:true}});
   q.designs[0].options_json={...q.designs[0].options_json,installation_method:"Side Mount"};expect(price(q).result.ok).toBe(false);
  });
@@ -241,7 +249,7 @@ describe("Honeycomb motor accessory server prices",()=>{
   ["Norman Smart Rechargeable Battery with Wireless Charging Wand","SmartDial Remote",{honeycomb_remote_quantity:1,honeycomb_remote_channel:5,honeycomb_charging_extension_poles:2,honeycomb_color_ring_sets:2},4479],
  ] as const)("prices %s accessories exactly and preserves reopened configuration",(motor,remote,options,total)=>{
   const q=horizontalQuote({motor_position:"Right",hub_required:false,...options},"Motorized");q.designs[0].motor_type=motor;q.designs[0].remote_type=remote;q.lines[0].quantity=3;
-  const d=price(q);expect(d.result,JSON.stringify(d.result)).toMatchObject({ok:true,total});
+  const d=price(q);noSite(d.result,JSON.stringify(d.result)); // catalog list was total;
   const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};expect(price(reopened)).toEqual(d);
   const visible=v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection)).join(" ");expect(visible).not.toMatch(/norman_assembly|catalogVersion|dealerCost/);
   if(motor==="AutoWand")expect(visible).toContain("60");else expect(visible).toContain("Shade Remote Channel: 5");
@@ -250,7 +258,7 @@ describe("Honeycomb motor accessory server prices",()=>{
   for(const family of ["Breeze AB0658","Windsong AB0632","Designer Fabric (RD) (Ashton)"]){
    const q=dualQuote("Light Filtering",family);q.designs[0].lift_system="Motorized";q.designs[0].motor_type="AutoWand";
    q.designs[0].options_json={...q.designs[0].options_json,rear_cell_size:null,back_fabric:null,back_fabric_color_code:null,day_night_top_layer:null,motor_position:"Right",hub_required:false};
-   expect(price(q).result.ok,JSON.stringify(price(q).result)).toBe(family!=="Breeze AB0658");
+   const aw=price(q).result;if(family==='Breeze AB0658'){expect(aw.ok).toBe(false);if(!aw.ok)expect(aw).not.toMatchObject({code:'NO_SITE_PRICE'});}else noSite(aw);
   }
  });
 });
@@ -264,7 +272,7 @@ describe("Vertical Honeycomb full standard configuration crosswalk (Guide pp7,36
   for(const color of normanHoneycombV2Source.verticalColors)for(const size of color.availableCells)for(const [stack,floor] of stacks)for(const [mount,attachment,layers,finishedWidth,finishedHeight] of mounts){
    const q=verticalQuote(color.family,`${size} Cell`);q.designs[0].mount_type=mount;
    q.designs[0].options_json={...q.designs[0].options_json,fabric_color_code:color.customerColorCode,split_splice:stack,vertical_mounting:attachment,vertical_shim_layers:layers,...(stack==="Custom Split"?{vertical_left_width_inches:18,vertical_right_width_inches:18}:{})};
-   const d=price(q);expect(d.result.ok,`${color.customerColorCode}/${size}/${stack}/${attachment}: ${JSON.stringify(d.result)}`).toBe(true);
+   const d=price(q);noSite(d.result, `${color.customerColorCode}/${size}/${stack}/${attachment}: ${JSON.stringify(d.result)}`);
    expect(d.selection.configuration.norman_assembly_v1).toMatchObject({mounting:attachment,mountingBracketCount:attachment==="Pre-Drilled Headrail"?0:2,floorBracketCount:floor,shimQuantity:layers*(2+floor),finishedWidth,finishedHeight,stacking:stack,headrailSpliced:false});
    const saved=JSON.parse(JSON.stringify(q));saved.designs[0].options_json={...saved.designs[0].options_json,...d.selection.configuration};
    const reopened=price(saved);expect(reopened.result).toEqual(d.result);expect(reopened.selection.configuration.norman_assembly_v1).toEqual(d.selection.configuration.norman_assembly_v1);count++;
@@ -273,6 +281,6 @@ describe("Vertical Honeycomb full standard configuration crosswalk (Guide pp7,36
  },60000);
  it.each([["Inside Mount",102.3125,false],["Inside Mount",102.25,true],["Outside Mount",102.1875,false],["Outside Mount",102.125,true]] as const)("uses exact splice inequality at100x%s/%s",(mount,height,spliced)=>{
   const q=verticalQuote();q.designs[0].mount_type=mount;q.lines[0].width_whole=100;q.lines[0].height_whole=Math.floor(height);q.lines[0].height_fraction=height%1===.25?"1/4":height%1===.125?"1/8":`${Math.round(height%1*16)}/16`;
-  const d=price(q);expect(d.result.ok,JSON.stringify(d.result)).toBe(true);expect(d.selection.configuration.norman_assembly_v1).toMatchObject({headrailSpliced:spliced,headrailSectionWidths:spliced?[50,50]:[100],headrailConnectorCount:spliced?1:0,includedKeystoneCount:spliced?1:0});
+  const d=price(q);noSite(d.result, JSON.stringify(d.result));expect(d.selection.configuration.norman_assembly_v1).toMatchObject({headrailSpliced:spliced,headrailSectionWidths:spliced?[50,50]:[100],headrailConnectorCount:spliced?1:0,includedKeystoneCount:spliced?1:0});
  });
 });
