@@ -5,8 +5,8 @@ export const LINE_EVENT_MANUFACTURERS = ["norman", "onyx", "sundance", "lotus"] 
 export type LineEventManufacturer = (typeof LINE_EVENT_MANUFACTURERS)[number];
 
 export type LineEventWake = {
-  woken: false;
-  reason: "wake_disabled";
+  woken: boolean;
+  reason: "wake_disabled" | "wake_unconfigured" | "http";
   manufacturer: LineEventManufacturer;
   event_id: string;
   schema: typeof LINE_EVENT_SCHEMA_ID;
@@ -24,9 +24,12 @@ export type LineEventRpc = {
 /**
  * The CRM's one call that queues a confirmed window for its manufacturer.
  * public.enqueue_line_event writes the line event and calls
- * public.wake_line_event_worker. That wake is a documented no-op: it does not
- * call Telegram, Twilio, HTTP, pg_net, or the manufacturer order-worker route,
- * and it does not turn a switch on. Do not add a second notifier beside it.
+ * public.wake_line_event_worker. This module is a documented no-op for
+ * outbound calls: it does not call Telegram, Twilio, HTTP, pg_net, or the
+ * manufacturer order-worker route, and it does not turn a switch on.
+ * The database wake returns wake_disabled unless line_event.wake_http is
+ * explicitly turned on, and a missing worker URL or secret fails closed.
+ * Do not add a second notifier beside it.
  */
 export async function enqueueManufacturerLineEvent(
   db: LineEventRpc,
