@@ -1,17 +1,33 @@
 -- Price history is append-only.
--- crm_vendor_price_receipts and crm_live_lookup_line_price_revisions reject
--- UPDATE, DELETE, and TRUNCATE for every role. The trigger function does not
--- read current_user, session_user, or any role. service_role and a function
--- owned by postgres hit the same exception. ENABLE ALWAYS keeps the triggers
--- on when session_replication_role is replica.
+-- Applied after 20261122004500 and 20261122044500. Those files fill
+-- crm_vendor_price_receipts.portal_draft_id once, from null to the receipt
+-- JSON value, and protect_vendor_price_receipt allows that same fill.
 --
--- This does not add a portal_draft_id exception. The older
--- protect_vendor_price_receipt() still allows one fill of a null
--- portal_draft_id. These triggers fire as well and raise on that fill.
--- public.backfill_current_live_price_fields() therefore fails when it would
--- update a receipt. That call is left unchanged for Mike. New receipts already
--- copy portal_draft_id on insert inside record_vendor_price_receipt.
+-- crm_vendor_price_receipts allows one UPDATE: portal_draft_id changes from
+-- null to a non-null value, and every other column is unchanged. The check is
+-- to_jsonb(new) - 'portal_draft_id' = to_jsonb(old) - 'portal_draft_id'.
+-- There is no role check. Every other UPDATE, and every DELETE or TRUNCATE,
+-- raises for every role, including service_role and a postgres-owned function.
+-- crm_live_lookup_line_price_revisions has no exception.
+-- ENABLE ALWAYS keeps the triggers on when session_replication_role is replica.
 -- crm_supplier_workflow_line_prices is not locked here.
+
+create or replace function public.protect_vendor_price_receipt()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $live$
+begin
+  if tg_op = 'UPDATE'
+     and old.portal_draft_id is null
+     and new.portal_draft_id is not null
+     and (to_jsonb(new) - 'portal_draft_id') = (to_jsonb(old) - 'portal_draft_id')
+  then
+    return new;
+  end if;
+  raise exception 'Vendor price receipts are append-only.' using errcode = 'PT409';
+end;
+$live$;
 
 create or replace function public.reject_price_history_mutation()
 returns trigger
@@ -19,13 +35,21 @@ language plpgsql
 set search_path = public, pg_temp
 as $lock$
 begin
+  if tg_op = 'UPDATE' and tg_table_name = 'crm_vendor_price_receipts' then
+    if old.portal_draft_id is null
+       and new.portal_draft_id is not null
+       and (to_jsonb(new) - 'portal_draft_id') = (to_jsonb(old) - 'portal_draft_id')
+    then
+      return new;
+    end if;
+  end if;
   raise exception 'Price history is append-only.'
     using errcode = 'PT409';
 end;
 $lock$;
 
 comment on function public.reject_price_history_mutation() is
-  'Rejects UPDATE, DELETE, and TRUNCATE on price history. No role and no column is exempt.';
+  'Receipts may gain portal_draft_id once, from null to a non-null value, with every other column unchanged. Every other price-history change raises. No role is exempt.';
 
 revoke all on function public.reject_price_history_mutation() from public, anon, authenticated, service_role;
 grant execute on function public.reject_price_history_mutation() to public;

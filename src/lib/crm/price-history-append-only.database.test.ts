@@ -346,38 +346,110 @@ it("still inserts through record_vendor_price_receipt and prices the line", asyn
   }
 });
 
-it("documents that backfill_current_live_price_fields can no longer fill a receipt", async () => {
+it("allows one portal_draft_id fill from null, including the backfill and service_role", async () => {
   await seed(75, 751, "Roller Shades");
-  const blank = await db.query<{ id: string }>(
+  const inserted = await db.query<{ id: string; spec_hash: string }>(
     `insert into crm_vendor_price_receipts (
        quote_id, line_id, quote_revision, spec_hash, vendor, vendor_account, observed_at,
        net_unit_price, net_line_total, receipt, actor, portal_draft_id
-     ) values (
-       $1, $2, 1, 'blank', 'norman', 'RA00743', now(), 10, 10,
-       '{"portal_draft_id":"session-lock"}'::jsonb, 'mike', null
-     ) returning id::text`,
+     ) values
+       ($1, $2, 1, 'json-fill', 'norman', 'RA00743', now(), 10, 10, '{"portal_draft_id":" session-lock "}'::jsonb, 'mike', null),
+       ($1, $2, 1, 'other-fill', 'norman', 'RA00743', now(), 11, 11, '{"portal_draft_id":"session-lock"}'::jsonb, 'mike', null)
+     returning id::text, spec_hash`,
     [id(75), id(751)],
   );
+  const jsonFill = inserted.rows.find((row) => row.spec_hash === "json-fill");
+  const otherFill = inserted.rows.find((row) => row.spec_hash === "other-fill");
+  if (!jsonFill || !otherFill) throw new Error("receipt fixtures were not inserted");
   await db.query(
-    `insert into crm_supplier_workflow_line_prices (
-       request_id, quote_id, line_id, design_id, source_line_id, product_cost, line_total,
-       components, receipt, result, price_source, manual_typed_by, portal_draft_id
-     ) values (
-       $1, $2, $3, gen_random_uuid(), $3, 80, 80,
-       '{"policy":"805-draft-opening-line-v1","mode":"preserved_manual_unallocated"}'::jsonb,
-       '{"portal_draft_id":"workflow-lock"}'::jsonb, '{}'::jsonb, 'manual_no_source', 'jessica', null
-     )`,
-    [id(++request), id(75), id(751)],
+    "update crm_vendor_price_receipts set portal_draft_id = 'chosen-once' where id = $1",
+    [otherFill.id],
   );
-  await expect(db.query("select backfill_current_live_price_fields()")).rejects.toThrow(lockMessage);
-  const receiptRow = await db.query<{ portal_draft_id: string | null }>(
+  const chosen = await db.query<{ portal_draft_id: string; actor: string; net_unit_price: string }>(
+    "select portal_draft_id, actor, net_unit_price::text from crm_vendor_price_receipts where id = $1",
+    [otherFill.id],
+  );
+  expect(chosen.rows[0]).toEqual({ portal_draft_id: "chosen-once", actor: "mike", net_unit_price: "11.00" });
+
+  await db.exec("grant update on public.crm_vendor_price_receipts to service_role");
+  try {
+    await db.exec("set role service_role");
+    await db.query(
+      "update crm_vendor_price_receipts set portal_draft_id = public.price_record_portal_draft_id(receipt) where id = $1",
+      [jsonFill.id],
+    );
+  } finally {
+    await db.exec("reset role");
+    await db.exec("revoke update on public.crm_vendor_price_receipts from service_role");
+  }
+  const filled = await db.query<{ portal_draft_id: string }>(
     "select portal_draft_id from crm_vendor_price_receipts where id = $1",
-    [blank.rows[0].id],
+    [jsonFill.id],
   );
-  const workflow = await db.query<{ portal_draft_id: string | null }>(
-    "select portal_draft_id from crm_supplier_workflow_line_prices where line_id = $1",
-    [id(751)],
+  expect(filled.rows[0].portal_draft_id).toBe("session-lock");
+
+  const again = await db.query<{ result: { portal_draft_ids: number } }>(
+    "select backfill_current_live_price_fields() as result",
   );
-  expect(receiptRow.rows[0].portal_draft_id).toBeNull();
-  expect(workflow.rows[0].portal_draft_id).toBeNull();
+  expect(again.rows[0].result.portal_draft_ids).toBe(0);
+});
+
+it("rejects a portal_draft_id refill and any other receipt column change", async () => {
+  await seed(77, 771, "Roller Shades");
+  const inserted = await db.query<{ id: string; spec_hash: string }>(
+    `insert into crm_vendor_price_receipts (
+       quote_id, line_id, quote_revision, spec_hash, vendor, vendor_account, observed_at,
+       net_unit_price, net_line_total, receipt, actor, portal_draft_id
+     ) values
+       ($1, $2, 1, 'filled', 'norman', 'RA00743', now(), 10, 10, '{"portal_draft_id":"session-lock"}'::jsonb, 'mike', 'session-lock'),
+       ($1, $2, 1, 'still-null', 'norman', 'RA00743', now(), 12, 12, '{"portal_draft_id":"session-lock"}'::jsonb, 'mike', null)
+     returning id::text, spec_hash`,
+    [id(77), id(771)],
+  );
+  const filled = inserted.rows.find((row) => row.spec_hash === "filled");
+  const stillNull = inserted.rows.find((row) => row.spec_hash === "still-null");
+  if (!filled || !stillNull) throw new Error("receipt fixtures were not inserted");
+
+  await expect(db.query(
+    "update crm_vendor_price_receipts set portal_draft_id = 'refilled' where id = $1",
+    [filled.id],
+  )).rejects.toThrow(lockMessage);
+  await expect(db.query(
+    "update crm_vendor_price_receipts set actor = 'jessica' where id = $1",
+    [filled.id],
+  )).rejects.toThrow(lockMessage);
+  await expect(db.query(
+    "update crm_vendor_price_receipts set portal_draft_id = 'session-lock', actor = 'jessica' where id = $1",
+    [stillNull.id],
+  )).rejects.toThrow(lockMessage);
+  await expect(db.query(
+    "update crm_vendor_price_receipts set portal_draft_id = null where id = $1",
+    [stillNull.id],
+  )).rejects.toThrow(lockMessage);
+
+  await db.exec("grant update, delete, truncate on public.crm_vendor_price_receipts to service_role");
+  try {
+    await db.exec("set role service_role");
+    await expect(db.query(
+      "update crm_vendor_price_receipts set portal_draft_id = 'refilled' where id = $1",
+      [filled.id],
+    )).rejects.toThrow(lockMessage);
+    await expect(db.query(
+      "delete from crm_vendor_price_receipts where id = $1",
+      [filled.id],
+    )).rejects.toThrow(lockMessage);
+    await expect(db.query("truncate crm_vendor_price_receipts")).rejects.toThrow(lockMessage);
+  } finally {
+    await db.exec("reset role");
+    await db.exec("revoke update, delete, truncate on public.crm_vendor_price_receipts from service_role");
+  }
+
+  const rows = await db.query<{ spec_hash: string; portal_draft_id: string | null; actor: string }>(
+    "select spec_hash, portal_draft_id, actor from crm_vendor_price_receipts where id = any($1::uuid[]) order by spec_hash",
+    [[filled.id, stillNull.id]],
+  );
+  expect(rows.rows).toEqual([
+    { spec_hash: "filled", portal_draft_id: "session-lock", actor: "mike" },
+    { spec_hash: "still-null", portal_draft_id: null, actor: "mike" },
+  ]);
 });
