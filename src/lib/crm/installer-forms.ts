@@ -19,7 +19,7 @@ import {
   type InstallationHandoffDeliveryState,
   type InstallationHandoffPackage,
 } from "@/lib/crm/installation-handoff";
-import { requireInstallerCustomerBalance } from "@/lib/crm/installer-balance";
+import { requireInstallerCustomerBalance, resolveInstallerFormBalanceDue } from "@/lib/crm/installer-balance";
 
 export const INSTALLER_FORM_RECIPIENT = INSTALLATION_HANDOFF_RECIPIENT;
 export const INSTALLER_REPORT_RECIPIENT = "805@805shutters.com";
@@ -82,6 +82,7 @@ export type InstallerFormPublic = Omit<
 > & {
   lines: Array<Omit<InstallerLineSnapshot, "lineTotal">>;
   workflow: InstallerWorkflow;
+  customer_balance: number | null;
 };
 
 const INSTALLER_OUTCOMES = new Set<InstallerOutcome>([
@@ -435,6 +436,7 @@ export async function loadInstallerFormByToken(supabase: SupabaseClient, token: 
     ...publicForm,
     lines: (lineSnapshot || []).map(({ lineTotal: _lineTotal, ...line }) => line),
     workflow: installerWorkflowFromMeta(form),
+    customer_balance: await resolveInstallerFormBalanceDue(supabase, form),
   };
 }
 
@@ -611,9 +613,15 @@ export function calculateInstallerCod(
   return { withheld, adjusted: money(Math.max(money(originalCod) - withheld, 0)) };
 }
 
-export function buildInstallerFormEmail(form: InstallerFormRow, url: string) {
-  const balance = requireInstallerCustomerBalance(form);
-  const remainingBalance = formatInstallerMoney(balance.remaining_customer_balance);
+function displayedInstallerBalance(form: InstallerFormRow, balanceDue?: number | null) {
+  if (typeof balanceDue === "number" && Number.isFinite(balanceDue)) {
+    return Math.round(balanceDue * 100) / 100;
+  }
+  return requireInstallerCustomerBalance(form).remaining_customer_balance;
+}
+
+export function buildInstallerFormEmail(form: InstallerFormRow, url: string, balanceDue?: number | null) {
+  const remainingBalance = formatInstallerMoney(displayedInstallerBalance(form, balanceDue));
   const contract = form.customer_snapshot.quoteNumber ? `Contract ${form.customer_snapshot.quoteNumber}` : "Sold job";
   const subject = `805 Shutters Installation Form — ${form.customer_snapshot.name}`;
   const productDetails = form.line_snapshot.map((line, index) =>
@@ -634,8 +642,16 @@ function formatInstallerMoney(value: number) {
   }).format(value);
 }
 
-export function buildInstallerFormPdf(form: InstallerFormRow, url: string) {
-  const balance = requireInstallerCustomerBalance(form);
+export async function renderInstallerFormEmail(supabase: SupabaseClient, form: InstallerFormRow, url: string) {
+  return buildInstallerFormEmail(form, url, await resolveInstallerFormBalanceDue(supabase, form));
+}
+
+export async function renderInstallerFormPdf(supabase: SupabaseClient, form: InstallerFormRow, url: string) {
+  return buildInstallerFormPdf(form, url, await resolveInstallerFormBalanceDue(supabase, form));
+}
+
+export function buildInstallerFormPdf(form: InstallerFormRow, url: string, balanceDue?: number | null) {
+  const balanceAmount = displayedInstallerBalance(form, balanceDue);
   const pages: string[][] = [[]];
   let page = pages[0];
   let y = 750;
@@ -653,7 +669,7 @@ export function buildInstallerFormPdf(form: InstallerFormRow, url: string) {
   write(`Email: ${form.customer_snapshot.email || "Not provided"}`);
   write(`Contract: ${form.customer_snapshot.quoteNumber || form.quote_id}`);
   write(
-    `REMAINING CUSTOMER BALANCE: ${formatInstallerMoney(balance.remaining_customer_balance)}`,
+    `REMAINING CUSTOMER BALANCE: ${formatInstallerMoney(balanceAmount)}`,
     12,
     true,
   );
