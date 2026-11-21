@@ -342,6 +342,42 @@ export function resolveRollerOffering(
   };
 }
 
+/**
+ * The MinMax appendix sometimes splits one fabric code into color-specific
+ * limit rows, for example `A90105 (F0668, F1668, F1669)` and
+ * `A90105 (F1926,F1927,F2023-F2027)`. Those parenthetical codes are color
+ * identities, not fabric codes, so they are absent from `fabricCodes`.
+ * Selecting every row for the shared fabric code matches more than one
+ * profile and quarantines the configuration.
+ */
+function listedRollerColorCodes(label: string): ReadonlySet<string> | null {
+  const grouped = label.match(/\(([^)]*)\)/);
+  if (!grouped || !/F\d{4}/i.test(grouped[1])) return null;
+  const codes = new Set<string>();
+  const remainder = grouped[1].replace(/F(\d{4})\s*-\s*F(\d{4})/gi, (_full, start: string, end: string) => {
+    const from = Number(start);
+    const to = Number(end);
+    if (to >= from && to - from <= 40) {
+      for (let value = from; value <= to; value += 1) codes.add(`F${String(value).padStart(4, "0")}`);
+    }
+    return " ";
+  });
+  for (const match of remainder.matchAll(/F\d{4}/gi)) codes.add(match[0].toUpperCase());
+  return codes.size > 0 ? codes : null;
+}
+
+function limitRowsForRollerColor<T extends { sourceFabricLabel: string }>(
+  rows: readonly T[],
+  colorCode: string,
+): readonly T[] {
+  if (rows.length < 2) return rows;
+  const selected = colorCode.toUpperCase();
+  const specific = rows.filter((row) => listedRollerColorCodes(row.sourceFabricLabel)?.has(selected));
+  if (specific.length > 0) return specific;
+  const unrestricted = rows.filter((row) => listedRollerColorCodes(row.sourceFabricLabel) === null);
+  return unrestricted.length > 0 ? unrestricted : rows;
+}
+
 export function resolveRollerMatrixProfile(context: SelectionContext): RollerMatrixResolution {
   const offeringResolution = resolveRollerOffering(context);
   if (!offeringResolution.ok) {
@@ -356,8 +392,11 @@ export function resolveRollerMatrixProfile(context: SelectionContext): RollerMat
       message: "The Roller application, coupling arrangement, and physical shade count do not resolve to one source matrix.",
     };
   }
-  const rows = rollerSource(context).limitRows.filter(
-    (row) => row.sheet === sheet && row.fabricCodes.includes(offering.fabricCode),
+  const rows = limitRowsForRollerColor(
+    rollerSource(context).limitRows.filter(
+      (row) => row.sheet === sheet && row.fabricCodes.includes(offering.fabricCode),
+    ),
+    offering.colorCode,
   );
   if (rows.length === 0) {
     return {
