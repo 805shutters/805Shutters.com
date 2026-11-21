@@ -14,7 +14,7 @@ export function LiveLookupQuoteBanner({ quoteId }: { quoteId: string }) {
     let active = true;
     void (async () => {
       const quoteResult = await supabase.from("sales_quotes").select("live_margin,live_margin_set_by,live_margin_set_at").eq("id", quoteId).maybeSingle();
-      const lineResult = await supabase.from("crm_live_lookup_current_line_prices").select("line_id,net_unit_price,installation,shipping,price_source,manual_typed_by").eq("quote_id", quoteId);
+      const lineResult = await supabase.from("crm_live_lookup_current_line_prices").select("line_id,net_unit_price,installation,shipping,price_source,manual_typed_by,spec_current").eq("quote_id", quoteId);
       if (!active || quoteResult.error || lineResult.error || !quoteResult.data) return;
       setQuote({
         margin: quoteResult.data.live_margin == null ? null : Number(quoteResult.data.live_margin),
@@ -28,6 +28,7 @@ export function LiveLookupQuoteBanner({ quoteId }: { quoteId: string }) {
         shipping: row.shipping == null ? null : Number(row.shipping),
         priceSource: row.price_source === "live_site" || row.price_source === "manual_no_source" ? row.price_source : null,
         manualTypedBy: row.manual_typed_by,
+        specCurrent: row.spec_current !== false,
       })));
     })();
     return () => { active = false; };

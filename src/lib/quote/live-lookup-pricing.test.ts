@@ -146,6 +146,9 @@ describe("live lookup charge settings", () => {
     expect(liveLookupLineText({
       lineId: "line", netUnitPrice: 76.2, installation: 25, shipping: 14, priceSource: "manual_no_source", manualTypedBy: "jessica",
     })).toBe("Net $76.20 · Install $25.00 · Shipping $14.00 · manual by jessica");
+    expect(liveLookupLineText({
+      lineId: "line", netUnitPrice: 76.2, installation: 25, shipping: 14, priceSource: "live_site", manualTypedBy: null, specCurrent: false,
+    })).toBe("This live price does not match the current line.");
     const html = renderToStaticMarkup(createElement(QuoteChargeSettingsPanel, { settings: [
       { key: "install_per_unit", amount: 25, appliesTo: "blind_shade_units", updatedBy: "mike (2026-11-20)" },
       { key: "ship_per_unit", amount: 14, appliesTo: "blind_shade_units", updatedBy: "mike (2026-11-20)" },
