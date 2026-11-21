@@ -4,6 +4,11 @@ import type {SalesQuoteDesign,SalesQuoteLineItem} from "@mts/types/quote";
 import {getProductColorOptions} from "@/lib/quote/product-color-options";
 import {SMARTFOLD_FABRICS} from "@/lib/quote/norman-current-assortment";
 import {repriceExactQuoteBuilderForServerDate} from "./exact-backend";
+
+function noSite(result: {ok:boolean}, label?: unknown) {
+ expect(result, typeof label === "string" ? label : JSON.stringify(result)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
+ expect(result).not.toHaveProperty("unitPrice");
+}
 const KEY="smartfold_clearance_v1";
 function quote(code="F1709"){
  const color=getProductColorOptions("smartfold").find(c=>c.colorCode===code)!;
@@ -20,7 +25,7 @@ describe("SmartFold fully recessed 4.5-inch fascia source branches",()=>{
   d.options_json={...d.options_json,smartfold_installation:top?"Top Mount with Raceway":"Back / Wall Mount with Raceway",smartfold_fascia_style:style,smartfold_fascia_color:"Anodized Silver",smartfold_valance_fabric_code:"F1934",smartfold_fascia_recess:"Fully Recessed",smartfold_fascia_recess_depth_inches:depth,smartfold_wand_length:"36",smartfold_wand_color:"White"};return q;
  }
  it.each(SMARTFOLD_FABRICS.flatMap(f=>controls.flatMap(control=>[true,false].flatMap(top=>[["Square Fascia","Plain"],["Curved Fascia","Plain"],["Curved Fascia","Fabric-Wrapped"]].map(([valance,style])=>({code:f.code,control,top,valance,style}))))))("prices $code / $control / top=$top / $valance / $style with exact depth",({code,control,top,valance,style})=>{
-  const q=configure(code,control,top,valance,style),r=run(q),d=r.designs[0];expect(r.sendability.sendable,JSON.stringify(d.result)).toBe(true);expect(d.snapshot).not.toBeNull();
+  const q=configure(code,control,top,valance,style),r=run(q),d=r.designs[0];noSite(d.result,JSON.stringify(d.result));expect(d.result.validationIssues.map(i=>i.ruleId)).not.toContain("norman.smartfold.inside_fascia_depth");expect(r.sendability.sendable).toBe(false);expect(d.snapshot).toBeNull();
   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({finishedShadeWidth:35.875,insideFasciaClearance:{requiredFullAssemblyDepth:q.designs[0].options_json.smartfold_fascia_recess_depth_inches},valance:{finishedWidth:35.875,jointCount:0}});
   const customer=v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection)).join(" ");expect(customer).toContain("Fascia Recess Arrangement: Fully Recessed");expect(run(JSON.parse(JSON.stringify(q)))).toEqual(r);
   q.designs[0].options_json.smartfold_fascia_recess_depth_inches=Number(q.designs[0].options_json.smartfold_fascia_recess_depth_inches)-.001;const rejected=run(q);expect(rejected.sendability.sendable).toBe(false);expect(rejected.designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.inside_fascia_depth");expect(rejected.designs[0].snapshot).toBeNull();

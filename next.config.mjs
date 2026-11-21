@@ -265,6 +265,8 @@ const nextConfig = {
   outputFileTracingIncludes: {
     "/api/booking/confirmation-image": ["./public/images/team/jessica-design-consultant.png", "./public/brand/805-shutters-logo-header.png"],
     "/api/cron/customer-signed-contract-email": ["./node_modules/@sparticuz/chromium/bin/**/*"],
+    "/api/crm/quote-front-door/batch-next-field": ["./data/quote-button-catalog.json"],
+    "/api/crm/quote-front-door/batch-validate": ["./data/quote-button-catalog.json"],
     "/api/crm/quote-hub/**/*": [
       "./public/images/homepage-flow/mobile-hero-plantation-shutters.jpg",
       "./public/images/homepage-flow/roller-shades.jpg",

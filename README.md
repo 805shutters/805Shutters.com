@@ -35,6 +35,50 @@ npm run supabase:reset
 Production deploys for this repo go to the Vercel project `805`. The stable
 verification URL is `https://805-one.vercel.app`.
 
+## Quoter service
+
+The Quoter is a server-to-server caller. It does not sign in through Supabase.
+Staff CRM sessions stay on `requireCrmUser`, which refuses this bearer. On the
+five front-door routes the draft is attributed to the active `crm_profiles`
+row named by `QUOTER_SERVICE_ACTOR_EMAIL`, defaulting to `jessica@805shutters.com`.
+The bot sends `Authorization: Bearer <token>`. The server reads
+`QUOTER_SERVICE_TOKEN`, hashes that value and the presented token, and compares
+the digests with a timing-safe compare. If the variable is missing or blank,
+the check fails closed and the bearer is not a Quoter token.
+
+The token is accepted only on these routes:
+
+- `GET /api/crm/quote-front-door/customers`
+- `POST /api/crm/quote-front-door/next-field`
+- `POST /api/crm/quote-front-door/validate`
+- `POST /api/crm/quote-front-door/read-back`
+- `POST /api/crm/quote-front-door/draft`
+- `POST /api/crm/quote-front-door/batch-next-field`
+- `POST /api/crm/quote-front-door/batch-validate`
+
+The draft write calls `create_quote_v2_draft` for that staff actor and stores
+the read-back on `sales_quotes.front_door_readback`. The quote stays a draft.
+Button saves call `mutate_quote_v2_structure` on that draft for the same actor.
+The bot cannot send a quote, a payment link, an email, or a text, and it
+cannot write `quote_category_field_sequence` or `quote_sequence_field_alias`.
+
+### Client contract
+
+Before any write, make one read call to check the token. Use
+`GET /api/crm/quote-front-door/customers` with no search params. That call does
+not create a customer and does not save a draft. If the read returns 401 or
+403, retry that same read once. If it fails again, stop and report the status.
+Do not send the write. The helper is `runQuoterFrontDoorCall` in
+`src/lib/crm/quoter-service-client.ts`. A later write that returns 401 or 403
+is retried once and then stopped the same way.
+
+### Where the secret goes
+
+Do not put the token in the repo, in a migration, or in a client bundle. Set
+`QUOTER_SERVICE_TOKEN` in the Vercel project environment for the `805`
+deployment, or in the Grok vault. This repository does not create a live secret.
+Leave the value blank in `.env.example`.
+
 ## Deploy to Vercel
 
 The deploy command validates the app, pushes `main`, waits for the GitHub-backed

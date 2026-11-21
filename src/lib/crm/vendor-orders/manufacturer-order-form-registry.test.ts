@@ -21,6 +21,7 @@ describe("manufacturer ordering-form registry", () => {
     expect(registry.manufacturers.norman).toHaveLength(19);
     expect(registry.manufacturers.lotus).toHaveLength(5);
     expect(registry.manufacturers.polar).toHaveLength(11);
+    expect(registry.manufacturers.sundance).toHaveLength(30);
   });
 
   it("ships every registered DOCX, PDF preview, and schema with the CRM", () => {
@@ -56,6 +57,7 @@ describe("manufacturer ordering-form registry", () => {
     [{ manufacturer: "Norman", product_id: "roller" }, "norman:roller"],
     [{ manufacturer: "Lotus", product_id: "lotus_vertical_blinds" }, "lotus:lotus_vertical_blinds"],
     [{ manufacturer: "Polar", product_id: "polar", program_id: "premium_pro_awning" }, "polar:premium_pro_awning"],
+    [{ manufacturer: "Sundance", product_id: "sundance_sheerview" }, "sundance:sundance_sheerview"],
   ])("routes an exact product to its dedicated form", (values, routingKey) => {
     expect(resolveManufacturerOrderForm(values)?.routing_key).toBe(routingKey);
   });

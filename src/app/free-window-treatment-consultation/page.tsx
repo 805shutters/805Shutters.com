@@ -1,3 +1,5 @@
+import { WordPressContent } from "@/components/WordPressContent";
+import { editorialPage } from "@/lib/wordpress-editorial";
 import { normalizeStructuredData } from "@/lib/structured-data-identity";
 import type { Metadata } from "next";
 import { CitySearchIntro } from "@/components/CityServiceContent";
@@ -212,6 +214,7 @@ const consultationJsonLd = {
 };
 
 export default function FreeWindowTreatmentConsultationPage() {
+  const editorial = editorialPage("/free-window-treatment-consultation/");
   return (
     <div className={styles.adLanding}>
       <script
@@ -225,10 +228,9 @@ export default function FreeWindowTreatmentConsultationPage() {
         <div className={styles.heroShade} />
         <div className={styles.heroInner}>
           <p className={styles.eyebrow}>Ventura County shutters, shades, and blinds</p>
-          <h1>Free Window Treatment Consultation</h1>
+          <h1>{editorial?.title || "Free Window Treatment Consultation"}</h1>
           <p className={styles.heroText}>
-            Compare custom shutters, shades, blinds, drapery, exterior shades, and commercial coverings with a local
-            Ventura County team.
+            {editorial?.intro || "Compare custom shutters, shades, blinds, drapery, exterior shades, and commercial coverings with a local Ventura County team."}
           </p>
           <p className={styles.servicePromise}>
             Free in-home design consultations. We come to you—bringing samples, expertise, and ideas to your home.
@@ -328,6 +330,12 @@ export default function FreeWindowTreatmentConsultationPage() {
           </ul>
         </div>
       </section>
+
+      {editorial && (
+        <section className="content-wrap section-stack">
+          <WordPressContent page={editorial} />
+        </section>
+      )}
 
       <section className={styles.faqBand} aria-labelledby="consultation-faq">
         <div className={styles.sectionHead}>

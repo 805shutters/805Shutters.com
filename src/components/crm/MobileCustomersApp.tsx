@@ -120,7 +120,7 @@ export function MobileCustomersApp() {
         <button className={styles.primary} disabled={!ready || !eligible} onClick={() => beginSend(row, "partial")}>Collect partial amount</button>
       </div>
       <small>Choose an amount, then send by text or email.</small>
-      {!eligible && <small>A linked quote with a verified amount due is needed to send a Square link.</small>}
+      {!eligible && <small>A linked quote with a verified amount due is needed to send a card payment link.</small>}
     </div>;
   }
   function compact(row: MobilePaymentCustomer) {
@@ -195,7 +195,7 @@ export function MobileCustomersApp() {
           {action.mode === "partial" && <><small>Payment 2 · Collect later</small><strong>{money(remainingAfterPayment)}</strong><p>After the first payment is recorded, collect the remainder from this screen. The later payment is not charged automatically.</p></>}
         </div> : <p className={styles.muted} role="status">Enter a positive amount with up to two decimal places, below the remaining balance.</p>}
         <div className={styles.tabs} role="group" aria-label="Delivery method"><button type="button" aria-pressed={channel === "text"} disabled={attempted || !mobilePhoneTarget(action.row.phone)} onClick={() => setChannel("text")}><MessageSquare size={16}/> Text</button><button type="button" aria-pressed={channel === "email"} disabled={attempted || !action.row.email} onClick={() => setChannel("email")}><Mail size={16}/> Email</button></div>
-        <div className={styles.review}><small>To {channel === "text" ? "mobile" : "email"}</small><strong>{channel === "text" ? action.row.phone : action.row.email}</strong>{channel === "email" && <small>From: 805@805shutters.com</small>}<p>The customer receives the secure Square checkout link for this amount.</p></div>
+        <div className={styles.review}><small>To {channel === "text" ? "mobile" : "email"}</small><strong>{channel === "text" ? action.row.phone : action.row.email}</strong>{channel === "email" && <small>From: 805@805shutters.com</small>}<p>The customer receives the secure card checkout link for this amount.</p></div>
         <p className={styles.muted}>Sending a link does not record a payment. Provider acceptance does not mean delivery.</p>
         {sendError && <p role="alert" className={styles.error}>{sendError}</p>}
         <button className={styles.primary} disabled={sending || !ready || !validAmount} type="submit">{sending ? "Sending once…" : attempted ? "Check same request" : `Confirm & send ${channel === "text" ? "text" : "email"}`}</button>

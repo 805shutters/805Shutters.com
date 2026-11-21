@@ -229,7 +229,11 @@ export function designCustomerCharges(design: CrmQuoteDesign | null, quantity = 
   if (!design || design.price_status !== "ok") return null;
   const data = design.price_breakdown as Record<string, unknown> | null;
   const saved = parseCustomerCharges(data?.customerCharges) ?? storedCustomerCharges(data?.optionsJson);
-  return saved ? calculateCustomerCharges({product:"shade", physicalUnitsPerWindow:saved.eligibleUnitsPerWindow, quantity}) : null;
+  return saved ? calculateCustomerCharges({
+    product:"shade", physicalUnitsPerWindow:saved.eligibleUnitsPerWindow, quantity,
+    installationPerUnit: saved.installationPerUnit, shippingPerUnit: saved.shippingPerUnit,
+    policyVersion: saved.version,
+  }) : null;
 }
 export function quoteFixedCustomerCharges(lines: CrmQuoteLineItem[]): number {
   return lines.reduce((sum, line) => sum + (designCustomerCharges(selectedDesign(line), Math.max(1, Math.floor(Number(line.quantity) || 1)))?.total ?? 0), 0);

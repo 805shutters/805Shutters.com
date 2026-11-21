@@ -1,3 +1,5 @@
+import { editorialPage } from "@/lib/wordpress-editorial";
+import { WordPressContent } from "./WordPressContent";
 import { normalizeStructuredData } from "@/lib/structured-data-identity";
 import Link from "next/link";
 import { TrackedPhoneLink } from "./TrackedPhoneLink";
@@ -6,7 +8,9 @@ import type { AnswerPage as AnswerPageData } from "@/lib/llm-search-pages";
 import { site } from "@/lib/site-data";
 import styles from "./AnswerPage.module.css";
 
-export function AnswerPage({ page }: { page: AnswerPageData }) {
+export function AnswerPage({ page: original }: { page: AnswerPageData }) {
+  const editorial = editorialPage(original.path);
+  const page = editorial ? { ...original, h1: editorial.title, answer: editorial.intro || original.answer } : original;
   const serviceAreaPreview = site.areas.slice(0, 8).join(", ");
   const proofFacts = [
     {
@@ -38,7 +42,7 @@ export function AnswerPage({ page }: { page: AnswerPageData }) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(normalizeStructuredData(answerPageJsonLd(page)))
+          __html: JSON.stringify(normalizeStructuredData(answerPageJsonLd(page))).replace(/</g, "\\u003c")
         }}
       />
 
@@ -63,7 +67,7 @@ export function AnswerPage({ page }: { page: AnswerPageData }) {
       </section>
 
       <section className={styles.sectionList} aria-label={`${page.h1} guide`}>
-        {page.sections.map((section) => (
+        {editorial ? <WordPressContent page={editorial} /> : page.sections.map((section) => (
           <section className={styles.contentSection} key={section.heading}>
             <h2>{section.heading}</h2>
             <p>{section.body}</p>

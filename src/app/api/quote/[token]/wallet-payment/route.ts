@@ -1,3 +1,4 @@
+import {cardProvider} from '@/lib/finance/card-provider';
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { computeSelectionTotal, loadPublicQuoteByToken } from "@/lib/crm/public-quote";
@@ -20,6 +21,7 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0
  * re-read and verified on the server before Square is called. */
 export async function POST(request: NextRequest, context: { params: Promise<{ token: string }> }) {
   try {
+    if(cardProvider() !== 'square')throw new CrmAuthError(409, 'Use the secure card checkout for available wallet options.');
     const supabase = getSupabaseServiceClient();
     if (!supabase) return NextResponse.json({ message: "Service temporarily unavailable." }, { status: 503 });
     if (!isSquareConfigured()) throw new CrmAuthError(503, "Wallet payments are not enabled yet.");

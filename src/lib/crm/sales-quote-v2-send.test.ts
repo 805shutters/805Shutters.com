@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
-import { repriceExactQuoteBuilderForQuoteLabPreview } from "@/lib/quote-lab/exact-backend";
-import { QUOTE_V2_ROLLER_PREVIEW_VERSION } from "@/lib/quote-v2/catalog";
+import { repriceExactQuoteBuilderForServerDate } from "@/lib/quote-lab/exact-backend";
+import { quoteV2CatalogVersionFor } from "@/lib/quote-v2/catalog";
 import { createImmutablePriceSnapshot } from "@/lib/quote-v2/engine";
 import { prepareSalesQuoteV2PricingBatch } from "./sales-quote-v2-price-save";
 import type {
@@ -23,10 +23,10 @@ import {
 
 describe("send catalog effective dates", () => {
   it("prepares a newly priced September quote for customer delivery", () => {
-    const line = rollerLine();
-    const original = unpricedRollerDesign();
+    const line = shutterLine();
+    const original = unpricedShutterDesign();
     const { prepared } = prepareSalesQuoteV2PricingBatch({
-      lines: [line], selectedDesigns: [original], serverDate: "2026-09-10",
+      lines: [line], selectedDesigns: [original], serverDate: SEND_DATE,
     });
     const priced = prepared[0].rpcResult;
     expect(priced.priceStatus).toBe("authoritative");
@@ -42,7 +42,7 @@ describe("send catalog effective dates", () => {
     };
     const payload = prepareV2CustomerSendPayload({
       quote: authoritativeQuote(Number(snapshot.retail.total), { quote_v2_catalog_version: priced.catalogVersion }),
-      lineItems: [line], designs: [design], serverDate: "2026-09-10",
+      lineItems: [line], designs: [design], serverDate: SEND_DATE,
       snapshots: [{
         id: SNAPSHOT_ID, quote_id: line.quote_id, line_item_id: line.id,
         design_id: design.id, quote_revision: QUOTE_REVISION,
@@ -50,8 +50,9 @@ describe("send catalog effective dates", () => {
         retail_total: snapshot.retail.total, retail_snapshot: snapshot,
       }],
     });
-    expect(payload.total).toBe(846);
-    expect(payload.lines[0].price.customerCharges?.total).toBe(78);
+    expect(payload.total).toBe(910);
+    expect(payload.lines[0].price).toMatchObject({ productId: "norman_shutters", programId: "woodlore", base: 455, unitPrice: 455 });
+    expect(payload.lines[0].price.customerCharges).toBeUndefined();
     expect(payload.lines[0].quantity).toBe(2);
   });
 
@@ -69,14 +70,17 @@ describe("send catalog effective dates", () => {
 
 const SNAPSHOT_ID = "55555555-5555-4555-8555-555555555555";
 const QUOTE_REVISION = 7;
+const SEND_DATE = "2026-09-22";
+const BEFORE_SEND_DATE = "2026-09-20";
+const SHUTTER_CATALOG = quoteV2CatalogVersionFor("norman_shutters", SEND_DATE);
 
-function rollerLine(): SalesQuoteLineItem & { selected_design_id: string } {
+function shutterLine(): SalesQuoteLineItem & { selected_design_id: string } {
   return {
     id: "line-v2",
     quote_id: "quote-v2",
     room_name: "Living Room",
-    product_type: "Roller Shades",
-    width_whole: 36,
+    product_type: "Shutters",
+    width_whole: 30,
     width_fraction: "0",
     height_whole: 60,
     height_fraction: "0",
@@ -87,23 +91,23 @@ function rollerLine(): SalesQuoteLineItem & { selected_design_id: string } {
   };
 }
 
-function unpricedRollerDesign(): SalesQuoteDesign {
+function unpricedShutterDesign(): SalesQuoteDesign {
   return {
     id: "design-v2-a",
     line_item_id: "line-v2",
     variant: "A",
-    product_type: "Roller Shades",
+    product_type: "Shutters",
     supplier: "Norman",
-    material: null,
-    louver_size: null,
-    tilt_type: null,
+    material: "Woodlore",
+    louver_size: '3 1/2"',
+    tilt_type: "Standard Tilt",
     hinge_color: null,
-    panel_config: null,
+    panel_config: "LR",
     mount_type: "Inside Mount",
-    shade_type: "Single",
-    lift_system: "Cordless",
-    valance: "No Top Treatment",
-    fabric: "Amelia",
+    shade_type: null,
+    lift_system: null,
+    valance: null,
+    fabric: null,
     motor_type: null,
     remote_type: null,
     hard_surface_install: false,
@@ -113,37 +117,32 @@ function unpricedRollerDesign(): SalesQuoteDesign {
     notes: null,
     options_json: {
       quote_v2_backend: true,
-      quote_lab_product_id: "roller",
-      fabric_product_id: "roller",
-      fabric_program_id: "roller_cordless_fabric_price_group_2_pg2",
-      quote_v2_catalog_version: QUOTE_V2_ROLLER_PREVIEW_VERSION,
-      quote_v2_catalog_as_of: "2026-08-01",
-      fabric_color_collection: "Amelia",
-      fabric_color_code: "F1484",
-      fabric_color_name: "Mist Gray",
-      roller_application: "Single",
-      top_treatment_class: "No Top Treatment",
-      tube_class: "All Tubes",
-      roller_region_scope: "ca_ma",
-      shipping_region: "continental_us",
+      quote_lab_product_id: "norman_shutters",
+      catalog_product_id: "norman_shutters",
+      quote_lab_program_id: "woodlore",
+      catalog_program_id: "woodlore",
+      fabric_program_id: "woodlore",
+      color: "001",
+      frame_type: "Direct Mount (No Frame)",
+      size_type: "F - Frame to Frame",
     },
     created_at: "2026-07-20T00:00:00.000Z",
   };
 }
 
 function authoritativeRollerFixture() {
-  const line = rollerLine();
-  const unpriced = unpricedRollerDesign();
-  const repriced = repriceExactQuoteBuilderForQuoteLabPreview({
+  const line = shutterLine();
+  const unpriced = unpricedShutterDesign();
+  const repriced = repriceExactQuoteBuilderForServerDate({
     lines: [line],
     designs: [unpriced],
     selectedVariantByLine: { [line.id]: "A" },
-  });
+  }, SEND_DATE);
   if (!("backend" in repriced) || repriced.backend !== "v2") {
     throw new Error("Expected V2 pricing.");
   }
   const result = repriced.designs[0]?.result;
-  if (!result?.ok) throw new Error(result?.error || "Expected authoritative pricing.");
+  if (!result?.ok || result.validationStatus !== "valid") throw new Error(result && "error" in result ? result.error : "Expected authoritative pricing.");
   const snapshot = createImmutablePriceSnapshot(result);
   const design = {
     ...unpriced,
@@ -213,7 +212,7 @@ function authoritativeQuote(
     quote_v2_backend: true,
     quote_v2_status: "priced",
     quote_v2_revision: QUOTE_REVISION,
-    quote_v2_catalog_version: QUOTE_V2_ROLLER_PREVIEW_VERSION,
+    quote_v2_catalog_version: SHUTTER_CATALOG,
     total_amount: total,
     ...overrides,
   };
@@ -374,7 +373,7 @@ describe("V2 production send boundary", () => {
         },
       ],
       snapshots: [storedSnapshot],
-      serverDate: "2026-08-01",
+      serverDate: SEND_DATE,
     });
 
     expect(payload.backend).toBe("authoritative_v2");
@@ -411,7 +410,7 @@ describe("V2 production send boundary", () => {
         lineItems: [line],
         designs: [design],
         snapshots: [storedSnapshot],
-        serverDate: "2026-07-31",
+        serverDate: BEFORE_SEND_DATE,
       }),
     ).toThrow("Authoritative V2 validation blocked sending");
   });
@@ -424,7 +423,7 @@ describe("V2 production send boundary", () => {
       designs: [design],
       snapshots: [storedSnapshot],
       sendAsIs: true,
-      serverDate: "2026-07-31",
+      serverDate: BEFORE_SEND_DATE,
     });
 
     expect(payload.total).toBe(total);
@@ -439,7 +438,7 @@ describe("V2 production send boundary", () => {
     const { line, design, storedSnapshot, total } = authoritativeRollerFixture();
     vi.useFakeTimers();
     try {
-      vi.setSystemTime(new Date("2026-08-01T06:59:59.999Z"));
+      vi.setSystemTime(new Date("2026-09-22T06:59:59.999Z"));
       expect(() =>
         prepareV2CustomerSendPayload({
           quote: authoritativeQuote(total),
@@ -449,7 +448,7 @@ describe("V2 production send boundary", () => {
         }),
       ).toThrow("Authoritative V2 validation blocked sending");
 
-      vi.setSystemTime(new Date("2026-08-01T07:00:00.000Z"));
+      vi.setSystemTime(new Date("2026-09-22T07:00:00.000Z"));
       expect(
         prepareV2CustomerSendPayload({
           quote: authoritativeQuote(total),
@@ -475,7 +474,7 @@ describe("V2 production send boundary", () => {
         lineItems: [line],
         designs: [stale],
         snapshots: [storedSnapshot],
-        serverDate: "2026-08-01",
+        serverDate: SEND_DATE,
       }),
     ).toThrow("stale selection fingerprint");
 
@@ -485,7 +484,7 @@ describe("V2 production send boundary", () => {
         lineItems: [line],
         designs: [design],
         snapshots: [storedSnapshot],
-        serverDate: "2026-08-01",
+        serverDate: SEND_DATE,
       }),
     ).toThrow("stored quote total does not match");
   });
@@ -502,7 +501,7 @@ describe("V2 production send boundary", () => {
         lineItems: [line],
         designs: [selectedDesign],
         snapshots: [snapshot],
-        serverDate: "2026-08-01",
+        serverDate: SEND_DATE,
       });
 
     expect(() =>
@@ -574,7 +573,7 @@ describe("V2 production send boundary", () => {
     });
 
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-01T07:00:00.000Z"));
+    vi.setSystemTime(new Date("2026-09-22T07:00:00.000Z"));
     let payload: Awaited<ReturnType<typeof prepareV2CustomerSendPayloadFromDatabase>>;
     try {
       payload = await prepareV2CustomerSendPayloadFromDatabase(client, quote);
@@ -633,7 +632,7 @@ describe("saved snapshot delivery compatibility", () => {
  it("accepts legacy entered-dimension metadata while retaining its frozen customer price", () => {
   const f=authoritativeRollerFixture();
   Object.assign(f.storedSnapshot.retail_snapshot.retail,{matchedWidth:Number(f.line.width_whole),matchedHeight:Number(f.line.height_whole)});
-  const p=prepareV2CustomerSendPayload({quote:authoritativeQuote(f.total),lineItems:[f.line],designs:[f.design],snapshots:[f.storedSnapshot],serverDate:'2026-08-01'});
+  const p=prepareV2CustomerSendPayload({quote:authoritativeQuote(f.total),lineItems:[f.line],designs:[f.design],snapshots:[f.storedSnapshot],serverDate:SEND_DATE});
   expect(p.total).toBe(f.total);
   expect(p.lines[0].price.matchedWidth).toBe(Number(f.line.width_whole));
  });
@@ -642,7 +641,7 @@ describe("saved snapshot delivery compatibility", () => {
   const line={...f.line,id:'custom-line',selected_design_id:'custom-design',sort_order:1};
   const design={...f.design,id:'custom-design',line_item_id:line.id,current_v2_snapshot_id:'custom-snapshot',quote_v2_priced_catalog_version:'custom-override-v1',options_json:{...f.design.options_json,fabric:'missing-custom-fabric'}};
   const snapshot={...f.storedSnapshot,id:'custom-snapshot',line_item_id:line.id,design_id:design.id,catalog_version:'custom-override-v1',retail_snapshot:{...f.storedSnapshot.retail_snapshot,catalogVersion:'custom-override-v1',retail:{...f.storedSnapshot.retail_snapshot.retail,ok:undefined,productId:undefined,programId:undefined,programName:undefined,matchedWidth:undefined,matchedHeight:undefined}},provenance_snapshot:{mode:'custom_override',internalOnly:true}};
-  const input={quote:authoritativeQuote(f.total*2,{quote_v2_catalog_version:[QUOTE_V2_ROLLER_PREVIEW_VERSION,'custom-override-v1'].sort().join(',')}),lineItems:[f.line,line],designs:[f.design,design],snapshots:[f.storedSnapshot,snapshot],serverDate:'2026-08-01'};
+  const input={quote:authoritativeQuote(f.total*2,{quote_v2_catalog_version:[f.design.quote_v2_priced_catalog_version,'custom-override-v1'].sort().join(',')}),lineItems:[f.line,line],designs:[f.design,design],snapshots:[f.storedSnapshot,snapshot],serverDate:SEND_DATE};
   expect(prepareV2CustomerSendPayload(input).total).toBe(f.total*2);
   snapshot.provenance_snapshot.internalOnly=false;
   expect(()=>prepareV2CustomerSendPayload(input)).toThrow(/provenance/);
@@ -698,7 +697,7 @@ describe("staff manual prices retaining a Norman catalog", () => {
     return {
       quote: authoritativeQuote(total),
       lineItems: [fixture.line], designs: [design], snapshots: [snapshot],
-      serverDate: "2026-08-01",
+      serverDate: SEND_DATE,
     };
   }
 
@@ -765,7 +764,7 @@ describe("staff manual prices retaining a Norman catalog", () => {
       input.snapshots.push({ ...automatic.storedSnapshot, id: "automatic-snapshot", line_item_id: line.id, design_id: design.id });
       expected += automatic.total;
       input.quote.total_amount = expected;
-      input.quote.quote_v2_catalog_version = [QUOTE_V2_ROLLER_PREVIEW_VERSION, "custom-override-v1"].sort().join(",");
+      input.quote.quote_v2_catalog_version = [automatic.design.quote_v2_priced_catalog_version, "custom-override-v1"].sort().join(",");
     }
     const payload = prepareV2CustomerSendPayload({ ...input, sendAsIs });
     expect(payload.total).toBe(expected);
@@ -812,9 +811,9 @@ describe("staff manual prices retaining a Norman catalog", () => {
 
 describe("older Norman shutter snapshot area metadata", () => {
   it("accepts omitted optional area fields only while every price and selection still agrees", () => {
-    const line = { ...rollerLine(), product_type: "Shutters", width_whole: 22, height_whole: 46 };
+    const line = { ...shutterLine(), product_type: "Shutters", width_whole: 22, height_whole: 46 };
     const original: SalesQuoteDesign = {
-      ...unpricedRollerDesign(), product_type: "Shutters", material: "Normandy Stained",
+      ...unpricedShutterDesign(), product_type: "Shutters", material: "Normandy Stained",
       fabric: null, valance: null, lift_system: null, shade_type: null,
       mount_type: "Outside Mount", tilt_type: "Standard Tilt", louver_size: '3 1/2"',
       hinge_color: "Antique Brass", panel_config: "L",

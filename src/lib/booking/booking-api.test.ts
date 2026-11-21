@@ -102,7 +102,7 @@ const base = {
   address: "123 Main St",
   windowCount: 5,
 };
-const submit = async (body: Record<string, unknown>) => {
+const submit = async (body: Record<string, unknown>, headers: Record<string,string> = {}) => {
   const snapshot = (
     await db.query<{ result: { revision: string } }>(
       "select booking_schedule_snapshot('2035-10') result",
@@ -111,7 +111,7 @@ const submit = async (body: Record<string, unknown>) => {
   return POST(
     new NextRequest("http://localhost/api/booking", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify({ revision: snapshot.revision, ...body }),
     }),
   );
@@ -396,7 +396,7 @@ it.each([true, false])("stores follow-up choice %s in CRM, calendar, and notific
 it("persists ad UTMs and exposes the saved lead ID as the Schedule event ID", async () => {
   await publish();
   const utms = { utm_source: "test", utm_medium: "cpc", utm_campaign: "verify", utm_content: "roman-book-now" };
-  const response = await submit({ ...base, ...utms, idempotencyKey: randomUUID() });
+  const response = await submit({ ...base, ...utms, idempotencyKey: randomUUID() }, { "user-agent": "QA browser", "x-forwarded-for":"192.0.2.1", cookie:"_fbp=fb.1.1700000000000.123; _fbc=fb.1.1700000000000.AbC" });
   expect(response.status).toBe(200);
   const result = await response.json();
   expect(result.eventId).toBe(result.leadId);
@@ -404,7 +404,7 @@ it("persists ad UTMs and exposes the saved lead ID as the Schedule event ID", as
   expect(lead).toEqual({ id: result.leadId, ...utms });
   const meta = (await db.query<{payload: Record<string, unknown>}>("select payload from booking_outbox where kind='meta_schedule'")).rows;
   expect(meta).toHaveLength(1);
-  expect(meta[0].payload).toMatchObject({ eventId: result.eventId, eventTime: expect.any(Number), matching: { ph: [expect.stringMatching(/^[a-f0-9]{64}$/)] } });
+  expect(meta[0].payload).toMatchObject({ eventId: result.eventId, eventTime: expect.any(Number), matching: { ph: [expect.stringMatching(/^[a-f0-9]{64}$/)], client_ip_address:"192.0.2.1", client_user_agent:"QA browser", fbp:"fb.1.1700000000000.123", fbc:"fb.1.1700000000000.AbC" } });
   for (const field of ["name", "phone", "email", "address", "userAgent", "referrer", "fbp", "fbc"])
     expect(meta[0].payload).not.toHaveProperty(field);
 });

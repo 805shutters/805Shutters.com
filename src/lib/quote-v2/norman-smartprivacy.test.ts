@@ -22,7 +22,7 @@ describe("SmartPrivacy independent assortment, fit and pricing",()=>{
  for(const color of SMARTPRIVACY_COLORS)for(const slat of ['2"','2 1/2"'])it(`prices ${color.code} ${color.finish} ${slat} and derives factory coordination`,()=>{
   const row=rows.find(r=>r.colorCode===color.code&&r.fabricType.endsWith(color.finish))!;
   const s=shade({slat_size:slat,fabric_color_id:row.id,fabric_color_code:row.colorCode,fabric_color_type:row.fabricType,finish_type:color.finish,color:row.colorName});
-  expect(rules(s)).toEqual([]);const result=price(s);expect(result.ok,JSON.stringify(result)).toBe(true);
+  expect(rules(s)).toEqual([]);const result=price(s);expect(result,JSON.stringify(result)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
   expect(s.configuration.norman_assembly_v1).toMatchObject({color:{factoryCode:color.factoryCode,wand:color.wand}});
  });
  it.each([[16.875,24],[72.375,96]])("accepts exact inside boundaries %s × %s",(w,h)=>expect(rules(shade({},w,h))).not.toContain("dimensions"));
@@ -35,16 +35,16 @@ describe("SmartPrivacy independent assortment, fit and pricing",()=>{
   const s=shade({mount_type:"Outside Mount",faux_blind_count:3,faux_blind_widths_inches:[24,48,24],smartprivacy_shim_layers:2,valance:"3.25-inch Designer Crown"},96,48);
   expect(rules(s)).toEqual([]);
   expect(smartprivacyComponents(s)?.record.components.map(c=>c.shims)).toEqual([4,8,4]);
-  const result=price(s);expect(result.ok,JSON.stringify(result)).toBe(true);
+  const result=price(s);expect(result,JSON.stringify(result)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
   if(!result.ok)return;
-  // Retail grids: 161 + 249 + 161; valances 28 + 56 + 28; 16 shims × $7. Existing factor .33 and margin $125.
-  expect(result.wholesaleUnitPrice).toBe(262.35);expect(result.total).toBe(387.35);
+  // Retail grids: 161 + 249 + 161; valances 28 + 56 + 28; 16 shims × $7. Catalog factor .30 and margin $125.
+  expect(result.wholesaleUnitPrice).toBe(238.5);expect(result.total).toBe(363.5);
   expect(result.total-result.wholesaleTotal!).toBe(125);
   expect(JSON.stringify(toCustomerQuotePriceResult(result))).not.toMatch(/wholesale|margin|factoryCode/);
  });
  it("prices side kits per independent blind and refuses unmeasured split widths",()=>{
   const s=shade({faux_blind_count:3,faux_blind_widths_inches:[24,36,24],smartprivacy_side_mount:"Yes"},84);
-  expect(authoritativeAutomaticSurchargeSelections(s)).toContainEqual({id:"side_mount_bracket",units:3});expect(price(s).ok).toBe(true);
+  expect(authoritativeAutomaticSurchargeSelections(s)).toContainEqual({id:"side_mount_bracket",units:3});expect(price(s)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
   s.configuration={...s.configuration,faux_blind_widths_inches:[24,12,24]};expect(rules(s)).toContain("dimensions");
  });
  it.each([["None","Fully Recessed",2.8125],["None","Minimum Depth",1.5],["2.5-inch Modern Curved","Fully Recessed",3.875],["3.25-inch Designer Crown","Fully Recessed",4.0625],["2.5-inch Modern Curved","Bracket Flush",2.875],["3.25-inch Designer Crown","Minimum Depth",1.625]])("enforces %s %s depth",(valance,fit,depth)=>{

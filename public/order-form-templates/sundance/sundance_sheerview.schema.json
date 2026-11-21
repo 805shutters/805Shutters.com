@@ -1,0 +1,452 @@
+{
+  "schema_version": 1,
+  "routing_key": "sundance:sundance_sheerview",
+  "manufacturer": "Sundance",
+  "product_key": "sundance_sheerview",
+  "product_name": "Sundance SheerView Plus (sheer/banded vane shade)",
+  "product_kind": "Sheer Shades",
+  "portal_ordering_type": "SheerView Plus",
+  "catalog_version": "sundance-assortment-2026-09-26-r15",
+  "status": "gaps",
+  "source_url": "https://sundance.blindata.app",
+  "ordered_fields": [
+    "customer_name",
+    "quote_number",
+    "order_draft_name",
+    "account_number",
+    "po_number",
+    "sidemark",
+    "delivery_method",
+    "ship_to_name",
+    "ship_to_address",
+    "ship_to_zip",
+    "bill_to",
+    "contact_phone_email",
+    "special_instructions",
+    "order_date",
+    "room_name",
+    "quantity",
+    "width",
+    "height",
+    "mount_type",
+    "fabric_color",
+    "vane_size",
+    "light_control",
+    "headrail",
+    "headrail_finish",
+    "control",
+    "motor_type",
+    "cord_option",
+    "control_side",
+    "charger",
+    "remote_control",
+    "mount_depth_flush",
+    "line_note"
+  ],
+  "fields": [
+    {
+      "key": "customer_name",
+      "label": "customer_name",
+      "ask_order": 1,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "quote_number",
+      "label": "quote_number",
+      "ask_order": 2,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "order_draft_name",
+      "label": "order_draft_name",
+      "ask_order": 3,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "account_number",
+      "label": "account_number",
+      "ask_order": 4,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "po_number",
+      "label": "po_number",
+      "ask_order": 5,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "sidemark",
+      "label": "sidemark",
+      "ask_order": 6,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "delivery_method",
+      "label": "delivery_method",
+      "ask_order": 7,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "ship_to_name",
+      "label": "ship_to_name",
+      "ask_order": 8,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "805 SHUTTERS (default, used on every past order)",
+          "label": "805 SHUTTERS (default, used on every past order)"
+        },
+        {
+          "value": "customer",
+          "label": "customer"
+        }
+      ]
+    },
+    {
+      "key": "ship_to_address",
+      "label": "ship_to_address",
+      "ask_order": 9,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "ship_to_zip",
+      "label": "ship_to_zip",
+      "ask_order": 10,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "bill_to",
+      "label": "bill_to",
+      "ask_order": 11,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "contact_phone_email",
+      "label": "contact_phone_email",
+      "ask_order": 12,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "special_instructions",
+      "label": "special_instructions",
+      "ask_order": 13,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "order_date",
+      "label": "order_date",
+      "ask_order": 14,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "room_name",
+      "label": "Room",
+      "ask_order": 15,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "quantity",
+      "label": "Qty",
+      "ask_order": 16,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "width",
+      "label": "Width",
+      "ask_order": 17,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "height",
+      "label": "Height / Drop",
+      "ask_order": 18,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "mount_type",
+      "label": "Mount",
+      "ask_order": 19,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Inside",
+          "label": "Inside"
+        },
+        {
+          "value": "Outside",
+          "label": "Outside"
+        }
+      ]
+    },
+    {
+      "key": "fabric_color",
+      "label": "Fabric (vane size + light control + color)",
+      "ask_order": 20,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "vane_size",
+      "label": "vane_size",
+      "ask_order": 21,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "2\"",
+          "label": "2\""
+        },
+        {
+          "value": "2.5\"",
+          "label": "2.5\""
+        },
+        {
+          "value": "3\"",
+          "label": "3\""
+        }
+      ]
+    },
+    {
+      "key": "light_control",
+      "label": "light_control",
+      "ask_order": 22,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Light Filtering (LF)",
+          "label": "Light Filtering (LF)"
+        },
+        {
+          "value": "Room Darkening",
+          "label": "Room Darkening"
+        }
+      ]
+    },
+    {
+      "key": "headrail",
+      "label": "headrail",
+      "ask_order": 23,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "headrail_finish",
+      "label": "headrail_finish",
+      "ask_order": 24,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "S113 Snow White",
+          "label": "S113 Snow White"
+        },
+        {
+          "value": "LD-322 Beige",
+          "label": "LD-322 Beige"
+        },
+        {
+          "value": "LD-L334 Pecan",
+          "label": "LD-L334 Pecan"
+        },
+        {
+          "value": "LD-S113 White",
+          "label": "LD-S113 White"
+        },
+        {
+          "value": "LD-S302 Sesame",
+          "label": "LD-S302 Sesame"
+        },
+        {
+          "value": "LD-S378 Cocoa",
+          "label": "LD-S378 Cocoa"
+        },
+        {
+          "value": "LD-S414 Cornsilk",
+          "label": "LD-S414 Cornsilk"
+        },
+        {
+          "value": "LD-S503 Dolphin Gray",
+          "label": "LD-S503 Dolphin Gray"
+        },
+        {
+          "value": "LD-S823 Rattan",
+          "label": "LD-S823 Rattan"
+        },
+        {
+          "value": "LD-V110 Night Sky",
+          "label": "LD-V110 Night Sky"
+        },
+        {
+          "value": "LD-V113 Blueberry",
+          "label": "LD-V113 Blueberry"
+        },
+        {
+          "value": "LD-ZY090 Sage",
+          "label": "LD-ZY090 Sage"
+        }
+      ]
+    },
+    {
+      "key": "control",
+      "label": "control",
+      "ask_order": 25,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Cordless",
+          "label": "Cordless"
+        },
+        {
+          "value": "Continuous Cord Loop",
+          "label": "Continuous Cord Loop"
+        },
+        {
+          "value": "Rechargeable Motor with Wand",
+          "label": "Rechargeable Motor with Wand"
+        }
+      ]
+    },
+    {
+      "key": "motor_type",
+      "label": "motor_type",
+      "ask_order": 26,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "SIMPHONY 30 Li-On MOTOR (Rechargeable)",
+          "label": "SIMPHONY 30 Li-On MOTOR (Rechargeable)"
+        },
+        {
+          "value": "SONESSE 30 Somfy rechargeable",
+          "label": "SONESSE 30 Somfy rechargeable"
+        }
+      ]
+    },
+    {
+      "key": "cord_option",
+      "label": "cord_option",
+      "ask_order": 27,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "control_side",
+      "label": "control_side",
+      "ask_order": 28,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "charger",
+      "label": "charger",
+      "ask_order": 29,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "remote_control",
+      "label": "remote_control",
+      "ask_order": 30,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "No",
+          "label": "No"
+        }
+      ]
+    },
+    {
+      "key": "mount_depth_flush",
+      "label": "mount_depth_flush",
+      "ask_order": 31,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "line_note",
+      "label": "Note / Instructions (per line)",
+      "ask_order": 32,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    }
+  ]
+}

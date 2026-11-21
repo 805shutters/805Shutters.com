@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCrmGoogleOAuthStatus } from "@/lib/crm/oauth";
+import { quoterServiceGuard } from "@/lib/crm/quoter-service-auth";
 
 export const runtime = "nodejs";
 
@@ -53,6 +54,9 @@ function redirectWithError(request: NextRequest, code: string) {
 }
 
 export async function GET(request: NextRequest) {
+  const quoterDenied = quoterServiceGuard(request);
+  if (quoterDenied) return quoterDenied;
+
   const redirectPath = getSafeRedirectPath(request);
   const redirectTo = new URL(redirectPath, getCanonicalSiteOrigin(request)).toString();
   const status = await getCrmGoogleOAuthStatus(redirectTo);
