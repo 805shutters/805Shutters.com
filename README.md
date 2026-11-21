@@ -37,8 +37,10 @@ verification URL is `https://805-one.vercel.app`.
 
 ## Quoter service
 
-The Quoter is a server-to-server caller. It is not a `crm_profiles` user and it
-does not sign in through Supabase. Staff CRM sessions stay on `requireCrmUser`.
+The Quoter is a server-to-server caller. It does not sign in through Supabase.
+Staff CRM sessions stay on `requireCrmUser`, which refuses this bearer. On the
+five front-door routes the draft is attributed to the active `crm_profiles`
+row named by `QUOTER_SERVICE_ACTOR_EMAIL`, defaulting to `jessica@805shutters.com`.
 The bot sends `Authorization: Bearer <token>`. The server reads
 `QUOTER_SERVICE_TOKEN`, hashes that value and the presented token, and compares
 the digests with a timing-safe compare. If the variable is missing or blank,
@@ -52,9 +54,10 @@ The token is accepted only on these routes:
 - `POST /api/crm/quote-front-door/read-back`
 - `POST /api/crm/quote-front-door/draft`
 
-The only write is an insert into `crm_quote_front_door_drafts` with status
-`draft`. The bot cannot send a quote, a payment link, an email, or a text, and
-it cannot write `quote_category_field_sequence` or `quote_sequence_field_alias`.
+The draft write calls `create_quote_v2_draft` for that staff actor and stores
+the read-back on `sales_quotes.front_door_readback`. The quote stays a draft.
+The bot cannot send a quote, a payment link, an email, or a text, and it
+cannot write `quote_category_field_sequence` or `quote_sequence_field_alias`.
 
 ### Client contract
 
