@@ -56,7 +56,7 @@ describe("standalone entry Square requests", () => {
   it("uses the exact entry ledger and branded sender, not a quote ledger", async () => {
     const { supabase, calls } = fixture();
     const result = await sendSquareEntryPaymentLink(supabase, "entry-1", "deposit", actor, confirmation);
-    expect(result).toMatchObject({ amount: 300, recipient: "exact@example.com", email: { sent: true } });
+    expect(result).toMatchObject({ amount: 300, recipient: "exact@example.com", email: { sent: true }, deliveryState: "accepted", providerMessageId: null });
     expect(createSquarePaymentLink).toHaveBeenCalledWith(expect.objectContaining({ bookkeepingEntryId: "entry-1", amountCents: 30000 }));
     expect(vi.mocked(createSquarePaymentLink).mock.calls[0][0]).not.toHaveProperty("quoteId");
     expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ from: "805 Shutters <805@805shutters.com>", to: "exact@example.com" }));
@@ -125,7 +125,25 @@ describe("entry payment request route", () => {
     authorize();
     const response = await POST(request({ paymentType: "deposit", ...confirmation }), { params: Promise.resolve({ id: routeId }) });
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ recipient: "exact@example.com", amount: 300, email: { sent: true } });
+    expect(await response.json()).toMatchObject({ recipient: "exact@example.com", amount: 300, email: { sent: true }, deliveryState: "accepted", providerMessageId: null });
+  });
+  it("includes deliveryState and providerMessageId from the email result", async () => {
+    authorize();
+    vi.mocked(sendEmail).mockResolvedValueOnce({ sent: true, id: "resend-entry-1" });
+    const accepted = await POST(request({ paymentType: "deposit", ...confirmation }), { params: Promise.resolve({ id: routeId }) });
+    expect(accepted.status).toBe(200);
+    expect(await accepted.json()).toMatchObject({ deliveryState: "accepted", providerMessageId: "resend-entry-1", email: { sent: true } });
+
+    vi.mocked(sendEmail).mockResolvedValueOnce({ sent: false, error: "rejected" });
+    const failed = await POST(request({ paymentType: "deposit", ...confirmation }), { params: Promise.resolve({ id: routeId }) });
+    expect(failed.status).toBe(200);
+    expect(await failed.json()).toMatchObject({ deliveryState: "failed", providerMessageId: null, email: { sent: false } });
+
+    vi.mocked(sendEmail).mockResolvedValueOnce({ sent: false, uncertain: true });
+    const unknown = await POST(request({ paymentType: "deposit", ...confirmation }), { params: Promise.resolve({ id: routeId }) });
+    expect(unknown.status).toBe(200);
+    expect(await unknown.json()).toMatchObject({ deliveryState: "unknown", providerMessageId: null, email: { sent: false, uncertain: true } });
+    expect(createSquarePaymentLink).toHaveBeenCalled();
   });
   it("honors the read-only account restriction", async () => {
     vi.mocked(requireCrmUser).mockRejectedValue(new CrmAuthError(403, "Ken's CRM login is read-only."));
