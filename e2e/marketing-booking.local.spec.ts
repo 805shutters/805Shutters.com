@@ -217,3 +217,31 @@ test.describe("mobile contact", () => {
     expect(await events(page)).toHaveLength(0);
   });
 });
+
+for (const width of [1440, 768, 390, 320]) {
+  test(`residential navigation and online booking at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: width === 320 ? 568 : 900 });
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    const hero = page.locator(".home-editorial-panel");
+    const links = hero.getByRole("navigation", { name: "Gallery and contact" });
+    const products = ["Blinds", "Shades", "Drapery", "Shutters", "Exterior Shades"];
+    await expect(page.locator("#primary-categories .category-nav-item > a")).toHaveText(products);
+    await expect(page.locator('[aria-label="Mobile products"] a')).toHaveText(products);
+    await expect(hero.getByRole("link", { name: "Schedule a Free In-Home Consultation" })).toHaveAttribute("href", "/book-consultation/");
+    for (const [name, path] of [["Gallery", "/gallery/"], ["Contact Us", "/contact/"]]) {
+      const link = links.getByRole("link", { name, exact: true });
+      await expect(page.locator("footer .gallery-contact-links").getByRole("link", { name, exact: true })).toHaveAttribute("href", path);
+      await link.click();
+      await expect(page).toHaveURL(new RegExp(path + "$"));
+      await page.goBack({ waitUntil: "domcontentloaded" });
+    }
+    const bottomBooking = page.locator(".cta-band").getByRole("button", { name: "Book Online Now" });
+    await bottomBooking.click();
+    await expect(page.getByRole("dialog", { name: "Book an appointment" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    if (width <= 620) {
+      await page.locator(".mobile-action-bar").getByRole("link", { name: "Book Online Now" }).click();
+      await expect(page).toHaveURL(/\/book-consultation\/$/);
+    }
+  });
+}

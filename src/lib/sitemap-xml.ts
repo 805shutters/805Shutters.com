@@ -66,7 +66,12 @@ export function buildSitemapEntries(): MetadataRoute.Sitemap {
     images: imageUrls([page.image])
   }));
 
-  return [...pageEntries, ...answerEntries, comparisonGuideEntry, bookingEntry, officialIdentityEntry]
+  const editorialEntries = ["/window-guide/", "/bay-window-project/"].map(path => ({
+    url: site.baseUrl + path,
+    lastModified: new Date("2026-11-18")
+  }));
+
+  return [...pageEntries, ...editorialEntries, ...answerEntries, comparisonGuideEntry, bookingEntry, officialIdentityEntry]
     .filter((entry) => !isConsolidatedPage(new URL(entry.url).pathname));
 }
 

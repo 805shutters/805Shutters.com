@@ -19,11 +19,11 @@ export function squarePaymentMessage(customerName: string, url: string, details:
   const amount = paymentMoney(details.amount);
   const subject = `Your 805 Shutters ${isCustom ? 'payment' : isDeposit ? 'deposit' : 'balance'} link - ${amount}`;
   const intro = details.fullAmount
-    ? 'Thank you for your order. Please use the secure Square link below to pay the entire amount remaining on your order.'
-    : isCustom ? 'Thank you for your order. Please use the secure Square link below to make your scheduled payment.'
-    : isDeposit ? 'Here is your deposit information to start your order. Please use the secure Square link below to pay your deposit.'
-    : 'Thank you so much for your order. Please use the secure Square link below to pay your remaining balance.';
-  const action = isCustom ? 'Make payment through Square' : isDeposit ? 'Pay deposit through Square' : 'Pay balance through Square';
+    ? 'Thank you for your order. Please use the secure card payment link below to pay the entire amount remaining on your order.'
+    : isCustom ? 'Thank you for your order. Please use the secure card payment link below to make your scheduled payment.'
+    : isDeposit ? 'Here is your deposit information to start your order. Please use the secure card payment link below to pay your deposit.'
+    : 'Thank you so much for your order. Please use the secure card payment link below to pay your remaining balance.';
+  const action = isCustom ? 'Make payment by card' : isDeposit ? 'Pay deposit by card' : 'Pay balance by card';
   const text = `Hello ${name},\n\n${intro}\n\n${label} due: ${amount}\n\n${action}: ${url}\n\nThank you,\n805 Shutters\n\n${officialContactLine}`;
   const smsLabel = details.fullAmount ? 'full order' : isCustom ? 'order' : isDeposit ? 'deposit' : 'order balance';
   const sms = `805 Shutters ${smsLabel} payment link (${amount}): ${url}`;

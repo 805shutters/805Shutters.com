@@ -13,6 +13,13 @@ describe("manufacturer order capability matrix", () => {
     expect(orderEntryRouteCapability("onyx:missing")).toBeNull();
     expect(orderEntryRouteCapability("onyx:onyx_us_made_vinyl")).toMatchObject({ state: "portal_mapping_required", enterOrderMode: "blocked" });
   });
+  it("keeps Sundance review-only until the live form is confirmed", () => {
+    expect(orderEntryRouteCapability("sundance:sundance_sheerview")).toMatchObject({
+      manufacturer: "Sundance",
+      state: "portal_schema_required",
+      enterOrderMode: "blocked",
+    });
+  });
   it("records Lotus packet preparation without external send", () => {
     for (const route of MANUFACTURER_ORDER_CAPABILITY_MATRIX.filter((entry) => entry.manufacturer === "Lotus")) {
       expect(route).toMatchObject({ state: "document_packet_verified", enterOrderMode: "document_packet" });

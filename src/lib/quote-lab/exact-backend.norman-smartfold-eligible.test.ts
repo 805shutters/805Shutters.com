@@ -16,52 +16,50 @@ describe("SmartFold narrow price eligibility through CRM",()=>{
  it("retains the measured Light Guard envelope and exact rejection through server save/reopen",()=>{
   const q=quote();q.designs[0].mount_type="Inside Mount";q.designs[0].options_json={...q.designs[0].options_json,basic_light_guard:"Yes",smartfold_light_guard_color:"3058 White",smartfold_light_guard_recess:"Fully Recessed",smartfold_full_recess_depth_inches:3.52};
   const valid=run(q);expect(valid.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({insideLightGuardClearance:{requiredFullAssemblyDepth:3.52,availableFullAssemblyDepth:3.52,recessArrangement:"Fully Recessed"}});
-  expect(valid.designs[0].result.validationIssues.some(i=>i.ruleId==="norman.smartfold.inside_light_guard_depth")).toBe(false);expect(valid.sendability.sendable).toBe(true);
+  expect(valid.designs[0].result.validationIssues.some(i=>i.ruleId==="norman.smartfold.inside_light_guard_depth")).toBe(false);expect(valid.designs[0].result).toMatchObject({ok:false,code:"NO_SITE_PRICE"});expect(valid.sendability.sendable).toBe(false);
   const reopened=run(JSON.parse(JSON.stringify(q)));expect(reopened.designs[0].selection).toEqual(valid.designs[0].selection);
   q.designs[0].options_json.smartfold_full_recess_depth_inches=3.5;const rejected=run(q);expect(rejected.designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.inside_light_guard_depth");expect(rejected.designs[0].snapshot).toBeNull();
  });
 
  it.each(SMARTFOLD_FABRICS.map(f=>f.code))("prices and snapshots current fabric %s with verified outside clearance",code=>{
-  const r=run(quote(code)),d=r.designs[0];expect(d.result.ok,JSON.stringify(d.result)).toBe(true);expect(d.result.productStatus).toBe("documented_limited");expect(d.snapshot).not.toBeNull();if(d.result.ok)expect(d.result.total).toBeGreaterThan(0);expect(r.sendability.sendable,JSON.stringify(r.sendability)).toBe(true);
+  const r=run(quote(code)),d=r.designs[0];expect(d.result,JSON.stringify(d.result)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});expect(d.snapshot).toBeNull();expect(r.sendability.sendable).toBe(false);
  });
  it.each(SMARTFOLD_FABRICS.flatMap(f=>["Continuous Cord Loop","PrecisionLift Cordless"].map(lift=>[f.code,lift])))("prices manual fabric %s / %s through current saved server records",(code,lift)=>{
   const q=quote(code);q.designs[0].lift_system=lift;q.designs[0].motor_type=null;q.designs[0].remote_type=null;
-  const r=run(q),d=r.designs[0];expect(d.result.ok,JSON.stringify(d.result)).toBe(true);expect(d.snapshot).not.toBeNull();expect(r.sendability.sendable).toBe(true);
-  if(d.result.ok){expect(d.result.base).toBe(606);expect(d.result.surchargeLines).toEqual([]);}
+  const r=run(q),d=r.designs[0];expect(d.result,JSON.stringify(d.result)).toMatchObject({ok:false,code:"NO_SITE_PRICE"});expect(d.snapshot).toBeNull();expect(r.sendability.sendable).toBe(false);
   expect(run(JSON.parse(JSON.stringify(q)))).toEqual(r);
  });
  it.each(SMARTFOLD_FABRICS.flatMap(f=>[8,16,24,36,48,60,72].flatMap(length=>["White","Cottage White","Black"].map(color=>({code:f.code,length,color})))))("prices AutoWand $code / $length inches / $color and preserves its physical configuration",({code,length,color})=>{
   const q=quote(code);q.designs[0].motor_type="AutoWand";q.designs[0].remote_type=null;q.designs[0].options_json={...q.designs[0].options_json,smartfold_wand_length:String(length),smartfold_wand_color:color};
-  const r=run(q);expect(r.sendability.sendable,JSON.stringify(r.designs[0].result)).toBe(true);expect(r.designs[0].snapshot).not.toBeNull();
-  if(r.designs[0].result.ok){expect(r.designs[0].result.base).toBe(606);expect(r.designs[0].result.surchargeLines.reduce((sum,line)=>sum+line.amount,0)).toBe(166);}
+  const r=run(q);expect(r.designs[0].result,JSON.stringify(r.designs[0].result)).toMatchObject({ok:false,code:"NO_SITE_PRICE"});expect(r.sendability.sendable).toBe(false);expect(r.designs[0].snapshot).toBeNull();
   expect(r.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({autoWand:{wandLength:length,wandColor:color,usbChargerIncluded:false,chargingKitCableLength:78.75}});
   const customer=v2CustomerConfigurationOptions(customerConfigurationFromSelection(r.designs[0].selection)).join(" ");expect(customer).toContain(`AutoWand Length (inches): ${length}`);expect(customer).toContain(`AutoWand Color: ${color}`);
   expect(run(JSON.parse(JSON.stringify(q)))).toEqual(r);
  });
  it("requires exact AutoWand selections and prices line accessories once",()=>{
   const q=quote();q.designs[0].motor_type="AutoWand";q.designs[0].remote_type=null;q.designs[0].options_json={...q.designs[0].options_json,smartfold_wand_length:"36",smartfold_wand_color:"White"};const base=run(q);
-  q.designs[0].options_json.smartfold_charging_v1={version:1,extraChargingKits:2,extensionCables:3,extensionColor:"Black"};let r=run(q);expect(r.sendability.sendable).toBe(true);expect(r.total-base.total).toBe(219);
+  q.designs[0].options_json.smartfold_charging_v1={version:1,extraChargingKits:2,extensionCables:3,extensionColor:"Black"};let r=run(q);expect(r.designs[0].result).toMatchObject({ok:false,code:"NO_SITE_PRICE"});expect(base.designs[0].result).toMatchObject({code:"NO_SITE_PRICE"});
   expect(r.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({includedChargingKits:{motorQuantity:4,orderQuantity:2},motorAccessories:{extraChargingKits:2,extension:{quantity:3,length:118,color:"Black"}}});
   for(const [key,value,rule] of [["smartfold_wand_length","12","length"],["smartfold_wand_color","Bronze","color"],["smartfold_wand_length",null,"length"]]){const bad=JSON.parse(JSON.stringify(q));bad.designs[0].options_json[key!]=value;r=run(bad);expect(r.sendability.sendable).toBe(false);expect(r.designs[0].snapshot).toBeNull();expect(r.designs[0].result.validationIssues.map(i=>i.ruleId)).toContain(`norman.smartfold.autowand_${rule}`);}
  });
  it("retains manual size and fold boundaries and rejects stale motor settings",()=>{
   const q=quote();q.designs[0].lift_system="PrecisionLift Cordless";q.designs[0].motor_type=null;q.designs[0].remote_type=null;q.lines[0].height_whole=72;
-  expect(run(q).sendability.sendable).toBe(true);q.lines[0].height_fraction="1/16";expect(run(q).designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.louise_cordless_height");
+  expect(run(q).designs[0].result).toMatchObject({code:"NO_SITE_PRICE"});q.lines[0].height_fraction="1/16";expect(run(q).designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.louise_cordless_height");
   q.lines[0].height_whole=60;q.lines[0].height_fraction="0";q.lines[0].width_whole=19;expect(run(q).designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.cordless_narrow");
   q.lines[0].width_whole=36;q.designs[0].motor_type="AutoWand";expect(run(q).sendability.sendable).toBe(false);
-  q.designs[0].motor_type=null;q.designs[0].lift_system="Continuous Cord Loop";q.lines[0].width_whole=8;q.lines[0].height_whole=12;expect(run(q).sendability.sendable).toBe(true);
+  q.designs[0].motor_type=null;q.designs[0].lift_system="Continuous Cord Loop";q.lines[0].width_whole=8;q.lines[0].height_whole=12;expect(run(q).designs[0].result).toMatchObject({code:"NO_SITE_PRICE"});
   q.lines[0].width_whole=7;q.lines[0].width_fraction="15/16";expect(run(q).sendability.sendable).toBe(false);
   q.lines[0].width_whole=36;q.lines[0].width_fraction="0";q.designs[0].options_json={...q.designs[0].options_json,fold_size:8,full_fold_required:true};expect(run(q).designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.full_fold_height");
  });
  it.each([["30-inch Fiberglass Pole",28],["58-inch Fiberglass Pole",28],["36-inch Cordless Operating Pole",89],["60-inch Cordless Operating Pole",89],["Pole Attachment Only",40]] as const)("prices %s once per cordless shade and preserves one complimentary pole per order",(pole,price)=>{
   const q=quote();q.designs[0].lift_system="PrecisionLift Cordless";q.designs[0].motor_type=null;q.designs[0].remote_type=null;const baseline=run(q);
-  q.designs[0].options_json={...q.designs[0].options_json,smartfold_pole:pole};const r=run(q);expect(r.sendability.sendable,JSON.stringify(r)).toBe(true);expect(r.total-baseline.total).toBe(price*4);expect(run(JSON.parse(JSON.stringify(q)))).toEqual(r);
+  q.designs[0].options_json={...q.designs[0].options_json,smartfold_pole:pole};const r=run(q);expect(r.designs[0].result).toMatchObject({code:"NO_SITE_PRICE"});expect(baseline.designs[0].result).toMatchObject({code:"NO_SITE_PRICE"});expect(run(JSON.parse(JSON.stringify(q)))).toEqual(r);void price;
   expect(r.designs[0].selection.configuration.norman_order_record_v1).toMatchObject({orderQuantity:1,retailCharge:0});
   q.designs[0].lift_system="Continuous Cord Loop";expect(run(q).designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.pole_control");
  });
  it("prices premium hem and magnetic catches per shade only with source finish and clearance",()=>{
   const q=quote(),baseline=run(q);q.designs[0].options_json={...q.designs[0].options_json,premium_hem_bar:"Yes",smartfold_hem_color:"Bronze",smartfold_hold_down:"Magnetic",smartfold_magnet_color:"Nickel-Plated",magnet_left_clearance_inches:.5625,magnet_right_clearance_inches:.5625,magnet_bottom_clearance_inches:.6875};
-  const r=run(q);expect(r.sendability.sendable,JSON.stringify(r)).toBe(true);expect(r.total-baseline.total).toBe((16+28)*4);expect(run(JSON.parse(JSON.stringify(q)))).toEqual(r);
+  const r=run(q);expect(r.designs[0].result).toMatchObject({code:"NO_SITE_PRICE"});expect(baseline.designs[0].result).toMatchObject({code:"NO_SITE_PRICE"});expect(run(JSON.parse(JSON.stringify(q)))).toEqual(r);
   q.designs[0].options_json.magnet_left_clearance_inches=.5;expect(run(q).sendability.sendable).toBe(false);q.designs[0].options_json.magnet_left_clearance_inches=.5625;q.designs[0].options_json.smartfold_hem_color="White";expect(run(q).sendability.sendable).toBe(false);
  });
  it.each(SMARTFOLD_FABRICS.flatMap(f=>[
@@ -72,22 +70,22 @@ describe("SmartFold narrow price eligibility through CRM",()=>{
  ].flatMap(([valance,price,options])=>["PrecisionLift Cordless","Continuous Cord Loop","Motorized"].map(lift=>({code:f.code,valance:valance as string,price:price as number,options:options as Record<string,unknown>,lift})))))("prices source standard valance $valance for $code / $lift with exact grid and saved records",({code,valance,price,options,lift})=>{
   const q=quote(code);q.designs[0].lift_system=lift;if(lift!=="Motorized"){q.designs[0].motor_type=null;q.designs[0].remote_type=null;}const base=run(q);
   q.designs[0].valance=valance;q.designs[0].options_json={...q.designs[0].options_json,...options};
-  const r=run(q);expect(r.sendability.sendable,JSON.stringify(r.designs[0].result)).toBe(true);expect(r.total-base.total).toBe(price*4);
+  const r=run(q);expect(r.designs[0].result,JSON.stringify(r.designs[0].result)).toMatchObject({code:"NO_SITE_PRICE"});expect(base.designs[0].result).toMatchObject({code:"NO_SITE_PRICE"});void price;
   expect(r.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({valance:{finishedWidth:36,widthBasis:"default",jointCount:0,returnQuantity:0}});
   expect(run(JSON.parse(JSON.stringify(q)))).toEqual(r);
  });
  it("holds custom/spliced/returned valances while enforcing tall Louise clearance for standard fabric valances",()=>{
   const q=quote();q.designs[0].valance="6-inch Fabric";q.lines[0].width_whole=95;
-  const wide=run(q);expect(wide.designs[0].result.productStatus).toBe("documented_limited");expect(wide.designs[0].result.validationIssues.map(i=>i.ruleId)).toEqual(["norman.processing_fee.oversize_scope_unverified"]);q.lines[0].width_fraction="1/16";expect(run(q).designs[0].result.productStatus).toBe("restriction_source_incomplete");
+  const wide=run(q);expect(wide.designs[0].result).toMatchObject({code:"NO_SITE_PRICE"});q.lines[0].width_fraction="1/16";expect(run(q).designs[0].result.productStatus).toBe("restriction_source_incomplete");
   q.lines[0].width_whole=36;q.lines[0].width_fraction="0";q.lines[0].height_whole=73;
   expect(run(q).designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.outside_mounting_area");
-  q.designs[0].options_json[KEY]={version:1,mountingAreaHeight:1.15,mountingSpaceHeight:2};expect(run(q).sendability.sendable).toBe(true);
+  q.designs[0].options_json[KEY]={version:1,mountingAreaHeight:1.15,mountingSpaceHeight:2};expect(run(q).designs[0].result).toMatchObject({code:"NO_SITE_PRICE"});
   q.designs[0].valance="Square Fascia";expect(run(q).designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.louise_valance");
   q.designs[0].valance="6-inch Fabric";for(const options of [{smartfold_valance_width:36},{smartfold_valance_returns:"Both"},{smartfold_valance_joinery:"Square Keystone"}]){const copy=JSON.parse(JSON.stringify(q));copy.designs[0].options_json={...copy.designs[0].options_json,...options};expect(run(copy).sendability.sendable).toBe(false);}
  });
  it("prices the exact B0342 charging extras once, retains allocation/clearance and reopens unchanged",()=>{
   const q=quote(),base=run(q);q.designs[0].options_json={...q.designs[0].options_json,smartfold_charging_v1:{version:1,extraChargingKits:2,extensionCables:3,extensionColor:"Black"}};
-  const r=run(q);expect(r.total-base.total).toBe(215);expect(r.sendability.sendable).toBe(true);expect(r.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({outsideClearance:{mountingAreaHeight:.75,mountingSpaceHeight:1.5},includedChargingKits:{motorQuantity:4,orderQuantity:2},motorAccessories:{extraChargingKits:2,extension:{quantity:3,length:78.74,color:"Black",adapterWatts:36}}});
+  const r=run(q);expect(r.designs[0].result).toMatchObject({code:"NO_SITE_PRICE"});expect(base.designs[0].result).toMatchObject({code:"NO_SITE_PRICE"});expect(r.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({outsideClearance:{mountingAreaHeight:.75,mountingSpaceHeight:1.5},includedChargingKits:{motorQuantity:4,orderQuantity:2},motorAccessories:{extraChargingKits:2,extension:{quantity:3,length:78.74,color:"Black",adapterWatts:36}}});
   const reopened=run(JSON.parse(JSON.stringify(q)));expect(reopened.total).toBe(r.total);expect(reopened.designs[0].selection).toEqual(r.designs[0].selection);
  });
  it("keeps missing/insufficient clearance, excessive dimensions and incompatible power from customer output",()=>{

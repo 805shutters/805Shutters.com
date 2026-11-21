@@ -81,6 +81,15 @@ export function manufacturerPortalCapability(
     };
   }
 
+  if (input.manufacturer === "Sundance") {
+    return {
+      automaticEntry: false,
+      documentPreparation: false,
+      reviewBoundary: "saved_draft_only",
+      reason: "Sundance order forms stay in review. Live form confirmation is still open, and no vendor account is seeded.",
+    };
+  }
+
   if (input.manufacturer === "Polar") {
     return {
       automaticEntry: false,

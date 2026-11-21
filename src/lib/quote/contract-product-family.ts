@@ -47,3 +47,18 @@ export function contractProductType(productType: string): string {
   };
   return canonical[contractProductFamily(productType)] ?? productType;
 }
+
+/** Imported quote lines can retain a generic title while Material identifies the
+ * Sundance Sheerview product. Use that identity only for a labeled category reference;
+ * never infer from fabric colors, notes, or an explicitly named custom product. */
+export function contractReferenceProduct(productType: string, options: readonly string[]): string {
+  if (!/^(?:window treatments?)?$/.test(normalize(productType))) return productType;
+  const materials = options.flatMap(option => {
+    const colon = option.indexOf(':');
+    if (colon < 0 || normalize(option.slice(0, colon)) !== 'material') return [];
+    const value = option.slice(colon + 1).trim();
+    return value ? [value] : [];
+  });
+  return materials.length && materials.every(value => /^sundance sheer ?view\b/.test(normalize(value)))
+    ? materials[0] : productType;
+}

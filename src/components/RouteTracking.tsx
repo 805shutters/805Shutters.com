@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { isPublicFacingPath } from "@/lib/public-activity";
 import { getGa4Ids, getGoogleAdsId } from "@/lib/tracking-config";
 
-import { metaPixel } from "@/lib/meta-pixel";
+import { trackPairedInteraction } from "@/lib/meta-pixel";
 
 export function RouteTracking() {
   const pathname = usePathname();
@@ -16,7 +16,7 @@ export function RouteTracking() {
     if (!isPublicFacingPath(pathname)) return;
     if (previousPath.current === pathname) return;
     previousPath.current = pathname;
-    metaPixel("track", "PageView");
+    trackPairedInteraction("PageView", pathname);
 
     if (!didMount.current) {
       didMount.current = true;
@@ -39,6 +39,17 @@ export function RouteTracking() {
     }
 
   }, [pathname]);
+
+  useEffect(() => {
+    function onContact(event: MouseEvent) {
+      const anchor = event.target instanceof Element ? event.target.closest("a[href]") : null;
+      if (anchor && /^(tel|sms|mailto):/i.test(anchor.getAttribute("href") || "")) {
+        trackPairedInteraction("Contact", window.location.pathname);
+      }
+    }
+    document.addEventListener("click", onContact, true);
+    return () => document.removeEventListener("click", onContact, true);
+  }, []);
 
   return null;
 }

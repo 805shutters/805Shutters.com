@@ -36,6 +36,42 @@ describe('every catalog product has a contract sketch', () => {
     }
   });
 
+
+  it.each(['', 'Window Treatment', 'Window treatments'])('restores imported Sundance Sheerview sketches for generic title %j', productType => {
+    const options = ['Material: Sundance Sheerview - 2.5" vane, room darkening', 'Fabric: Granite (2.5" Room Darkening)', 'Fabric color: Granite', 'Operating system: Motorized', 'Motor: Rechargeable Motor with Wand', 'Mount type: Outside Mount'];
+    const before = [...options];
+    for (const size of ['compact', 'anatomy'] as const) {
+      const html = render(productType, options, size);
+      expect(html).toContain('/c-v1/sheer.webp');
+      expect(html).toContain('data-family-reference="true"');
+      expect(html).toContain('data-official-sketch-family="sheer"');
+      expect(html).not.toContain('data-official-sketch-required');
+      expect(html).not.toContain('/remote.webp');
+    }
+    for (const mount of ['Inside', 'Outside Mount']) {
+      const html = renderToStaticMarkup(createElement(QuoteLineItemCard, {
+        lineNumber: 2, room: 'Window B', productType, options: [...options.slice(0, -1), `Mount type: ${mount}`],
+        price: '$1,558.80', quantity: 1,
+      }));
+      expect(html).toContain('/c-v1/sheer.webp');
+      expect(html).toContain('Rechargeable Motor with Wand');
+      expect(html).toContain('Granite');
+      expect(html).toContain(mount);
+      expect(html).toContain('$1,558.80');
+    }
+    expect(options).toEqual(before);
+  });
+
+  it.each([
+    ['Window treatment', ['Fabric: Sundance Sheerview', 'Notes: Roller shades']],
+    ['Window treatment', ['Material: Sundance Sheerview', 'Material: Roller shades']],
+    ['Window treatment', ['Material: Sundance Sheerview', 'Material: Unknown treatment']],
+    ['Custom treatment', ['Material: Sundance Sheerview']],
+    ['Window treatment', ['Material: French Door Shutters']],
+  ])('keeps unknown or conflicting identity unmapped: %s %j', (productType, options) => {
+    expect(render(productType as string, options as string[])).toContain('data-official-sketch-required');
+  });
+
   it('restores the screenshot item through the actual public contract card', () => {
     const options = ['Operating system: Cordless', 'Control side: Left', 'Mount type: Inside Mount', 'Draw direction: Left'];
     const before = [...options];

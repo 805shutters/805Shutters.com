@@ -32,7 +32,7 @@ import {
   commercialProjectTypeOptions,
   productInterestOptions,
 } from "@/lib/product-interest-options";
-import { isSyntheticBookingVerification, scheduleMatchingData } from "@/lib/booking/meta-schedule";
+import { isSyntheticBookingVerification, requestMatchingData, scheduleMatchingData } from "@/lib/booking/meta-schedule";
 import { metaAttributionSource } from "@/lib/meta-booking-alert";
 export const runtime = "nodejs";
 type BookingPayload = {
@@ -366,7 +366,7 @@ export async function submitConsultation(
     startAt,
     endAt,
   };
-  const metaSchedule = { eventTime: Math.floor(Date.now() / 1000), matching: scheduleMatchingData(email, phone) };
+  const metaSchedule = { eventTime: Math.floor(Date.now() / 1000), pagePath, matching: { ...scheduleMatchingData(email, phone), ...requestMatchingData(request) } };
   for (let attempt = 0; attempt < 2; attempt++) {
     const { data: replay, error: replayError } = await supabase
       .from("booking_requests")
@@ -467,7 +467,8 @@ export async function submitConsultation(
         kind,
         payload: effectDetails,
       })),
-      { kind: "meta_schedule", payload: metaSchedule },
+      ...(!authorizedOverride && request.headers.get("sec-gpc") !== "1" && !pagePath.startsWith("/crm")
+        ? [{ kind: "meta_schedule", payload: metaSchedule }] : []),
     ];
     const commitArgs = {
       p_key: idempotencyKey,
