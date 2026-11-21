@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { quoteLineSpecHash } from "@/lib/crm/price-record";
 import {
-  UNPRICED_PENDING_NORMAN_LIVE_LOOKUP_NOTE,
   liveLookupStoredSpecIsCurrent,
   portalDraftIdFromReceipt,
   quoteLivePriceMayUpdateQuote,
