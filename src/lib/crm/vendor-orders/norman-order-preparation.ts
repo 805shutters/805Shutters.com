@@ -143,6 +143,7 @@ export function enqueueOnyxShutterPreparations(
     generatedAt: form.submitted_at || new Date().toISOString(),
     customerId: form.customer_id,
     customerName: form.customer_snapshot.name,
+    sideMark: form.customer_snapshot.sideMark,
     customerPhone: form.customer_snapshot.phone,
     customerEmail: form.customer_snapshot.email,
     jobsiteAddress: [form.customer_snapshot.address, form.customer_snapshot.city].filter(Boolean).join(", ") || null,

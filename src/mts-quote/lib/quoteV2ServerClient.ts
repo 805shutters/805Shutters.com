@@ -268,6 +268,7 @@ const QUOTE_FIELDS = [
   ["installer_notes", "installerNotes"],
   ["quote_group_id", "quoteGroupId"],
   ["quote_letter", "quoteLetter"],
+  ["side_mark", "sideMark"],
 ] as const;
 
 export function quoteV2QuotePatch(
@@ -383,6 +384,7 @@ export function createQuoteV2Draft(
     installerNotes?: string | null;
     quoteGroupId?: string | null;
     quoteLetter?: string;
+    sideMark?: string | null;
     createdJobId?: string | null;
     idempotencyKey?: string;
   }>,

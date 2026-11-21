@@ -145,9 +145,11 @@ export type CrmQuote = {
   signed_at: string | null;
   quote_group_id: string | null;
   quote_label: string | null;
+  customer_name?: string;
+  side_mark?: string | null;
+  side_mark_overridden?: boolean | null;
   meta: Record<string, unknown>;
   notes: string | null;
-  customer_name?: string;
   live_status?: CrmBookkeepingStatus;
 };
 
@@ -454,6 +456,7 @@ export type CrmBookkeepingRow = {
   customerName: string;
   customerPhone: string | null;
   quoteNumber: string | null;
+  sideMark?: string | null;
   soldDate: string | null;
   total: number;
   depositDue: number;

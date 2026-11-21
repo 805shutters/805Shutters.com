@@ -416,7 +416,7 @@ export function buildNormanRollerDraftPlan(
   if (!profile.shipToProfileId.trim()) issue(issues, null, "missing_profile", "ship_to_profile_id", "A Norman ship-to profile is required.");
 
   const poNumber = form.quote_snapshot.quoteNumber?.trim() || "";
-  const sideMark = form.customer_snapshot.name.trim();
+  const sideMark = form.customer_snapshot.sideMark?.trim() || form.customer_snapshot.name.trim();
   if (!poNumber) issue(issues, null, "missing_required_field", "po_number", "Quote number is required for the Norman PO number.");
   if (!sideMark) issue(issues, null, "missing_required_field", "side_mark", "Customer name is required for the Norman side mark.");
 

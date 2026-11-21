@@ -18,6 +18,7 @@ import { cn } from "@mts/lib/utils";
 import { toast } from "sonner";
 import type { SalesQuote } from "@mts/types/quote";
 import { getQuoteType, newQuoteTypeFields } from "@mts/lib/quoteType";
+import { sideMarkForNewQuote } from "@/lib/crm/quote-id";
 
 export function QuoteGroupTabs() {
   const { activeQuoteId, setActiveQuote } = useQuoteBuilderStore();
@@ -135,10 +136,13 @@ export function QuoteGroupTabs() {
 
       const { data: session } = await supabase.auth.getSession();
 
+      const sideMark = sideMarkForNewQuote(activeQuote.customer_name, quoteNumber);
       const { data, error } = await (supabase as any)
         .from("sales_quotes")
         .insert({
           quote_number: quoteNumber,
+          side_mark: sideMark.sideMark,
+          side_mark_overridden: sideMark.overridden,
           account_id: activeQuote.account_id,
           customer_name: activeQuote.customer_name,
           customer_email: activeQuote.customer_email,
@@ -187,10 +191,13 @@ export function QuoteGroupTabs() {
       const { data: session } = await supabase.auth.getSession();
 
       // Create the new quote
+      const sideMark = sideMarkForNewQuote(activeQuote.customer_name, quoteNumber);
       const { data: newQuote, error: insertErr } = await (supabase as any)
         .from("sales_quotes")
         .insert({
           quote_number: quoteNumber,
+          side_mark: sideMark.sideMark,
+          side_mark_overridden: sideMark.overridden,
           account_id: activeQuote.account_id,
           customer_name: activeQuote.customer_name,
           customer_email: activeQuote.customer_email,
