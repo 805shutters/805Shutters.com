@@ -64,6 +64,12 @@ export function InstallerFormClient({ form }: { form: InstallerFormPublic }) {
 
   return (
     <>
+      {typeof form.customer_balance === "number" ? (
+        <section style={card}>
+          <h2 style={heading}>Remaining customer balance</h2>
+          <p style={{ margin: 0, fontSize: 28, fontWeight: 800 }}>{formatInstallerMoney(form.customer_balance)}</p>
+        </section>
+      ) : null}
       <section style={card}>
         <h2 style={heading}>Job outcome</h2>
         {form.workflow.updatedAt || result ? (
@@ -185,6 +191,15 @@ export function InstallerFormClient({ form }: { form: InstallerFormPublic }) {
 function outcomeLabel(outcome: InstallerOutcome) {
   if (outcome === "partially_completed") return "partially completed";
   return outcome;
+}
+
+function formatInstallerMoney(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 const card = { border: "1px solid #b8b6ae", borderRadius: 12, padding: 18, marginBottom: 18, background: "#fff" } as const;

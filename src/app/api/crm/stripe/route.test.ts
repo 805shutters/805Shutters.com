@@ -102,6 +102,35 @@ it("blocks test mode bank matching and unconfirmed historical clearance", async 
   ).toBe(400);
   expect(rpc).not.toHaveBeenCalled();
 });
+it("refuses a blanket or multi-quote clearance before any clearance is recorded", async () => {
+  expect(
+    (
+      await POST(
+        request({
+          action: "clear-all",
+          confirmObligationsResolved: true,
+          evidence: "Provider links retired and invoices resolved with evidence.",
+        }),
+      )
+    ).status,
+  ).toBe(400);
+  expect(
+    (
+      await POST(
+        request({
+          action: "clearance",
+          targetIds: [
+            "11111111-1111-1111-1111-111111111111",
+            "22222222-2222-2222-2222-222222222222",
+          ],
+          confirmObligationsResolved: true,
+          evidence: "Provider links retired and invoices resolved with evidence.",
+        }),
+      )
+    ).status,
+  ).toBe(400);
+  expect(rpc).not.toHaveBeenCalled();
+});
 it("derives bank account and actor on the server instead of trusting supplied identities", async () => {
   expect(
     (

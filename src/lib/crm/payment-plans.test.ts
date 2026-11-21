@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+beforeEach(() => {
+  vi.stubEnv("CARD_PAYMENT_PROVIDER", "square");
+});
 import {
   PAYMENT_PLAN_META_KEY,
   addMonthsClamped,
@@ -176,6 +180,19 @@ describe("createPaymentPlanForJob", () => {
     expect(plan.installments).toHaveLength(6);
     expect(plan.installments.every((i) => i.due_date === null)).toBe(true);
     expect(state.planWrites).toHaveLength(1);
+  });
+
+  it("refuses new Square autopay when the card provider is unset and still opens a non-card plan", async () => {
+    vi.stubEnv("CARD_PAYMENT_PROVIDER", "");
+    const blocked = makeSupabase(baseJob());
+    await expect(createPaymentPlanForJob(blocked.supabase, "job-1", { financed_total: 3000, installment_count: 6 }, actor))
+      .rejects.toMatchObject({ name: "CardProviderConfigError", status: 503 });
+    expect(blocked.state.planWrites).toHaveLength(0);
+    const { plan } = await createPaymentPlanForJob(
+      makeSupabase(baseJob()).supabase, "job-1",
+      { financed_total: 3000, installment_count: 6, method: "zelle" }, actor,
+    );
+    expect(plan.method).toBe("zelle");
   });
 
   it("activates immediately when the job is already installed", async () => {
@@ -517,5 +534,15 @@ describe("linkAutopayCard", () => {
     const result = await linkAutopayCard(supabase, "not-a-token", { sourceId: "cnon:abc" });
     expect(result.ok).toBe(false);
     expect(createCustomerMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses an unset provider before creating a Square customer or card", async () => {
+    vi.stubEnv("CARD_PAYMENT_PROVIDER", "");
+    const plan = autopayPlan();
+    const job = baseJob({ meta: { [PAYMENT_PLAN_META_KEY]: plan } });
+    const { supabase } = makeSupabase(job, { jobs: [job] });
+    await expect(linkAutopayCard(supabase, plan.autopay!.token, { sourceId: "cnon:abc" })).rejects.toMatchObject({ status: 503 });
+    expect(createCustomerMock).not.toHaveBeenCalled();
+    expect(createCardMock).not.toHaveBeenCalled();
   });
 });

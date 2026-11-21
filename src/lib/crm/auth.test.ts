@@ -31,9 +31,10 @@ describe("Ken payoff-only access", () => {
     }
   });
   it("denies unrelated CRM endpoints, including direct URL attempts", () => {
-    for (const path of ["/api/crm/jobs", "/api/crm/quotes", "/api/crm/calendar", "/api/crm/customers/123", "/api/crm/settings", "/api/crm/payments", "/api/crm/ken-payoff/other"]) {
+    for (const path of ["/api/crm/jobs", "/api/crm/quotes", "/api/crm/calendar", "/api/crm/customers/123", "/api/crm/settings", "/api/crm/payments", "/api/crm/ken-payoff/other", "/api/crm/customer-email-status/resolve"]) {
       expect(isKenCrmRequestAllowed("khill31@msn.com", "GET", path)).toBe(false);
     }
+    expect(isKenCrmRequestAllowed("khill31@msn.com", "POST", "/api/crm/customer-email-status/resolve")).toBe(false);
   });
   it("preserves Mike and Jessica access", () => {
     for (const email of ["805shutters@gmail.com", "jessica@805shutters.com"]) {

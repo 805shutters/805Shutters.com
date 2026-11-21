@@ -1,4 +1,4 @@
-import {cardProvider} from '@/lib/finance/card-provider';
+import {CardProviderConfigError, squareWalletApplicationId} from '@/lib/finance/card-provider';
 import { notFound } from "next/navigation";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { loadPublicQuoteByToken, loadPublicQuoteOptions } from "@/lib/crm/public-quote";
@@ -41,7 +41,12 @@ export default async function PublicQuotePage({
   const quote = await loadPublicQuoteByToken(supabase, token);
   if (!quote) notFound();
   quote.versions = crmContractPreview ? [] : await loadPublicQuoteOptions(supabase, quote);
-  const applicationId = cardProvider() === 'square' ? await resolveSquareApplicationId() : null;
+  let applicationId: string | null = null;
+  try {
+    applicationId = await squareWalletApplicationId(resolveSquareApplicationId);
+  } catch (error) {
+    if (!(error instanceof CardProviderConfigError)) throw error;
+  }
   const locationId = squareLocationId();
   const walletConfig = applicationId && locationId
     ? { applicationId, locationId, sdkUrl: squareWebSdkUrl() }
