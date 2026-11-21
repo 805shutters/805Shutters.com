@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -107,17 +106,10 @@ async function claimUntil(manufacturer: string, eventId: string) {
   throw new Error(`did not claim ${eventId}`);
 }
 
-function gitShow(rev: string, path: string) {
-  return execFileSync("git", ["show", `${rev}:${path}`], { encoding: "utf8", maxBuffer: 20_000_000 });
-}
-
 beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/20261121160000_quote_category_field_sequence.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/20261121223000_line_event_queue.sql", "utf8"));
-  await db.exec(gitShow(
-    "a21d32fa5e92dfe20f663ccbeace1c0ca14a7a56",
-    "supabase/migrations/20261121235500_norman_line_event_consumer.sql",
-  ));
+  await db.exec(readFileSync("supabase/migrations/20261121235500_norman_line_event_consumer.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/20261122020000_quote_sequence_field_file_corrections.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/20261122030000_order_entry_preflight.sql", "utf8"));
   await db.exec(`
@@ -304,10 +296,7 @@ describe("order-entry population", () => {
     expect(wakeBody.rows[0].prosrc).toContain("wake_http");
     expect(wakeBody.rows[0].prosrc).toContain("wake_disabled");
     expect(wakeBody.rows[0].comment).toContain("line_event.worker_url");
-    const priceReaders = gitShow(
-      "origin/cursor/live-price-followups-fb23",
-      "supabase/migrations/20261122004500_current_live_price_readers.sql",
-    );
+    const priceReaders = readFileSync("supabase/migrations/20261122004500_current_live_price_readers.sql", "utf8");
     expect(priceReaders).not.toMatch(/line_event|quote_category_field_sequence/);
   });
 });
