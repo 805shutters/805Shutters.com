@@ -6,6 +6,8 @@ import { isAllowedCrmEmail } from "@/lib/crm/allowed-users";
 import { requireCrmUser, requireQuoteFrontDoorActor } from "@/lib/crm/auth";
 import { runQuoterFrontDoorCall } from "@/lib/crm/quoter-service-client";
 import {
+  DEFAULT_QUOTER_SERVICE_ACTOR_EMAIL,
+  QUOTER_DRAFT_RPC,
   QUOTER_FRONT_DOOR_ROUTES,
   QUOTER_SEQUENCE_WRITE_DENIED_MESSAGE,
   QUOTER_SERVICE_DENIED_MESSAGE,
@@ -50,6 +52,8 @@ import * as draftRoute from "@/app/api/crm/quote-front-door/draft/route";
 
 const catalog = "order-form:norman:roller:v1";
 const repo = process.cwd();
+const JESSICA_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const QUOTE_ID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 
 function restoreEnv(name: string, value: string | undefined) {
   if (value === undefined) delete process.env[name];
@@ -78,12 +82,13 @@ function request(pathname: string, method = "GET") {
 }
 
 function memoryDb() {
-  const drafts: Array<Record<string, unknown>> = [];
-  const rpcCalls: string[] = [];
+  const rpcCalls: Array<{ fn: string; args: Record<string, unknown> }> = [];
+  const updates: Array<{ table: string; values: Record<string, unknown> }> = [];
+  const inserts: Array<{ table: string; row: Record<string, unknown> }> = [];
   const tables: string[] = [];
   const client: QuoterDb = {
-    async rpc(fn) {
-      rpcCalls.push(fn);
+    async rpc(fn, args) {
+      rpcCalls.push({ fn, args });
       if (fn === "quote_next_required_field") {
         return {
           data: {
@@ -102,41 +107,61 @@ function memoryDb() {
           error: null,
         };
       }
+      if (fn === QUOTER_DRAFT_RPC) {
+        return {
+          data: {
+            quoteId: QUOTE_ID,
+            quoteNumber: "805-0116",
+            status: "draft",
+            quoteV2Status: "draft",
+            lineCount: 0,
+          },
+          error: null,
+        };
+      }
       return { data: null, error: { message: `unexpected rpc ${fn}` } };
     },
     from(table) {
       tables.push(table);
       return {
         select() {
-          const filters: Array<(row: Record<string, unknown>) => boolean> = [];
+          const filters: Array<{ column: string; value: string }> = [];
           const api = {
             eq(column: string, value: string) {
-              filters.push((row) => String(row[column] ?? "") === value);
+              filters.push({ column, value });
               return api;
             },
             is() { return api; },
             or() { return api; },
-            in(column: string, values: string[]) {
-              filters.push((row) => values.includes(String(row[column] ?? "")));
-              return api;
-            },
+            in() { return api; },
             order() { return api; },
             async limit() {
-              if (table !== "crm_quote_front_door_drafts") return { data: [], error: null };
-              return { data: drafts.filter((row) => filters.every((filter) => filter(row))), error: null };
+              if (table !== "crm_profiles") return { data: [], error: null };
+              const email = filters.find((filter) => filter.column === "email")?.value;
+              if (email && email !== DEFAULT_QUOTER_SERVICE_ACTOR_EMAIL) return { data: [], error: null };
+              return { data: [{ id: JESSICA_ID, email: DEFAULT_QUOTER_SERVICE_ACTOR_EMAIL, active: true }], error: null };
             },
           };
           return api;
         },
         insert(row) {
-          const id = "draft-quoter-1";
-          drafts.push({ ...row, id });
-          return { select: () => ({ single: async () => ({ data: { id }, error: null }) }) };
+          inserts.push({ table, row });
+          return { select: () => ({ single: async () => ({ data: { id: "inserted" }, error: null }) }) };
+        },
+        update(values) {
+          const chain = {
+            eq() { return chain; },
+            async is() {
+              updates.push({ table, values });
+              return { error: null };
+            },
+          };
+          return chain;
         },
       };
     },
   };
-  return { client, drafts, rpcCalls, tables };
+  return { client, rpcCalls, updates, inserts, tables };
 }
 
 function draftBody() {
@@ -231,6 +256,7 @@ describe("Quoter front-door allowlist", () => {
     for (const route of [
       "/api/crm/quote-front-door",
       "/api/crm/quote-front-door/draft/send",
+      "/api/crm/quote-front-door/drafts",
       "/api/crm/quote-front-door/customers/extra",
       "/api/crm/quotes/example/send",
       "/api/crm/jobs",
@@ -277,6 +303,7 @@ describe("Quoter front-door allowlist", () => {
     }
     const blocked = proxy(request("/api/crm/quotes/example/send", "POST"));
     expect(blocked.status).toBe(403);
+    expect(quoterServiceGuard(request("/api/crm/quote-front-door/drafts", "GET"))?.status).toBe(403);
     expect(proxy(request("/api/crm/admin/mts-805-sync", "POST")).status).toBe(403);
     expect(proxy(request("/api/leads", "POST")).status).toBe(403);
 
@@ -294,8 +321,8 @@ describe("Quoter draft access", () => {
     const probe = await lookupCustomers(request("/api/crm/quote-front-door/customers"));
     expect(probe.status).toBe(200);
     expect(await probe.json()).toEqual({ candidates: [], truncated: false, created: false });
-    expect(db.tables).toEqual([]);
-    expect(db.drafts).toEqual([]);
+    expect(db.rpcCalls.filter((call) => call.fn === QUOTER_DRAFT_RPC)).toEqual([]);
+    expect(db.inserts).toEqual([]);
 
     const saved = await saveDraft(post("/api/crm/quote-front-door/draft", draftBody()));
     expect(saved.status).toBe(200);
@@ -303,30 +330,26 @@ describe("Quoter draft access", () => {
     expect(savedBody).toMatchObject({
       saved: true,
       sent: false,
-      quote: { id: "draft-quoter-1", status: "draft", sent: false },
+      quote: { id: QUOTE_ID, quoteNumber: "805-0116", status: "draft", sent: false },
     });
     expect(savedBody.readBack.summary).toBe("Norman roller\nRoom: Office\nMultiplier: 2.5");
-    expect(db.drafts).toHaveLength(1);
-    expect(db.drafts[0]).toMatchObject({
-      status: "draft",
-      created_by: null,
-      created_by_email: QUOTER_SERVICE_EMAIL,
-      customer_name: "New Person",
-      read_back: "Norman roller\nRoom: Office\nMultiplier: 2.5",
+    const created = db.rpcCalls.filter((call) => call.fn === QUOTER_DRAFT_RPC);
+    expect(created).toHaveLength(1);
+    expect(created[0]?.args).toMatchObject({
+      p_actor_id: JESSICA_ID,
+      p_quote_patch: { customerName: "New Person" },
     });
-    expect(db.tables).not.toContain("crm_profiles");
-    expect(db.tables.filter((table) => table === "crm_quote_front_door_drafts")).toEqual(["crm_quote_front_door_drafts"]);
-    expect(db.rpcCalls).not.toContain("quote_category_field_sequence_write");
-
-    const read = quoterFrontDoorDb(db.client);
-    const loaded = await read.from("crm_quote_front_door_drafts").select("id, status, read_back").eq("id", "draft-quoter-1").limit(1);
-    expect(loaded.data).toEqual([
-      expect.objectContaining({
-        id: "draft-quoter-1",
-        status: "draft",
-        read_back: savedBody.readBack.summary,
-      }),
+    expect(created[0]?.args.p_quote_patch).not.toHaveProperty("installerNotes");
+    expect(db.updates).toEqual([
+      {
+        table: "sales_quotes",
+        values: {
+          front_door_readback: expect.objectContaining({ summary: savedBody.readBack.summary }),
+        },
+      },
     ]);
+    expect(db.inserts).toEqual([]);
+    expect(db.rpcCalls.map((call) => call.fn)).not.toContain("quote_category_field_sequence_write");
 
     const spoken = await readBack(post("/api/crm/quote-front-door/read-back", draftBody()));
     expect(spoken.status).toBe(200);
@@ -347,7 +370,8 @@ describe("Quoter draft access", () => {
       },
     });
     expect(report).toMatchObject({ stopped: false, wrote: true, probeAttempts: 1, writeAttempts: 1, status: 200 });
-    expect(db.drafts).toHaveLength(1);
+    expect(db.rpcCalls.filter((call) => call.fn === QUOTER_DRAFT_RPC)).toHaveLength(1);
+    expect(db.rpcCalls.find((call) => call.fn === QUOTER_DRAFT_RPC)?.args.p_actor_id).toBe(JESSICA_ID);
 
     let probes = 0;
     let writes = 0;
@@ -411,24 +435,32 @@ describe("Quoter draft access", () => {
     expect(report.probeAttempts).toBe(2);
     expect(report.status).toBe(401);
     expect(writes).toBe(0);
-    expect(db.drafts).toEqual([]);
+    expect(db.rpcCalls).toEqual([]);
+    expect(db.inserts).toEqual([]);
     expect(state.service).not.toHaveBeenCalled();
 
     process.env.QUOTER_SERVICE_TOKEN = "";
     const blank = await saveDraft(post("/api/crm/quote-front-door/draft", draftBody()));
     expect(blank.status).toBe(401);
-    expect(db.drafts).toEqual([]);
+    expect(db.rpcCalls).toEqual([]);
+    expect(db.inserts).toEqual([]);
   });
 
   it("does not turn the service token into a staff CRM session", async () => {
-    state.service.mockReturnValue(memoryDb().client);
+    const db = memoryDb();
+    state.service.mockReturnValue(db.client);
     await expect(requireCrmUser(request("/api/crm/quote-front-door/draft", "POST"))).rejects.toMatchObject({
       status: 403,
       message: QUOTER_SERVICE_DENIED_MESSAGE,
     });
     await expect(requireQuoteFrontDoorActor(request("/api/crm/jobs", "GET"))).rejects.toMatchObject({ status: 403 });
     const actor = await requireQuoteFrontDoorActor(request("/api/crm/quote-front-door/customers"));
-    expect(actor).toMatchObject({ kind: "quoter-service", email: QUOTER_SERVICE_EMAIL, userId: null });
+    expect(actor).toMatchObject({
+      kind: "quoter-service",
+      email: DEFAULT_QUOTER_SERVICE_ACTOR_EMAIL,
+      userId: JESSICA_ID,
+    });
+    expect(db.rpcCalls.filter((call) => call.fn === QUOTER_DRAFT_RPC)).toEqual([]);
     expect(state.service).toHaveBeenCalledTimes(1);
   });
 });
@@ -436,7 +468,7 @@ describe("Quoter draft access", () => {
 describe("Quoter sequence writes", () => {
   it("refuses the sequence-table write function and both sequence tables", async () => {
     const inner = { rpc: vi.fn(), from: vi.fn() };
-    const db = quoterFrontDoorDb(inner as unknown as QuoterDb);
+    const db = quoterFrontDoorDb(inner as unknown as QuoterDb, JESSICA_ID);
     await expect(db.rpc("quote_category_field_sequence_write", { p_target: "sequence", p_row: {} })).rejects.toMatchObject({
       status: 403,
       message: QUOTER_SEQUENCE_WRITE_DENIED_MESSAGE,

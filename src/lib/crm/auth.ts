@@ -4,12 +4,13 @@ import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { allowedCrmEmails, isAllowedCrmEmail, isKenCrmEmail, normalizeCrmEmail } from "@/lib/crm/allowed-users";
 import {
   QUOTER_SERVICE_DENIED_MESSAGE,
-  QUOTER_SERVICE_EMAIL,
   QuoterServiceAuthError,
   isQuoterFrontDoorRoute,
   quoterFrontDoorDb,
   quoterServiceTokenMatches,
+  resolveQuoterStaffActor,
   type QuoterDb,
+  type QuoterProfileClient,
 } from "@/lib/crm/quoter-service-auth";
 
 export class CrmAuthError extends Error {
@@ -124,7 +125,8 @@ export async function requireCrmUser(request: NextRequest) {
 
 /**
  * Staff sessions use requireCrmUser. A matching Quoter service token is accepted
- * only on the five front-door routes and never upserts crm_profiles.
+ * only on the five front-door routes. It does not upsert crm_profiles. The draft
+ * actor is the active profile named by QUOTER_SERVICE_ACTOR_EMAIL.
  */
 export async function requireQuoteFrontDoorActor(request: NextRequest): Promise<{
   supabase: QuoterDb;
@@ -141,10 +143,11 @@ export async function requireQuoteFrontDoorActor(request: NextRequest): Promise<
     if (!supabase) {
       throw new CrmAuthError(503, "Dedicated Supabase database is not configured.");
     }
+    const actor = await resolveQuoterStaffActor(supabase as unknown as QuoterProfileClient);
     return {
-      supabase: quoterFrontDoorDb(supabase as unknown as QuoterDb),
-      email: QUOTER_SERVICE_EMAIL,
-      userId: null,
+      supabase: quoterFrontDoorDb(supabase as unknown as QuoterDb, actor.id),
+      email: actor.email,
+      userId: actor.id,
       kind: "quoter-service",
     };
   }
