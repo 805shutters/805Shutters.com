@@ -1,0 +1,574 @@
+{
+  "schema_version": 1,
+  "routing_key": "sundance:sundance_cellular",
+  "manufacturer": "Sundance",
+  "product_key": "sundance_cellular",
+  "product_name": "Sundance cellular (honeycomb) shade",
+  "product_kind": "Honeycomb Shades",
+  "portal_ordering_type": "Cellular Shade",
+  "catalog_version": "sundance-assortment-2026-09-26-r15",
+  "status": "gaps",
+  "source_url": "https://sundance.blindata.app",
+  "ordered_fields": [
+    "customer_name",
+    "quote_number",
+    "order_draft_name",
+    "account_number",
+    "po_number",
+    "sidemark",
+    "delivery_method",
+    "ship_to_name",
+    "ship_to_address",
+    "ship_to_zip",
+    "bill_to",
+    "contact_phone_email",
+    "special_instructions",
+    "order_date",
+    "room_name",
+    "quantity",
+    "width",
+    "height",
+    "mount_type",
+    "fabric_color",
+    "light_control",
+    "system",
+    "headrail_color",
+    "recess",
+    "mount_depth",
+    "bottom_fabric",
+    "verticell_stack",
+    "motor_type",
+    "charger",
+    "solar_panel",
+    "remote",
+    "assembly",
+    "cutouts",
+    "shape",
+    "shape_geometry",
+    "shape_sides",
+    "template_reference",
+    "motor_size_limit",
+    "line_note"
+  ],
+  "fields": [
+    {
+      "key": "customer_name",
+      "label": "customer_name",
+      "ask_order": 1,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "quote_number",
+      "label": "quote_number",
+      "ask_order": 2,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "order_draft_name",
+      "label": "order_draft_name",
+      "ask_order": 3,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "account_number",
+      "label": "account_number",
+      "ask_order": 4,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "po_number",
+      "label": "po_number",
+      "ask_order": 5,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "sidemark",
+      "label": "sidemark",
+      "ask_order": 6,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "delivery_method",
+      "label": "delivery_method",
+      "ask_order": 7,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "ship_to_name",
+      "label": "ship_to_name",
+      "ask_order": 8,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "805 SHUTTERS (default, used on every past order)",
+          "label": "805 SHUTTERS (default, used on every past order)"
+        },
+        {
+          "value": "customer",
+          "label": "customer"
+        }
+      ]
+    },
+    {
+      "key": "ship_to_address",
+      "label": "ship_to_address",
+      "ask_order": 9,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "ship_to_zip",
+      "label": "ship_to_zip",
+      "ask_order": 10,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "bill_to",
+      "label": "bill_to",
+      "ask_order": 11,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "contact_phone_email",
+      "label": "contact_phone_email",
+      "ask_order": 12,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "special_instructions",
+      "label": "special_instructions",
+      "ask_order": 13,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "order_date",
+      "label": "order_date",
+      "ask_order": 14,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "room_name",
+      "label": "Room",
+      "ask_order": 15,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "quantity",
+      "label": "Qty",
+      "ask_order": 16,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "width",
+      "label": "Width",
+      "ask_order": 17,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "height",
+      "label": "Height / Drop",
+      "ask_order": 18,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "mount_type",
+      "label": "Mount",
+      "ask_order": 19,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Inside",
+          "label": "Inside"
+        },
+        {
+          "value": "Outside",
+          "label": "Outside"
+        }
+      ]
+    },
+    {
+      "key": "fabric_color",
+      "label": "Fabric name + color # (cell size + opacity)",
+      "ask_order": 20,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "light_control",
+      "label": "light_control",
+      "ask_order": 21,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Light Filtering",
+          "label": "Light Filtering"
+        },
+        {
+          "value": "Blackout",
+          "label": "Blackout"
+        }
+      ]
+    },
+    {
+      "key": "system",
+      "label": "system",
+      "ask_order": 22,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Cordless",
+          "label": "Cordless"
+        },
+        {
+          "value": "Cordless Top Down/Bottom Up",
+          "label": "Cordless Top Down/Bottom Up"
+        },
+        {
+          "value": "Cordless Day/Night",
+          "label": "Cordless Day/Night"
+        },
+        {
+          "value": "Cordloop",
+          "label": "Cordloop"
+        },
+        {
+          "value": "Skylight",
+          "label": "Skylight"
+        },
+        {
+          "value": "Verticell",
+          "label": "Verticell"
+        },
+        {
+          "value": "Somfy Cord Lift WireFree TL25",
+          "label": "Somfy Cord Lift WireFree TL25"
+        },
+        {
+          "value": "Simphony Cell Shade WireFree",
+          "label": "Simphony Cell Shade WireFree"
+        },
+        {
+          "value": "Simphony Concerto TDBU",
+          "label": "Simphony Concerto TDBU"
+        },
+        {
+          "value": "Specialty Shape",
+          "label": "Specialty Shape"
+        }
+      ]
+    },
+    {
+      "key": "headrail_color",
+      "label": "headrail_color",
+      "ask_order": 23,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "no closed list in the field file",
+      "choices": []
+    },
+    {
+      "key": "recess",
+      "label": "recess",
+      "ask_order": 24,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Flush",
+          "label": "Flush"
+        },
+        {
+          "value": "Partial recess",
+          "label": "Partial recess"
+        }
+      ]
+    },
+    {
+      "key": "mount_depth",
+      "label": "mount_depth",
+      "ask_order": 25,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "bottom_fabric",
+      "label": "bottom_fabric",
+      "ask_order": 26,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "no closed list in the field file",
+      "choices": []
+    },
+    {
+      "key": "verticell_stack",
+      "label": "verticell_stack",
+      "ask_order": 27,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Left Stack",
+          "label": "Left Stack"
+        },
+        {
+          "value": "Right Stack",
+          "label": "Right Stack"
+        },
+        {
+          "value": "Center Split",
+          "label": "Center Split"
+        }
+      ]
+    },
+    {
+      "key": "motor_type",
+      "label": "motor_type",
+      "ask_order": 28,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "No",
+          "label": "No"
+        },
+        {
+          "value": "Somfy TL25",
+          "label": "Somfy TL25"
+        },
+        {
+          "value": "Simphony WireFree",
+          "label": "Simphony WireFree"
+        },
+        {
+          "value": "Simphony Concerto",
+          "label": "Simphony Concerto"
+        }
+      ]
+    },
+    {
+      "key": "charger",
+      "label": "charger",
+      "ask_order": 29,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "No",
+          "label": "No"
+        },
+        {
+          "value": "Somfy charger",
+          "label": "Somfy charger"
+        },
+        {
+          "value": "Charger (Li-On) Ultra Somfy",
+          "label": "Charger (Li-On) Ultra Somfy"
+        }
+      ]
+    },
+    {
+      "key": "solar_panel",
+      "label": "solar_panel",
+      "ask_order": 30,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "No",
+          "label": "No"
+        },
+        {
+          "value": "Yes",
+          "label": "Yes"
+        }
+      ]
+    },
+    {
+      "key": "remote",
+      "label": "remote",
+      "ask_order": 31,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "assembly",
+      "label": "assembly",
+      "ask_order": 32,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Single",
+          "label": "Single"
+        },
+        {
+          "value": "Two on one",
+          "label": "Two on one"
+        }
+      ]
+    },
+    {
+      "key": "cutouts",
+      "label": "cutouts",
+      "ask_order": 33,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "shape",
+      "label": "shape",
+      "ask_order": 34,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Standard Arch",
+          "label": "Standard Arch"
+        },
+        {
+          "value": "Quarter Arch",
+          "label": "Quarter Arch"
+        },
+        {
+          "value": "Circle",
+          "label": "Circle"
+        },
+        {
+          "value": "Hexagon",
+          "label": "Hexagon"
+        },
+        {
+          "value": "Octagon",
+          "label": "Octagon"
+        }
+      ]
+    },
+    {
+      "key": "shape_geometry",
+      "label": "shape_geometry",
+      "ask_order": 35,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Perfect",
+          "label": "Perfect"
+        },
+        {
+          "value": "Non-perfect",
+          "label": "Non-perfect"
+        }
+      ]
+    },
+    {
+      "key": "shape_sides",
+      "label": "shape_sides",
+      "ask_order": 36,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "template_reference",
+      "label": "template_reference",
+      "ask_order": 37,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "motor_size_limit",
+      "label": "motor_size_limit",
+      "ask_order": 38,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "line_note",
+      "label": "Note / Instructions (per line)",
+      "ask_order": 39,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    }
+  ]
+}

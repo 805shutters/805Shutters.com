@@ -29,7 +29,7 @@ describe('Fall colors in the current protected quote pipeline', () => {
     expect(validateRollerMatrix({...context,heightInches:11.875}).some(x=>x.severity==='hard_block')).toBe(true);
    }
    const price=priceQuoteV2Selection({selection:context,priceInput:{productId:'roller',programId:color.programId!,fabric:row.collection,widthInches:36,heightInches:60}});
-   expect(price.ok,`${row.colorCode}: ${JSON.stringify(price)}`).toBe(true);
+   expect(price,`${row.colorCode}: ${JSON.stringify(price)}`).toMatchObject({ok:false,code:'NO_SITE_PRICE',blocked:'no_site_price'});
    const options={fabric:row.collection,catalogProgramId:color.programId!,width:36,height:60};
    expect(getV1Price(options),row.colorCode).toBe(getRollerPrice(options));
   }

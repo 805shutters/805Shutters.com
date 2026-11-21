@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as exactBackend from "@/lib/quote-lab/exact-backend";
 import { createImmutablePriceSnapshot } from "@/lib/quote-v2/engine";
+import { priceDesign } from "@/lib/quote/pricing";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
@@ -250,13 +251,12 @@ describe("authoritative sales quote V2 pricing save", () => {
       revision: 8,
       quoteStatus: "priced",
       quoteTotal: 370.5,
-      priceStatus: "authoritative",
+      priceStatus: "blocked",
       pricedDesignCount: 1,
       blockedDesignCount: 0,
       price: {
-        ok: true,
-        productId: "roller",
-        programId: "roller_cordless_fabric_price_group_2_pg2",
+        ok: false,
+        code: "NO_SITE_PRICE",
       },
     });
     expect(rpcCalls).toHaveLength(1);
@@ -289,8 +289,11 @@ describe("authoritative sales quote V2 pricing save", () => {
       lineItemId: LINE_ID,
       designId: DESIGN_ID,
       selectDesign: true,
-      priceStatus: "authoritative",
+      priceStatus: "blocked",
+      authoritativeSnapshot: null,
+      internalCostSnapshot: null,
     });
+    expect(String(savedResult.staffPricingError)).toMatch(/exact website price/);
     expect(savedResult.selectionFingerprint).toMatch(/^sha256:[0-9a-f]{64}$/);
     expect(savedResult.catalogVersion).toBe(
       "805-v2-norman-roller-2026-08-01-msrp-r1",
@@ -302,17 +305,14 @@ describe("authoritative sales quote V2 pricing save", () => {
       heightInches: 60,
       quantity: 1,
     });
-    expect(savedResult.authoritativeSnapshot).toMatchObject({
-      priceStatus: "authoritative",
-      catalogAsOf: "2026-08-01",
-    });
-    expect(savedResult.internalCostSnapshot).toMatchObject({
-      freightStatus: "published",
-      landedCostTotal: expect.any(Number),
-      costSummary: {
-        status: "complete",
-      },
-    });
+    const list = priceDesign({
+      productId: "roller",
+      programId: "roller_cordless_fabric_price_group_2_pg2",
+      widthInches: 36,
+      heightInches: 60,
+    }, "2026-08-01");
+    expect(list.ok, JSON.stringify(list)).toBe(true);
+    if (list.ok) expect(list.base).toBe(384);
     expect(savedResult.provenanceSnapshot).toMatchObject({
       catalogAsOf: "2026-08-01",
       sources: expect.any(Array),
@@ -376,10 +376,10 @@ describe("authoritative sales quote V2 pricing save", () => {
         snapshot_id: "88888888-8888-4888-8888-888888888888",
         new_revision: 8,
         quote_status: "priced",
-        quote_total: 225.38,
+        quote_total: 219.8,
         priced_design_count: 1,
         blocked_design_count: 0,
-        product_cost_total: 61.38,
+        product_cost_total: 55.8,
       },
     ]);
     const response = await saveSalesQuoteV2AuthoritativePrice(client, {
@@ -392,25 +392,30 @@ describe("authoritative sales quote V2 pricing save", () => {
       serverDate: "2026-07-27",
     });
     expect(response).toMatchObject({
-      priceStatus: "authoritative",
-      quoteTotal: 225.38,
+      priceStatus: "blocked",
+      quoteTotal: 219.8,
       price: {
-        ok: true,
-        productId: "smartprivacy_faux",
-        unitPrice: 225.38,
-        total: 225.38,
+        ok: false,
+        code: "NO_SITE_PRICE",
       },
     });
     const saved = (
       rpcCalls[0].args.p_results as Array<Record<string, unknown>>
     )[0];
     expect(saved).toMatchObject({
-      priceStatus: "authoritative",
-      internalCostSnapshot: {
-        productCostUnit: 61.38,
-        productCostTotal: 61.38,
-      },
+      priceStatus: "blocked",
+      authoritativeSnapshot: null,
+      internalCostSnapshot: null,
     });
+    expect(String(saved.staffPricingError)).toMatch(/exact website price/);
+    const list = priceDesign({
+      productId: "smartprivacy_faux",
+      programId: "smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
+      widthInches: 30,
+      heightInches: 48,
+    }, "2026-07-27");
+    expect(list.ok, JSON.stringify(list)).toBe(true);
+    if (list.ok) expect(list.base).toBe(186);
   });
 
   it("persists fail-closed validation without an authoritative or cost snapshot", async () => {
@@ -492,22 +497,21 @@ describe("authoritative sales quote V2 pricing save", () => {
       SECOND_LINE_ID,
     ]);
     expect(results.map((result) => result.priceStatus)).toEqual([
-      "authoritative",
-      "authoritative",
+      "blocked",
+      "blocked",
     ]);
-    expect(
-      results.map(
-        (result) => result.internalCostSnapshot.freightAllocated,
-      ),
-    ).toEqual([25, 11]);
+    expect(results.map((result) => result.internalCostSnapshot)).toEqual([
+      null,
+      null,
+    ]);
     expect(response).toMatchObject({
       lineItemId: SECOND_LINE_ID,
       designId: SECOND_DESIGN_ID,
       pricedDesignCount: 2,
       blockedDesignCount: 0,
       lines: [
-        { lineItemId: LINE_ID, priceStatus: "authoritative" },
-        { lineItemId: SECOND_LINE_ID, priceStatus: "authoritative" },
+        { lineItemId: LINE_ID, priceStatus: "blocked", price: { ok: false, code: "NO_SITE_PRICE" } },
+        { lineItemId: SECOND_LINE_ID, priceStatus: "blocked", price: { ok: false, code: "NO_SITE_PRICE" } },
       ],
     });
   });
@@ -539,7 +543,9 @@ describe("authoritative sales quote V2 pricing save", () => {
     expect(results[0]).toMatchObject({
       lineItemId: LINE_ID,
       designId: DESIGN_ID,
-      priceStatus: "authoritative",
+      priceStatus: "blocked",
+      authoritativeSnapshot: null,
+      staffPricingError: expect.stringMatching(/exact website price/),
     });
     expect(results[1]).toMatchObject({
       lineItemId: SECOND_LINE_ID,
@@ -655,12 +661,20 @@ it("preserves exact part target and mechanism reference with held native validat
 describe("current retail-only server persistence",()=>{
  function pricingFixture(kind:"missing"|"freight"|"cost_result",date: `${number}-${number}-${number}`="2026-09-21") {
   const rows=validRows({designOptions:{quote_v2_backend:true}});
-  rows.sales_quote_line_items[0].selected_design_id=DESIGN_ID;
+  Object.assign(rows.sales_quote_line_items[0], { product_type: "Shutters", width_whole: 30, height_whole: 60, selected_design_id: DESIGN_ID });
+  Object.assign(rows.sales_quote_designs[0], {
+    product_type: "Shutters", supplier: "Norman", material: "Woodlore", louver_size: '3 1/2"',
+    tilt_type: "Standard Tilt", panel_config: "LR", mount_type: "Inside Mount", shade_type: null,
+    lift_system: null, valance: null, fabric: null,
+    options_json: { quote_v2_backend: true, quote_lab_product_id: "norman_shutters", catalog_product_id: "norman_shutters",
+      quote_lab_program_id: "woodlore", catalog_program_id: "woodlore", fabric_program_id: "woodlore", color: "001",
+      frame_type: "Direct Mount (No Frame)", size_type: "F - Frame to Frame" },
+  });
   const baseline=exactBackend.repriceExactQuoteBuilderForServerDate({
    lines:rows.sales_quote_line_items as unknown as SalesQuoteLineItem[],
    designs:rows.sales_quote_designs as unknown as SalesQuoteDesign[],
    selectedVariantByLine:{[LINE_ID]:"A"},applyCustomerCharges:true,
-  },"2026-08-01");
+  },"2026-09-22");
   if(!("backend" in baseline)||baseline.backend!=="v2"||!baseline.designs[0].result.ok)throw Error("Expected priced fixture");
   const original=baseline.designs[0];
   if(!original.result.ok)throw Error("Expected valid retail");
@@ -686,7 +700,7 @@ describe("current retail-only server persistence",()=>{
    const saved=(rpcCalls[0].args.p_results as Array<Record<string,any>>)[0];
    expect(saved.staffPricingError).toBeNull();
    expect(spy.mock.calls[0][0].applyCustomerCharges).toBe(true);
-   expect(saved.authoritativeSnapshot.retail.customerCharges).toMatchObject({installationPerUnit:25,shippingPerUnit:14});
+   expect(saved.authoritativeSnapshot.retail.customerCharges).toBeUndefined();
    expect(saved.authoritativeSnapshot).toMatchObject({quotePricingPolicy:"grid_options_quote_v1",catalogAsOf:"2026-09-21",priceStatus:"authoritative"});
    expect(saved.internalCostSnapshot).toMatchObject({quotePricingPolicy:"grid_options_quote_v1",status:"unresolved",costStatus:"incomplete",freightStatus:"unresolved",landedCostTotal:null,freightAllocated:null,oversizeAllocated:null,processingFeeAllocated:null});
    expect(saved.validationSnapshot).toMatchObject({costStatus:"incomplete",costWarnings:["Dealer freight/option cost unresolved"]});
@@ -760,11 +774,21 @@ describe("actual current retail quote saves", () => {
       quoteId:QUOTE_ID,lineItemId:LINE_ID,designId:DESIGN_ID,actorId:ACTOR_ID,
       expectedRevision:7,idempotencyKey:`real-retail-${kind}`,serverDate:"2026-09-21",
     });
-    expect(response.priceStatus, JSON.stringify(response.price)).toBe("authoritative");
-    expect(response.price).toMatchObject({ok:true,total:kind === "roman" ? 2047 : 1590});
     const saved=(rpcCalls[0].args.p_results as Array<Record<string,any>>)[0];
+    if(kind === "roman") {
+      expect(response.priceStatus, JSON.stringify(response.price)).toBe("blocked");
+      expect(response.price).toMatchObject({ ok: false, code: "NO_SITE_PRICE" });
+      expect(saved).toMatchObject({ authoritativeSnapshot: null, internalCostSnapshot: null });
+      expect(String(saved.staffPricingError)).toMatch(/exact website price/);
+      const list = priceDesign({ productId: "roman", programId: "roman_cordless_usa_price_group_2_pg2", widthInches: 91, heightInches: 48 }, "2026-09-21");
+      expect(list.ok, JSON.stringify(list)).toBe(true);
+      if (list.ok) expect(list.base).toBe(2008);
+      return;
+    }
+    expect(response.priceStatus, JSON.stringify(response.price)).toBe("authoritative");
+    expect(response.price).toMatchObject({ok:true,total:1590});
     expect(saved).toMatchObject({staffPricingError:null,
-      authoritativeSnapshot:{quotePricingPolicy:"grid_options_quote_v1",catalogAsOf:"2026-09-21",retail:{total:kind === "roman" ? 2047 : 1590}},
+      authoritativeSnapshot:{quotePricingPolicy:"grid_options_quote_v1",catalogAsOf:"2026-09-21",retail:{total:1590}},
       internalCostSnapshot:{status:"unresolved",costStatus:"incomplete",freightStatus:"unresolved",landedCostTotal:null},
     });
     if(kind === "onyx") {

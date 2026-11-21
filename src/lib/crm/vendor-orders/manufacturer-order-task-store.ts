@@ -32,7 +32,7 @@ export type VendorOrderTaskContext = {
 };
 
 const activeStatuses = ["needs_input", "queued", "processing", "review_ready", "failed"];
-const manufacturers = ["Norman", "Onyx", "Lotus", "Polar"] as const;
+const manufacturers = ["Norman", "Onyx", "Lotus", "Polar", "Sundance"] as const;
 
 function object(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -91,6 +91,40 @@ export function buildSignedContractVendorOrderPreparations(input: {
         payload: {
           schemaVersion: "polar-quote-only.v1",
           safety: "quote_only_no_follow_on_action",
+          source: {
+            kind: input.context.sourceKind,
+            id: input.context.sourceId,
+            revision: input.context.sourceRevision,
+          },
+          quoteId: input.context.quoteId,
+          lineIds: lines.map((line) => line.sourceLineId),
+        },
+      };
+    }
+    if (manufacturer === "Sundance") {
+      const hash = sourceHash({
+        sourceRevision: input.context.sourceRevision,
+        manufacturer,
+        lineIds: lines.map((line) => line.sourceLineId),
+      });
+      return {
+        manufacturer,
+        productType: productNames.length === 1 ? "sundance_review" : "mixed",
+        status: "needs_input",
+        taskId: `contract:${input.context.quoteId}:sundance-review:${hash.slice(0, 12)}`,
+        issueCount: lines.length,
+        message: "Sundance order form is ready for review. Live form confirmation is still open, and no vendor account is seeded.",
+        requestedAt: new Date().toISOString(),
+        requestedBy: input.requestedBy || null,
+        sourceHash: hash,
+        routingKeys,
+        productNames,
+        lineCount: lines.length,
+        portalUrl: manufacturerOrderPortalUrl("sundance"),
+        orderPacketUrl: `/api/crm/vendor-order-packets/${encodeURIComponent(input.context.quoteId)}?manufacturer=sundance&format=html`,
+        payload: {
+          schemaVersion: "sundance-order-form.v1",
+          safety: "review_before_submission",
           source: {
             kind: input.context.sourceKind,
             id: input.context.sourceId,

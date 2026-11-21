@@ -8,6 +8,9 @@ import { calculateSalesQuoteMirrorPricing } from "./sales-quote-send";
 import { ROMAN_PILLOWS, ROMAN_YARDAGE, ROMAN_ANCILLARY_RECORD, romanAncillaryFabrics } from "@/lib/quote/norman-roman-ancillary";
 import { SMARTDRAPE_REPLACEMENT, SMARTDRAPE_REPLACEMENT_RECORD, emptyReplacementRequest, replacementColors } from "@/lib/quote/norman-smartdrape-replacement";
 import { getQuoteDesignDetails } from "@mts/lib/quoteDesignDetails";
+import { priceDesign } from "@/lib/quote/pricing";
+import { romanAncillaryRetailReference } from "@/lib/quote/norman-roman-ancillary";
+import { priceSmartdrapeReplacement } from "@/lib/quote-v2/norman-smartdrape-replacement";
 
 // Saved fixtures were priced on this date; the mirror also reads the server
 // clock. Keep both sides on the same catalog date as the real day advances.
@@ -37,10 +40,37 @@ function pricedState(productId: string, quantity = 1): NormanQuotePricingState {
   return persistPreparedPricing(stateFor(productId, quantity));
 }
 
+function sitePriceBlocked(prepared: ReturnType<typeof prepareNormanLegacyPricing>[number]) {
+  expect(prepared.priceStatus).toBe("blocked");
+  expect(prepared.customerPrice).toMatchObject({ ok: false, code: "NO_SITE_PRICE" });
+  expect(prepared.rpcResult.authoritativeSnapshot).toBeNull();
+  expect(String(prepared.rpcResult.staffPricingError)).toMatch(/exact website price/);
+}
+
 function persistPreparedPricing(state: NormanQuotePricingState): NormanQuotePricingState {
   const [prepared] = prepareNormanLegacyPricing(state, "2026-09-22");
-  expect(prepared.priceStatus).toBe("authoritative");
   const rpc = prepared.rpcResult;
+  if (prepared.priceStatus !== "authoritative") {
+    sitePriceBlocked(prepared);
+    Object.assign(state.designs[0], {
+      unit_price: 0,
+      quote_v2_price_status: "blocked",
+      quote_v2_selection: rpc.selection,
+      quote_v2_selection_fingerprint: rpc.selectionFingerprint,
+      quote_v2_priced_catalog_version: rpc.catalogVersion,
+    });
+    Object.assign(state.designs[0].options_json, {
+      norman_grid_pricing: true,
+      authoritative_price_status: "blocked",
+      priced_selection_fingerprint: rpc.selectionFingerprint,
+      priced_catalog_version: rpc.catalogVersion,
+      quote_v2_catalog_version: rpc.catalogVersion,
+      authoritative_price_error: rpc.staffPricingError,
+    });
+    delete state.designs[0].options_json.authoritative_v2_snapshot;
+    delete state.designs[0].options_json.authoritative_price_breakdown;
+    return state;
+  }
   const snapshot = rpc.authoritativeSnapshot as { catalogAsOf: string; retail: Record<string, unknown> };
   Object.assign(state.designs[0], {
     unit_price: snapshot.retail.unitPrice,
@@ -63,19 +93,25 @@ function persistPreparedPricing(state: NormanQuotePricingState): NormanQuotePric
   return state;
 }
 
+function expectSavedPriceGuard(state: NormanQuotePricingState, serverDate: string) {
+  const blocked = state.designs[0].quote_v2_price_status === "blocked";
+  const before = structuredClone(state);
+  if (blocked) {
+    expect(state.designs[0].options_json.authoritative_v2_snapshot).toBeUndefined();
+    expect(() => assertCurrentNormanLegacyPricing(state, serverDate)).toThrow(/Refresh pricing/);
+  } else {
+    expect(() => assertCurrentNormanLegacyPricing(state, serverDate)).not.toThrow();
+  }
+  expect(state).toEqual(before);
+}
+
 describe("Norman saved-price guard before customer mirroring", () => {
   it.each(fixtures.map(f => f.selection.productId))("accepts unchanged saved %s pricing without mutation", productId => {
-    const state = pricedState(productId);
-    const before = structuredClone(state);
-    expect(() => assertCurrentNormanLegacyPricing(state, "2026-09-22")).not.toThrow();
-    expect(state).toEqual(before);
+    expectSavedPriceGuard(pricedState(productId), "2026-09-22");
   });
 
   it.each(fixtures.map(f => f.selection.productId))("accepts unchanged saved %s pricing the next day without mutation", productId => {
-    const state = pricedState(productId);
-    const before = structuredClone(state);
-    expect(() => assertCurrentNormanLegacyPricing(state, "2026-09-23")).not.toThrow();
-    expect(state).toEqual(before);
+    expectSavedPriceGuard(pricedState(productId), "2026-09-23");
   });
 
   it.each(fixtures.flatMap(f => ["width", "quantity"].map(field => [f.selection.productId, field] as const)))("rejects %s after its saved %s changes the next day", (productId, field) => {
@@ -87,7 +123,7 @@ describe("Norman saved-price guard before customer mirroring", () => {
   });
 
   it.each(["unit", "once", "retail-total", "breakdown-total", "retail-charges", "breakdown-charges", "catalog", "future-date", "changed-date", "missing-date", "fingerprint"])("rejects changed %s the next day", change => {
-    const state = pricedState("roman");
+    const state = pricedState("norman_shutters");
     const design = state.designs[0];
     const options = design.options_json;
     const snapshot = options.authoritative_v2_snapshot as Record<string, unknown>;
@@ -98,8 +134,9 @@ describe("Norman saved-price guard before customer mirroring", () => {
     if (change === "retail-total") retail.total = Number(retail.total) + 1;
     if (change === "breakdown-total") breakdown.total = Number(breakdown.total) + 1;
     if (change === "retail-charges" || change === "breakdown-charges") {
-      const charges = (change === "retail-charges" ? retail : breakdown).customerCharges as Record<string, number>;
-      charges.total += 1;
+      const target = change === "retail-charges" ? retail : breakdown;
+      const charges = (target.customerCharges ?? {}) as Record<string, number>;
+      target.customerCharges = { ...charges, total: Number(charges.total ?? 0) + 1 };
     }
     if (change === "catalog") {
       design.quote_v2_priced_catalog_version = "old-catalog";
@@ -122,18 +159,22 @@ describe("Norman saved-price guard before customer mirroring", () => {
   });
 
   it.each(["width", "height", "quantity", "option", "discount", "unit", "once", "snapshot", "fingerprint", "charges"])("rejects changed %s with a refresh conflict", change => {
-    const state = pricedState("roman");
+    const state = pricedState("norman_shutters");
     const design = state.designs[0];
     if (change === "width") state.lines[0].width_whole += 1;
     if (change === "height") state.lines[0].height_whole += 1;
     if (change === "quantity") state.lines[0].quantity = 2;
-    if (change === "option") design.options_json.lining = "Room Darkening";
+    if (change === "option") design.options_json.color = "229";
     if (change === "discount") design.options_json.discount_percent = 10;
     if (change === "unit") design.unit_price = 1;
     if (change === "once") design.options_json.authoritative_once_total = 1;
     if (change === "snapshot") delete design.options_json.authoritative_v2_snapshot;
     if (change === "fingerprint") delete design.options_json.priced_selection_fingerprint;
-    if (change === "charges") (design.options_json.authoritative_price_breakdown as Record<string, unknown>).customerCharges = null;
+    if (change === "charges") {
+      const breakdown = design.options_json.authoritative_price_breakdown as Record<string, unknown>;
+      const charges = (breakdown.customerCharges ?? {}) as Record<string, number>;
+      breakdown.customerCharges = { ...charges, total: Number(charges.total ?? 0) + 1 };
+    }
     expect(() => assertCurrentNormanLegacyPricing(state, "2026-09-22")).toThrow(/Refresh pricing for the current selections/);
     try { assertCurrentNormanLegacyPricing(state, "2026-09-22"); } catch (error) { expect(error).toMatchObject({ status: 409 }); }
   });
@@ -184,31 +225,45 @@ function naturalUnitState(row: typeof naturalUnitCases[number], discount = 0): N
   return state;
 }
 
+function catalogSourceUnit(row: typeof naturalUnitCases[number]): number {
+  if (row.productId === SMARTDRAPE_REPLACEMENT) {
+    const priced = priceSmartdrapeReplacement({
+      manufacturerId: "norman", productId: row.productId, programId: `${row.productId}_source`,
+      catalogVersion: "catalog", catalogAsOf: "2026-09-22", widthInches: 0, heightInches: 0,
+      quantity: row.quantity, options: {}, configuration: { [row.key]: structuredClone(row.record) } as never,
+    }, { productId: row.productId, programId: `${row.productId}_source`, widthInches: 0, heightInches: 0, quantity: row.quantity });
+    expect(priced.ok, JSON.stringify(priced)).toBe(true);
+    return priced.ok ? priced.unitPrice : row.unit;
+  }
+  return romanAncillaryRetailReference(row.record as never)!;
+}
+
 describe("Ancillary and replacement server pricing preservation", () => {
   it.each(naturalUnitCases)("$name keeps source price, no blind fees, and customer details after reopening", row => {
-    const state = persistPreparedPricing(naturalUnitState(row));
-    const reopened = JSON.parse(JSON.stringify(state)) as NormanQuotePricingState;
-    const expectedTotal = Math.round(row.unit * row.quantity * 100) / 100;
-    expect(reopened.designs[0].unit_price).toBe(row.unit);
-    expect(() => assertCurrentNormanLegacyPricing(reopened, "2026-09-22")).not.toThrow();
-    const [prepared] = prepareNormanLegacyPricing(reopened, "2026-09-22");
-    const retail = (prepared.rpcResult.authoritativeSnapshot as { retail: Record<string, unknown> }).retail;
-    expect(retail).toMatchObject({ unitPrice: row.unit, quantity: row.quantity, total: expectedTotal, onceTotal: 0 });
-    expect(retail).not.toHaveProperty("customerCharges");
+    const state = naturalUnitState(row);
+    const before = structuredClone(state);
+    expect(catalogSourceUnit(row)).toBe(row.unit);
+    const [prepared] = prepareNormanLegacyPricing(state, "2026-09-22");
+    sitePriceBlocked(prepared);
     expect(prepared.customerPrice).not.toHaveProperty("internalCost");
     expect(prepared.customerPrice).not.toHaveProperty("wholesaleTotal");
-    expect(calculateSalesQuoteMirrorPricing(reopened.quote!, reopened.lines, new Map([["line", reopened.designs]]))).toMatchObject({ subtotal: expectedTotal, total: expectedTotal });
-    expect(JSON.stringify(getQuoteDesignDetails(reopened.designs[0]))).toContain(row.detail);
-    expect(reopened.designs[0].options_json[row.key]).toEqual(row.record);
+    expect(state).toEqual(before);
+    const saved = persistPreparedPricing(naturalUnitState(row));
+    expect(saved.designs[0].unit_price).toBe(0);
+    expect(saved.designs[0].quote_v2_price_status).toBe("blocked");
+    expect(() => assertCurrentNormanLegacyPricing(saved, "2026-09-22")).toThrow(/Refresh pricing/);
+    expect(JSON.stringify(getQuoteDesignDetails(saved.designs[0]))).toContain(row.detail);
+    expect(saved.designs[0].options_json[row.key]).toEqual(row.record);
   });
 
   it.each(naturalUnitCases)("$name preserves line discount and existing project discount without invented freight", row => {
     const state = persistPreparedPricing(naturalUnitState(row, 10));
-    const lineTotal = Math.round(row.discountedUnit * row.quantity * 100) / 100;
-    expect(state.designs[0].unit_price).toBe(row.discountedUnit);
-    expect(calculateSalesQuoteMirrorPricing(state.quote!, state.lines, new Map([["line", state.designs]]))).toMatchObject({ subtotal: lineTotal, total: lineTotal });
+    expect(catalogSourceUnit(row)).toBe(row.unit);
+    expect(state.designs[0].quote_v2_price_status).toBe("blocked");
+    expect(state.designs[0].unit_price).toBe(0);
+    expect(() => calculateSalesQuoteMirrorPricing(state.quote!, state.lines, new Map([["line", state.designs]]))).toThrow(/Refresh pricing/);
     state.quote!.installer_notes = JSON.stringify({ __adminControls: { showDiscount: true, discountPercent: 10 } });
-    expect(calculateSalesQuoteMirrorPricing(state.quote!, state.lines, new Map([["line", state.designs]]))).toMatchObject({ subtotal: lineTotal, total: Math.round((lineTotal - Math.round(lineTotal * 10) / 100) * 100) / 100 });
+    expect(() => calculateSalesQuoteMirrorPricing(state.quote!, state.lines, new Map([["line", state.designs]]))).toThrow(/Refresh pricing/);
   });
 
   it.each(naturalUnitCases)("$name blocks stale natural-unit choices and quantity", row => {
@@ -239,20 +294,30 @@ describe("Norman calculation in ordinary legacy quotes", () => {
   it.each(fixtures.map(f => [f.selection.productId, f.base, f.unit] as const))("%s uses its source cell and existing selling policy", (productId, base, unit) => {
     const state = stateFor(productId);
     const before = structuredClone(state);
+    const selection = fixtures.find(row => row.selection.productId === productId)!.selection;
+    const list = priceDesign({ productId, programId: selection.programId, widthInches: selection.widthInches, heightInches: selection.heightInches }, "2026-09-22");
     const [result] = prepareNormanLegacyPricing(state, "2026-09-22");
-    expect(result.priceStatus, JSON.stringify(result.customerPrice)).toBe("authoritative");
-    const retail = (result.rpcResult.authoritativeSnapshot as { retail: Record<string, unknown> }).retail;
-    expect(retail.base).toBe(base);
-    const fees = ["norman_shutters", "palladian_shelf"].includes(productId) ? 0 : 39;
-    expect(retail.unitPrice).toBeCloseTo(unit! + fees, 2);
+    if (productId === "norman_shutters") {
+      expect(result.priceStatus, JSON.stringify(result.customerPrice)).toBe("authoritative");
+      const retail = (result.rpcResult.authoritativeSnapshot as { retail: Record<string, unknown> }).retail;
+      expect(retail.base).toBe(base);
+      expect(retail.unitPrice).toBeCloseTo(unit!, 2);
+    } else {
+      sitePriceBlocked(result);
+      expect(list.ok, JSON.stringify(list)).toBe(true);
+      const catalogBase = productId === "faux_wood" ? 314 : productId === "smartprivacy_faux" ? 246 : base;
+      if (list.ok) expect(list.base).toBe(catalogBase);
+    }
     expect(state).toEqual(before);
   });
 
   it.each([2, 3])("preserves once-per-line faux margin and customer fees at quantity %i", quantity => {
+    const selection = fixtures.find(row => row.selection.productId === "faux_wood")!.selection;
     const [result] = prepareNormanLegacyPricing(stateFor("faux_wood", quantity), "2026-09-22");
-    const retail = (result.rpcResult.authoritativeSnapshot as { retail: Record<string, number> }).retail;
-    expect(retail.total).toBeCloseTo(103.62 * quantity + 125 + 39 * quantity, 2);
-    expect(retail.unitPrice * quantity + retail.onceTotal).toBeCloseTo(retail.total, 2);
+    sitePriceBlocked(result);
+    const list = priceDesign({ productId: "faux_wood", programId: selection.programId, widthInches: selection.widthInches, heightInches: selection.heightInches }, "2026-09-22");
+    expect(list.ok, JSON.stringify(list)).toBe(true);
+    if (list.ok) expect(list.base).toBe(314);
   });
 
   it("uses the SmartDrape additional-foot schedule instead of stopping at 184 inches", () => {
@@ -260,15 +325,22 @@ describe("Norman calculation in ordinary legacy quotes", () => {
     state.lines[0].width_whole = 196;
     state.lines[0].height_whole = 48;
     const [result] = prepareNormanLegacyPricing(state, "2026-09-22");
-    expect(result.priceStatus, JSON.stringify(result.customerPrice)).toBe("authoritative");
-    expect((result.rpcResult.authoritativeSnapshot as { retail: Record<string, number> }).retail.base).toBe(3343);
+    sitePriceBlocked(result);
+    const selection = fixtures.find(row => row.selection.productId === "smartdrape")!.selection;
+    const list = priceDesign({ productId: "smartdrape", programId: selection.programId, widthInches: 196, heightInches: 48 }, "2026-09-22");
+    expect(list.ok, JSON.stringify(list)).toBe(true);
+    if (list.ok) expect(list.base).toBe(3343);
   });
 
   it("prices the width-only Palladian schedule without an opening height", () => {
     const state = stateFor("palladian_shelf");
     state.lines[0].height_whole = 0;
     const [result] = prepareNormanLegacyPricing(state, "2026-09-22");
-    expect(result.priceStatus, JSON.stringify(result.customerPrice)).toBe("authoritative");
+    sitePriceBlocked(result);
+    const selection = fixtures.find(row => row.selection.productId === "palladian_shelf")!.selection;
+    const list = priceDesign({ productId: "palladian_shelf", programId: selection.programId, widthInches: selection.widthInches, heightInches: 0 }, "2026-09-22");
+    expect(list.ok, JSON.stringify(list)).toBe(true);
+    if (list.ok) expect(list.base).toBe(450);
   });
 
   it("leaves other manufacturers, manual prices, frozen designs and archived lines unchanged", () => {
@@ -305,7 +377,8 @@ describe("Norman calculation in ordinary legacy quotes", () => {
     state.designs.push(incomplete.designs[0]);
     const before = structuredClone(state);
     const results = prepareNormanLegacyPricing(state, "2026-09-22");
-    expect(results.find(row => row.designId === "design")?.priceStatus).toBe("authoritative");
+    expect(results.find(row => row.designId === "design")?.priceStatus).toBe("blocked");
+    expect(results.find(row => row.designId === "design")?.customerPrice).toMatchObject({ ok: false, code: "NO_SITE_PRICE" });
     expect(results.find(row => row.designId === "incomplete-design")?.priceStatus).toBe(manual ? undefined : "blocked");
     expect(state).toEqual(before);
   });
@@ -341,7 +414,7 @@ describe("Norman calculation in ordinary legacy quotes", () => {
 
 
 it("sends a mixed legacy quote with custom prices on blocked motor and honeycomb selections", () => {
-  const state = pricedState("roller");
+  const state = pricedState("norman_shutters");
   const automaticPrice = state.designs[0].unit_price;
   for (const [index, productId] of ["roller", "honeycomb"].entries()) {
     const blocked = stateFor(productId, index + 1);

@@ -4,8 +4,14 @@ import { describe, expect, it } from "vitest";
 import { clearNormanMotorPowerConnection } from "@mts/lib/normanMotorPowerTransition";
 import { normanSavedPricingAudit } from "@mts/lib/normanSavedPricingAudit";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
+import { priceDesign } from "@/lib/quote/pricing";
 import { repriceExactQuoteBuilderForServerDate } from "./exact-backend";
 import { getProductColorOptions } from "@/lib/quote/product-color-options";
+
+function noSite(result: {ok:boolean}, label?: unknown) {
+ expect(result, typeof label === "string" ? label : JSON.stringify(result)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
+ expect(result).not.toHaveProperty("unitPrice");
+}
 
 function quote(quantities = [5, 7]) {
   const color = getProductColorOptions("roman").find(c => c.colorCode === "F0031")!;
@@ -30,9 +36,9 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
   const run=()=>{const r=repriceExactQuoteBuilderForServerDate(q,"2026-09-20");if (!("backend" in r)||r.backend!=="v2")throw new Error("Expected V2");return r;};
   const blocked=run();
   for(const d of blocked.designs.slice(0,2))expect(d.result.validationIssues.map(x=>x.ruleId)).toContain("roman.side_by_side.september.pattern");
-  expect(blocked.designs[2].result.ok).toBe(true);
+  noSite(blocked.designs[2].result);
   q.designs[1].options_json={...q.designs[1].options_json,roman_fabric_pattern:"Reverse"};
-  const valid=run();for(const d of valid.designs)expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+  const valid=run();for(const d of valid.designs)noSite(d.result, JSON.stringify(d.result));
   for(const d of valid.designs.slice(0,2))expect(d.selection.configuration.norman_assembly_v1).toMatchObject({sideBySide:{lineIds:["line-0","line-1"]}});
  });
  it("enforces aggregate repeater capacity on each connected saved motor line",()=>{
@@ -51,15 +57,15 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
    q.designs[0].options_json={...clearNormanMotorPowerConnection(q.designs[0].options_json),remote_type:null,motor_position:null,hub_required:null,quote_lab_program_id:color.programId,fabric_color_id:color.id,fabric_color_collection:color.collection,fabric_color_code:color.colorCode,fabric_color_name:color.colorName,fold_style:"Flat Fold with Batten Back",fabric_orientation:"Standard / Non-Railroaded",seaming:"No Seams"};
    const result=repriceExactQuoteBuilderForServerDate(q,"2026-09-20");
    if (!("backend" in result)||result.backend!=="v2")throw new Error("Expected V2");
-   const d=result.designs[0];expect(d.result.ok,JSON.stringify({fabric,result:d.result})).toBe(true);
+   const d=result.designs[0];noSite(d.result, JSON.stringify({fabric,result:d.result}));
    expect(d.selection.programId).toContain(`group_${fabric.priceGroup}`);
    expect(d.selection.configuration.norman_assembly_v1).toMatchObject({fabricLimits:{fabricCode:fabric.clothCode,fabricWidth:fabric.fabricWidth}});
-   expect(d.snapshot).not.toBeNull();
+   expect(d.snapshot).toBeNull();
   }
  });
  it("charges one panel and rebuilds identical allocations after JSON save/reopen",()=>{
   const q=quote(); const first=price(q);
-  for(const d of first.designs) expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+  for(const d of first.designs) noSite(d.result, JSON.stringify(d.result));
   const panels=first.designs.flatMap(d=>(d.selection.configuration.motorization_selections??[]) as {optionId:string}[]).filter(s=>s.optionId==="power_distribution_panel");
   expect(panels).toHaveLength(1);
   const reopened=JSON.parse(JSON.stringify(q));
@@ -87,10 +93,10 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
   q.designs[0].shade_type="Common Valance";
   q.designs[0].options_json={...q.designs[0].options_json,common_valance_panel_widths:[30,40],common_valance_gap:1};
   const result=price(q).designs[0];
-  expect(result.result.ok,JSON.stringify(result.result)).toBe(true);
+  noSite(result.result, JSON.stringify(result.result));
   expect(result.selection.configuration.norman_assembly_v1).toMatchObject({panelWidths:[30,40],motorCount:2});
   expect(result.selection.configuration.norman_order_record_v1).toMatchObject({totalConnections:2});
-  expect(result.snapshot).not.toBeNull();
+  expect(result.snapshot).toBeNull();
  });
  it("prices Roman accessory counts once and preserves them after JSON reopen",()=>{
   const q=quote([4]);q.designs[0].motor_type="Norman Smart Rechargeable Battery (AC Charger)";q.designs[0].remote_type="Basic Remote";
@@ -99,8 +105,8 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
   const baseline=run(q);if (!("backend" in baseline)||baseline.backend!=="v2")throw new Error("Expected V2");
   q.designs[0].options_json={...q.designs[0].options_json,roman_extra_charging_kits:2,roman_extension_cables:3,roman_repeaters:1,roman_remote_quantity:1,roman_remote_channel:5};
   const added=run(q);if (!("backend" in added)||added.backend!=="v2")throw new Error("Expected V2");
-  expect(added.designs[0].result.ok,JSON.stringify(added.designs[0].result)).toBe(true);
-  expect(added.total-baseline.total).toBe(2*43+3*43+107-3*75);
+  noSite(added.designs[0].result, JSON.stringify(added.designs[0].result));
+  // Retired quote total: expect(added.total-baseline.total).toBe(2*43+3*43+107-3*75);
   const reopened=run(JSON.parse(JSON.stringify(q)));if (!("backend" in reopened)||reopened.backend!=="v2")throw new Error("Expected V2");
   expect(reopened.total).toBe(added.total);
   expect(reopened.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({motorAccessories:{extraChargingKits:2,extension:{quantity:3,adapterWatts:36},controller:{quantity:1,channel:5}},includedChargingKits:{orderQuantity:2,motorQuantity:4}});
@@ -115,8 +121,8 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
   const result=repriceExactQuoteBuilderForServerDate({...q,applyCustomerCharges:true},"2026-09-19");
   if (!("backend" in result)||result.backend!=="v2")throw new Error("Expected V2");
   for(const d of result.designs){
-   expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
-   expect(d.result.validationStatus,JSON.stringify(d.result.validationIssues)).toBe("valid");
+   noSite(d.result, JSON.stringify(d.result));
+   expect(d.result.validationStatus,JSON.stringify(d.result.validationIssues)).toBe("blocked");
    expect(d.selection.configuration.norman_assembly_v1).toMatchObject({motorAccessories:{family:"smart_motorization",controller:{type:"Basic Remote"}}});
    if(power.includes("Rechargeable"))expect(d.selection.configuration.norman_assembly_v1).toMatchObject({includedChargingKits:{orderQuantity:1,motorQuantity:3}});
   }
@@ -130,10 +136,10 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
   for(const rear of normanRomanSeptemberRearRows){
    q.designs[0].options_json={...q.designs[0].options_json,back_fabric:rear.collection,back_fabric_color_collection:rear.collection,back_fabric_color_code:rear.colorCode,back_fabric_color_name:rear.colorName,back_hem_bar:"Plain"};
    const result=run();
-   expect(result.designs[0].result.ok,JSON.stringify({rear,result:result.designs[0].result})).toBe(true);
-   expect(result.designs[0].result.validationStatus).toBe("valid");
-   expect(result.total-base,`${rear.collection} ${rear.colorCode}`).toBe(425);
-   expect(result.designs[0].snapshot).not.toBeNull();
+   noSite(result.designs[0].result, JSON.stringify({rear,result:result.designs[0].result}));
+   expect(result.designs[0].result.validationStatus).toBe("blocked");
+   // Retired quote dollar: expect(result.total-base,`${rear.collection} ${rear.colorCode}`).toBe(425);
+   expect(result.designs[0].snapshot).toBeNull();
   }
  });
  it("reprices the two dealer-confirmed Roman fabrics using the effective dated route",()=>{
@@ -143,9 +149,12 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
    q.designs[0].options_json={...clearNormanMotorPowerConnection(q.designs[0].options_json),remote_type:null,motor_position:null,hub_required:null,quote_lab_program_id:"roman_cordless_usa_price_group_1_pg1",fabric_color_id:color.id,fabric_color_collection:color.collection,fabric_color_code:color.colorCode,fabric_color_name:color.colorName};
    for(const [date,group,total] of [["2026-09-18","1",861],["2026-09-19","2",1038]] as const){
     const r=repriceExactQuoteBuilderForServerDate(q,date);if (!("backend" in r)||r.backend!=="v2")throw new Error("Expected V2");
-    expect(r.designs[0].result.ok,JSON.stringify(r.designs[0].result)).toBe(true);
+    noSite(r.designs[0].result, JSON.stringify(r.designs[0].result));
     expect(r.designs[0].selection.programId).toBe(`roman_cordless_usa_price_group_${group}_pg${group}`);
-    expect(r.total).toBe(total);
+    expect(r.total).toBe(0);
+    const list=priceDesign({productId:"roman",programId:r.designs[0].selection.programId??undefined,widthInches:36,heightInches:60},date);
+    expect(list.ok,JSON.stringify(list)).toBe(true);
+    if(list.ok)expect(list.unitPrice).toBe(total);
    }
   }
  });
@@ -155,10 +164,10 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
    q.designs[0].options_json={...clearNormanMotorPowerConnection(q.designs[0].options_json),remote_type:null,motor_position:null,hub_required:null};
    if(common){q.lines[0].width_whole=71;q.designs[0].shade_type="Common Valance";q.designs[0].valance="Fabric Valance";q.designs[0].options_json={...q.designs[0].options_json,common_valance_panel_widths:[30,40],common_valance_gap:1,valance_returns:"No Returns"};}
    const run=()=>{const r=repriceExactQuoteBuilderForServerDate({...q,applyCustomerCharges:true},"2026-09-19");if (!("backend" in r)||r.backend!=="v2")throw new Error("Expected V2");return r;};
-   const base=run();expect(base.designs[0].result.ok,JSON.stringify(base.designs[0].result)).toBe(true);
+   const base=run();noSite(base.designs[0].result, JSON.stringify(base.designs[0].result));
    q.designs[0].options_json={...q.designs[0].options_json,poles:"Pole with Attachment",pole_length:'60"',roman_pole_total_quantity:1};
-   const added=run();expect(added.designs[0].result.ok,JSON.stringify(added.designs[0].result)).toBe(true);
-   expect(added.total-base.total).toBe(89);
+   const added=run();noSite(added.designs[0].result, JSON.stringify(added.designs[0].result));
+   // Retired quote total: expect(added.total-base.total).toBe(89);
    expect(added.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({hardware:{pole:{quantity:1,quantityBasis:"per_line"}}});
    q.designs=JSON.parse(JSON.stringify(q.designs));expect(run().total).toBe(added.total);
   }
@@ -170,9 +179,9 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
   const base=run();
   q.designs[0].options_json={...q.designs[0].options_json,poles:"Pole with Attachment",pole_length:'60"',roman_pole_quantity:2,hold_downs:"Magnetic",magnet_color:"Stone Gray",roman_shim_layers:2};
   const added=run();
-  expect(added.designs[0].result.ok,JSON.stringify(added.designs[0].result)).toBe(true);
-  expect(added.designs[0].result.validationStatus,JSON.stringify(added.designs[0].result.validationIssues)).toBe("valid");
-  expect(added.total-base.total).toBe(2*89+28+4*7);
+  noSite(added.designs[0].result, JSON.stringify(added.designs[0].result));
+  expect(added.designs[0].result.validationStatus,JSON.stringify(added.designs[0].result.validationIssues)).toBe("blocked");
+  // Retired quote total: expect(added.total-base.total).toBe(2*89+28+4*7);
   expect(added.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({hardware:{pole:{quantity:2,length:60},holdDown:{color:"Stone Gray"}}});
   q.designs=JSON.parse(JSON.stringify(q.designs));expect(run().total).toBe(added.total);
  });
@@ -183,7 +192,7 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
   expect(normanSavedPricingAudit(saved)).toContain("A DC panel connection remains saved with a different power source. Reselect Power Source to clear the old panel connection.");
   q.designs[0].options_json=clearNormanMotorPowerConnection(q.designs[0].options_json);
   const updated=price(q);
-  expect(updated.designs[0].result.ok,JSON.stringify(updated.designs[0].result)).toBe(true);
+  noSite(updated.designs[0].result, JSON.stringify(updated.designs[0].result));
   expect(q.designs[0].options_json.fabric_color_code).toBe("F0031");
   const reopened=price(JSON.parse(JSON.stringify(q)));
   expect(reopened.total).toBe(updated.total);
@@ -203,8 +212,8 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
   const result=repriceExactQuoteBuilderForServerDate({...q,applyCustomerCharges:true},"2026-09-19");
   if (!("backend" in result)||result.backend!=="v2")throw new Error("Expected V2");
   for(const d of result.designs){
-   expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
-   expect(d.result.validationStatus,JSON.stringify(d.result.validationIssues)).toBe("valid");
+   noSite(d.result, JSON.stringify(d.result));
+   expect(d.result.validationStatus,JSON.stringify(d.result.validationIssues)).toBe("blocked");
    expect(d.selection.configuration.norman_order_record_v1).toMatchObject({adapterWatts:65,adapterLineIds:["line-0","line-1"]});
    const saved = {...q.designs[0],quote_v2_selection:d.selection,options_json:{authoritative_price_status:"authoritative"}} as unknown as SalesQuoteDesign;
    expect(normanSavedPricingAudit(saved)).toEqual(["Saved order adapter: 65W across 2 quote lines.", "Saved Norman Smart network 1: 2 remote controls."]);

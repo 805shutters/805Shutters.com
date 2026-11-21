@@ -6,7 +6,11 @@ import type { QuoteLabCatalogProduct } from '@/lib/quote-lab/types';
 export const MOBILE_PRODUCT_FAMILIES = ['Shutters', 'Faux Wood Blinds', 'Wood Blinds', 'Roman Shades', 'Sheer Shades', 'Vertical Blinds', 'Roller Shades', 'Honeycomb Shades', 'Drapery'] as const;
 export type MobileProductFamily = typeof MOBILE_PRODUCT_FAMILIES[number];
 export const COST_MULTIPLIERS = ['1.75', '2', '2.25', '2.5', '2.75', '3', '3.25', '3.5'] as const;
-export type CostMultiplier = typeof COST_MULTIPLIERS[number];
+/** Any positive decimal with at most three places. Null still means the draft is not priced. */
+export type CostMultiplier = string;
+export function isPositiveCostMultiplier(value: unknown): value is CostMultiplier {
+  return typeof value === 'string' && /^(?:[1-9]\d*|(?:0|[1-9]\d*)\.\d{1,3})$/.test(value) && Number(value) > 0;
+}
 export type ShippingBasis = 'line' | 'opening' | 'physical_unit';
 export type FeeOverride = {installationAmount:string|null;shippingAmount:string|null;instruction:string};
 export type SupplierLineInputs = { feeOverride?:FeeOverride; family: MobileProductFamily | null; manufacturer: string | null; colorFabric: string; mount: string; control: string; controlSide: string; shippingBasis: ShippingBasis | null; openingCount: number };
@@ -183,7 +187,7 @@ export function validateSupplierSpec(raw: unknown): SupplierQuoteSpec {
   const spec = raw as SupplierQuoteSpec;
   const keys = (value:Record<string,unknown>,allowed:string[],label:string) => { if(Object.keys(value).some(key=>!allowed.includes(key)))throw new Error(`${label} contains an unexpected field.`); };
   keys(raw as Record<string,unknown>,['schemaVersion','draftId','version','multiplier','comparisonMode','customer','lines','tax'],'Specification');
-  if (spec.schemaVersion !== '805-mobile-supplier-draft/v1' || !COST_MULTIPLIERS.includes(spec.multiplier) || spec.comparisonMode !== 'mixed_lines') throw new Error('Use the supported cost multiplier and mixed-line draft schema. Alternate-vendor comparisons need a separate explicit comparison instruction.');
+  if (spec.schemaVersion !== '805-mobile-supplier-draft/v1' || !isPositiveCostMultiplier(spec.multiplier) || spec.comparisonMode !== 'mixed_lines') throw new Error('Use a positive cost multiplier with at most three decimal places and the mixed-line draft schema. Alternate-vendor comparisons need a separate explicit comparison instruction.');
   const uuid=(value:unknown)=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
   if (!uuid(spec.draftId) || !Number.isSafeInteger(spec.version) || spec.version < 1) throw new Error('A valid draft identity and version are required.');
   if (!spec.customer || !['existing','new'].includes(spec.customer.kind) || typeof spec.customer.name !== 'string' || !spec.customer.name.trim()) throw new Error('Correct customer identity is required.');
