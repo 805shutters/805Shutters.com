@@ -92,6 +92,7 @@ declare
   captured_by text;
   expected_hash text;
   vendor_name text;
+  portal_draft text;
 begin
   if p_actor is null or p_actor not in ('mike', 'jessica') then
     raise exception 'receipt actor must be mike or jessica';
@@ -192,14 +193,15 @@ begin
       raise exception 'price_basis_unconfirmed';
     end if;
   end if;
+  portal_draft := public.price_record_portal_draft_id(p_receipt);
   insert into public.crm_vendor_price_receipts (
     quote_id, line_id, quote_revision, spec_hash, vendor, vendor_account, vendor_account_id,
-    observed_at, net_unit_price, net_line_total, currency, portal_url, evidence,
+    observed_at, net_unit_price, net_line_total, currency, portal_draft_id, portal_url, evidence,
     source_bot_id, screenshot_path, captured_by, receipt, actor
   ) values (
     q.id, line_ref, coalesce(q.quote_v2_revision, 0), expected_hash,
     account.vendor, account.account_number, account.id,
-    observed, net_unit, net_unit, 'USD', source_url, evidence,
+    observed, net_unit, net_unit, 'USD', portal_draft, source_url, evidence,
     case
       when captured_by ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
         then captured_by::uuid
@@ -211,14 +213,15 @@ begin
     'records', jsonb_build_array(jsonb_build_object(
       'line_id', line_ref,
       'record_id', record_id,
-      'vendor_account_id', account.id
+      'vendor_account_id', account.id,
+      'portal_draft_id', portal_draft
     )),
     'blocked_lines', '[]'::jsonb
   );
 end $live$;
 
 comment on function public.record_vendor_price_receipt(uuid, bigint, jsonb, text) is
-  'Appends one 805-price-record/v1 receipt. Norman, Onyx, and Sundance checks are unchanged. Lotus raises no_vendor_account when no active account exists, and price_basis_unconfirmed unless the confirmation cost is dealer net. No account row is inserted.';
+  'Appends one 805-price-record/v1 receipt. Keeps portal_draft_id from price_record_portal_draft_id. Norman, Onyx, and Sundance checks are unchanged. Lotus raises no_vendor_account when no active account exists, and price_basis_unconfirmed unless the confirmation cost is dealer net. No account row is inserted.';
 
 create or replace function line_event.lotus_failure_target(p_message text)
 returns table (field_key text, kind text, reason text)

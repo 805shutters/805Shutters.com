@@ -239,6 +239,7 @@ beforeAll(async () => {
   ]) {
     if (existsSync(sibling)) await db.exec(readFileSync(sibling, "utf8"));
   }
+  await db.exec(readFileSync("supabase/migrations/20261122004500_current_live_price_readers.sql", "utf8"));
   const before = await db.query<{ proname: string; hash: string }>(`
     select p.proname, md5(pg_get_functiondef(p.oid)) as hash
     from pg_proc p
@@ -293,18 +294,27 @@ describe("lotus order worker", () => {
   it("keeps Norman, Onyx, and Sundance receipt behavior and fails Lotus closed without an account", async () => {
     await seed(1, 11);
     const specHash = await hash(11);
-    const norman = buildNormanPriceRecord({
-      lineId: id(11),
-      specHash,
-      dealerNetBasePrice: 76.2,
-      capturedAt: "2026-11-21T17:00:00Z",
-    });
+    const norman = {
+      ...buildNormanPriceRecord({
+        lineId: id(11),
+        specHash,
+        dealerNetBasePrice: 76.2,
+        capturedAt: "2026-11-21T17:00:00Z",
+      }),
+      portal_draft_id: "NORMAN-DRAFT-1",
+    };
     expect(norman).not.toHaveProperty("price_basis");
-    const recorded = await db.query<{ result: { records: { record_id: string }[] } }>(
+    const recorded = await db.query<{ result: { records: { record_id: string; portal_draft_id: string | null }[] } }>(
       "select record_vendor_price_receipt($1, 1, $2::jsonb, 'mike') as result",
       [id(1), JSON.stringify(norman)],
     );
     const recordId = recorded.rows[0].result.records[0].record_id;
+    expect(recorded.rows[0].result.records[0].portal_draft_id).toBe("NORMAN-DRAFT-1");
+    const storedDraft = await db.query<{ portal_draft_id: string | null }>(
+      "select portal_draft_id from crm_vendor_price_receipts where id = $1",
+      [recordId],
+    );
+    expect(storedDraft.rows[0].portal_draft_id).toBe("NORMAN-DRAFT-1");
     await expect(db.query(
       "select record_vendor_price_receipt($1, 1, $2::jsonb, 'mike')",
       [id(1), JSON.stringify({ ...norman, account: "OTHER" })],
