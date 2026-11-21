@@ -86,4 +86,21 @@ describe("staff customer quote UI", () => {
     expect(container.querySelectorAll("article")).toHaveLength(1);
     expect(container.textContent).toContain("Customer 25");
   });
+  it("shows a front-door quote as a real draft and has no side card", async () => {
+    const jane: QuoteTableRow = {
+      id: "jane-quote", source: "sales", quote_number: "805-0108", customer_name: "Jane Smith",
+      customer_address: "1 Main St", status: "draft", total_amount: 0,
+    };
+    const handlers = props();
+    await act(() => root.render(React.createElement(StaffQuoteDesk, { quotes: [...rows, jane], ...handlers })));
+    expect(container.querySelector('section[aria-label="Front-door drafts"]')).toBeNull();
+    expect(container.textContent).not.toContain("Front-door draft");
+    expect(container.textContent).not.toContain("Read only");
+    const customer = container.querySelector('article[aria-label="Quotes for Jane Smith"]')!;
+    expect(customer).not.toBeNull();
+    expect(customer.textContent).toContain("805-0108");
+    expect(customer.textContent).toContain("Draft");
+    await click("Open quote A 805-0108");
+    expect(handlers.onOpen).toHaveBeenCalledWith(jane);
+  });
 });

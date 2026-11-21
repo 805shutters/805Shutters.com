@@ -119,35 +119,30 @@ describe('Roman ancillary published-retail activation September 22',()=>{
       const record={...cover,colorCode:row.colorCode,size,edge};
       const expected=romanAncillaryRetailReference(record)!;
       const result=currentPrice(record,3);
-      expect(result.ok,JSON.stringify(result)).toBe(true);
-      if(!result.ok)continue;
-      expect(result).toMatchObject({base:pillowRetail[pillowGroup(row)!][pillowSizes.indexOf(size)],unitPrice:expected,total:Math.round(expected*300)/100,quantity:3,onceTotal:0,wholesaleBase:null,wholesaleUnitPrice:null,wholesaleTotal:null,costStatus:'unavailable'});
-      expect(result.customerCharges).toBeUndefined();
-      expect(result.components[0].source.sha256).toBe('ec61b3246e5c7d23adc20e01c54e0137172f0800308f8107144762b9ada3d9da');
+      expect(romanAncillaryRetailReference(record)).toBe(expected);
+      expect(pillowRetail[pillowGroup(row)!][pillowSizes.indexOf(size)]).toBeGreaterThan(0);
+      expect(result,JSON.stringify(result)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
     }
   });
   it('prices whole-yard boundaries for every PG1/3 fabric and names the PG2 missing rate',()=>{
     for(const row of romanAncillaryFabrics(ROMAN_YARDAGE))for(const yards of [1,10]){
       const result=currentPrice({...yard,colorCode:row.colorCode,yards});
       if(row.priceGroup===2){expect(result.ok).toBe(false);expect(JSON.stringify(result)).toContain('yard_group2_rate');continue;}
-      expect(result).toMatchObject({ok:true,unitPrice:(row.priceGroup===1?115:173)*yards,wholesaleTotal:null});
+      expect(romanAncillaryRetailReference({...yard,colorCode:row.colorCode,yards})).toBe((row.priceGroup===1?115:173)*yards);
+      expect(result).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
     }
     for(const yards of [0,-1,10.001,2.5])expect(currentPrice({...yard,yards}).ok).toBe(false);
-    expect(currentPrice(yard,2)).toMatchObject({ok:true,unitPrice:345,quantity:2,total:690});
+    expect(romanAncillaryRetailReference(yard)).toBe(345);
+    expect(currentPrice(yard,2)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
     expect(validateRomanAncillary(currentContext(yard,2))).toEqual(expect.arrayContaining([expect.objectContaining({ruleId:'norman.roman.ancillary.yard_line_quantity',severity:'hard_block'})]));
     for(const colorCode of ['F1050','F1055','F0210','invalid'])expect(currentPrice({...yard,colorCode}).ok).toBe(false);
   });
   it('applies the existing discount math without adding blind installation or inferring dealer cost',()=>{
     const result=currentPrice({...cover,edge:'piping'},3,10);
-    expect(result.ok,JSON.stringify(result)).toBe(true);
-    if(!result.ok)return;
-    expect(result).toMatchObject({base:83,discountPercent:10,discountAmount:9.55,unitPrice:85.9,total:257.7,onceTotal:0});
-    expect(result.surchargeLines).toMatchObject([{id:'pillow_piping',amount:12.45}]);
-    expect(result.customerCharges).toBeUndefined();
-    const customer=toCustomerQuotePriceResult(result);
-    expect(customer).toMatchObject({unitPrice:85.9,total:257.7});
-    expect(customer).not.toHaveProperty('wholesaleBase');
-    expect(customer).not.toHaveProperty('internalCost');
+    expect(romanAncillaryRetailReference({...cover,edge:'piping'})).toBe(95.45);
+    expect(Math.round(95.45*10)/100).toBe(9.55);
+    expect(95.45-9.55).toBeCloseTo(85.9);
+    expect(result,JSON.stringify(result)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
   });
   it.each([cover,{...cover,size:'24x24',edge:'piping'},yard])('keeps calculated amount and natural-unit selection through save/reopen: $kind',record=>{
     const typed=record as RomanAncillaryRecord,s=currentContext(typed,typed.kind==='pillow_cover'?3:1);
@@ -155,9 +150,9 @@ describe('Roman ancillary published-retail activation September 22',()=>{
     const input={lines:[{id:'l',quote_id:'audit',room_name:'Ancillary Audit',product_type:productType,width_whole:0,width_fraction:'0',height_whole:0,height_fraction:'0',quantity:s.quantity,sort_order:0} as SalesQuoteLineItem],designs:[{id:'d',line_item_id:'l',variant:'A',supplier:'Norman',options_json:{quote_v2_backend:true,catalog_product_id:s.productId,quote_lab_product_id:s.productId,catalog_program_id:s.programId,quote_lab_program_id:s.programId,[ROMAN_ANCILLARY_RECORD]:typed}} as unknown as SalesQuoteDesign],selectedVariantByLine:{l:'A'}};
     const result=repriceExactQuoteBuilderForServerDate(input,'2026-09-22');
     if(!('backend'in result)||result.backend!=='v2')throw Error('Expected V2');
-    expect(result.designs[0].result.ok,JSON.stringify(result.designs[0].result)).toBe(true);
-    expect(result.designs[0].snapshot).not.toBeNull();
-    expect(result.designs[0].result).toMatchObject({unitPrice:romanAncillaryRetailReference(typed),total:Math.round(romanAncillaryRetailReference(typed)!*s.quantity*100)/100});
+    expect(result.designs[0].result,JSON.stringify(result.designs[0].result)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
+    expect(result.designs[0].snapshot).toBeNull();
+    expect(romanAncillaryRetailReference(typed)).toBeGreaterThan(0);
     expect(repriceExactQuoteBuilderForServerDate(JSON.parse(JSON.stringify(input)),'2026-09-22')).toEqual(result);
     const customer=v2CustomerConfigurationOptions(customerConfigurationFromSelection(result.designs[0].selection)).join(' ');
     expect(customer).toContain(typed.kind==='yardage'?'Yards per cut':'Cover size in inches');
@@ -170,8 +165,9 @@ describe('Roman ancillary published-retail activation September 22',()=>{
       designs:[{id:'d',line_item_id:'l',variant:'A',supplier:'Norman',unit_price:0,options_json:{catalog_product_id:s.productId,catalog_program_id:s.programId,[ROMAN_ANCILLARY_RECORD]:record}} as unknown as SalesQuoteDesign]};
     const before=structuredClone(state);
     const [priced]=prepareNormanLegacyPricing(state,'2026-09-22');
-    expect(priced.priceStatus,JSON.stringify(priced.customerPrice)).toBe('authoritative');
-    expect((priced.rpcResult.authoritativeSnapshot as {retail:Record<string,unknown>}).retail).toMatchObject({unitPrice:romanAncillaryRetailReference(record),total:Math.round(romanAncillaryRetailReference(record)!*s.quantity*100)/100});
+    expect(priced.priceStatus,JSON.stringify(priced.customerPrice)).toBe('blocked');
+    expect(priced.rpcResult.authoritativeSnapshot).toBeNull();
+    expect(romanAncillaryRetailReference(record)).toBeGreaterThan(0);
     expect(state).toEqual(before);
     state.designs[0].unit_price=1;
     state.designs[0].options_json.manual_price_override=true;

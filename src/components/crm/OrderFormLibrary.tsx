@@ -44,7 +44,7 @@ type LibraryResponse = {
   packets: GeneratedPacket[];
 };
 
-const manufacturers = ["all", "Onyx", "Norman", "Lotus", "Polar"] as const;
+const manufacturers = ["all", "Onyx", "Norman", "Lotus", "Polar", "Sundance"] as const;
 
 function status(template: OrderFormTemplate) {
   const value = template.verification.toLowerCase();
@@ -165,7 +165,7 @@ export function OrderFormLibrary({ session }: { session: Session }) {
           </p>
         </div>
         <div className="order-form-library-summary" aria-label="Order form library summary">
-          <strong>{data?.templates.length || 43}</strong>
+          <strong>{data?.templates.length || 73}</strong>
           <span>Linked document pairs</span>
           <small>Registry v{data?.registry_version || 1}</small>
         </div>

@@ -1,0 +1,250 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { NextRequest } from "next/server";
+import { CrmAuthError, isKenCrmRequestAllowed } from "@/lib/crm/auth";
+
+const mocks = vi.hoisted(() => ({ auth: vi.fn() }));
+vi.mock("@/lib/crm/auth", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/crm/auth")>()),
+  requireQuoteFrontDoorActor: mocks.auth,
+}));
+
+import { GET as lookupCustomers } from "./customers/route";
+import { POST as nextField } from "./next-field/route";
+import { POST as validateTap } from "./validate/route";
+import { POST as readBack } from "./read-back/route";
+import { POST as saveDraft } from "./draft/route";
+import { POST as batchNext } from "./batch-next-field/route";
+import { POST as batchValidate } from "./batch-validate/route";
+
+const catalog = "order-form:norman:roller:v1";
+
+function database() {
+  const calls: Array<{ type: string; table?: string; fn?: string; args?: Record<string, unknown>; row?: Record<string, unknown> }> = [];
+  const filter = (table: string) => {
+    const api = {
+      eq: () => api,
+      is: () => api,
+      or: () => api,
+      in: () => api,
+      order: () => api,
+      limit: async () => {
+        calls.push({ type: "select", table });
+        return { data: [], error: null };
+      },
+    };
+    return api;
+  };
+  const client = {
+    rpc: async (fn: string, args: Record<string, unknown> = {}) => {
+      calls.push({ type: "rpc", fn, args });
+      if (fn === "quote_next_required_field") {
+        return {
+          data: {
+            status: "complete", reason: null, field_key: null, input_kind: null, required: null, ask_order: null,
+            choices: [], invalidated: [], kept: { room_location: "Office" }, optional_field: null, catalog_version: catalog,
+          },
+          error: null,
+        };
+      }
+      if (fn === "create_quote_v2_draft") {
+        return {
+          data: {
+            backend: "authoritative_v2", quoteId: "draft-route", quoteNumber: "805-0108", revision: 1,
+            status: "draft", quoteV2Status: "draft", lineCount: 0,
+          },
+          error: null,
+        };
+      }
+      if (args?.manufacturer === "Sundance" || args?.p_field_key === "mount_type" && args?.p_value === "Ceiling") {
+        return {
+          data: {
+            ok: false,
+            status: args?.manufacturer === "Sundance" ? "blocked" : "needs_input",
+            reason: args?.manufacturer === "Sundance" ? "unknown manufacturer or category" : "value is not a catalog choice",
+            choices: [],
+          },
+          error: null,
+        };
+      }
+      if (fn === "quote_validate_tapped_value") return { data: { ok: true, status: "ok", reason: null, choices: [] }, error: null };
+      if (fn === "mutate_quote_v2_structure") {
+        const operations = Array.isArray(args?.p_operations) ? args.p_operations as Array<{ lineItemId?: string; type?: string }> : [];
+        const ids = [...new Set(operations.map((operation) => operation.lineItemId).filter((id): id is string => Boolean(id)))];
+        return {
+          data: {
+            backend: "authoritative_v2",
+            quoteId: args?.p_quote_id,
+            revision: Number(args?.p_expected_revision) + 1,
+            status: "draft",
+            quoteV2Status: "stale",
+            lineCount: ids.length,
+            selectedDesigns: Object.fromEntries(ids.map((id) => [id, "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"])),
+            operations: operations.map((operation, index) => ({ index, type: operation.type, lineItemId: operation.lineItemId })),
+          },
+          error: null,
+        };
+      }
+      return { data: { ok: false, status: "blocked", reason: "unknown manufacturer or category", choices: [] }, error: null };
+    },
+    from(table: string) {
+      return {
+        select: () => filter(table),
+        update: (row: Record<string, unknown>) => {
+          const update = {
+            eq: () => update,
+            is: async () => {
+              calls.push({ type: "update", table, row });
+              return { error: null };
+            },
+          };
+          return update;
+        },
+      };
+    },
+  };
+  return { client, calls };
+}
+
+function post(path: string, body: unknown) {
+  return new NextRequest(`http://localhost${path}`, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { "content-type": "application/json" },
+  });
+}
+
+describe("quote front door routes", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("requires a CRM staff session and keeps Ken off the draft route", async () => {
+    mocks.auth.mockRejectedValue(new CrmAuthError(401, "CRM session is required."));
+    expect((await nextField(post("/api/crm/quote-front-door/next-field", {}))).status).toBe(401);
+    expect((await saveDraft(post("/api/crm/quote-front-door/draft", {}))).status).toBe(401);
+    expect(isKenCrmRequestAllowed("khill31@msn.com", "POST", "/api/crm/quote-front-door/draft")).toBe(false);
+    expect(isKenCrmRequestAllowed("khill31@msn.com", "POST", "/api/crm/quote-front-door/batch-next-field")).toBe(false);
+    expect(isKenCrmRequestAllowed("khill31@msn.com", "POST", "/api/crm/quote-front-door/batch-validate")).toBe(false);
+    expect((await batchNext(post("/api/crm/quote-front-door/batch-next-field", {}))).status).toBe(401);
+    expect((await batchValidate(post("/api/crm/quote-front-door/batch-validate", {}))).status).toBe(401);
+    expect(isKenCrmRequestAllowed("805shutters@gmail.com", "POST", "/api/crm/quote-front-door/draft")).toBe(true);
+  });
+
+  it("returns the next field and saves a draft that was not sent", async () => {
+    const db = database();
+    mocks.auth.mockResolvedValue({
+      supabase: db.client,
+      email: "805shutters@gmail.com",
+      userId: "11111111-1111-4111-8111-111111111111",
+      kind: "staff",
+    });
+    const lookup = await lookupCustomers(new NextRequest("http://localhost/api/crm/quote-front-door/customers?name=Jane%20Smith"));
+    expect(lookup.status).toBe(200);
+    expect(await lookup.json()).toMatchObject({ candidates: [], created: false });
+
+    const asked = await nextField(post("/api/crm/quote-front-door/next-field", {
+      manufacturer: "Norman", category: "roller", spec: { answers: { room_location: "Office" }, multiplier: "2.5" },
+    }));
+    expect(asked.status).toBe(200);
+    expect(await asked.json()).toMatchObject({ phase: "ready", multiplier: "2.5", status: "complete" });
+
+    const read = await readBack(post("/api/crm/quote-front-door/read-back", {
+      manufacturer: "Norman", category: "roller", spec: { answers: { room_location: "Office" }, multiplier: "2.5" },
+    }));
+    expect(read.status).toBe(200);
+    expect((await read.json()).summary).toBe("Norman roller\nRoom: Office\nMultiplier: 2.5");
+
+    const blocked = await validateTap(post("/api/crm/quote-front-door/validate", {
+      manufacturer: "Sundance", category: "sundance_roller", fieldKey: "room_location", value: "Office", spec: {},
+    }));
+    expect(blocked.status).toBe(200);
+    expect(await blocked.json()).toMatchObject({ ok: false, status: "blocked" });
+
+    const actorId = "11111111-1111-4111-8111-111111111111";
+    const saved = await saveDraft(post("/api/crm/quote-front-door/draft", {
+      manufacturer: "Norman",
+      category: "roller",
+      spec: { answers: { room_location: "Office" }, multiplier: "2.5" },
+      customer: { name: "New Person", phone: "805-555-0177", confirmNewCustomer: true },
+      idempotencyKey: "front-door-route-key",
+    }));
+    expect(saved.status).toBe(200);
+    expect(await saved.json()).toMatchObject({
+      saved: true,
+      sent: false,
+      quote: { id: "draft-route", quoteNumber: "805-0108", status: "draft", sent: false },
+    });
+    const created = db.calls.filter((call) => call.fn === "create_quote_v2_draft");
+    expect(created).toHaveLength(1);
+    expect(created[0]?.args).toMatchObject({
+      p_idempotency_key: "front-door-route-key",
+      p_actor_id: actorId,
+      p_quote_patch: { customerName: "New Person" },
+    });
+    expect(created[0]?.args?.p_quote_patch).not.toHaveProperty("installerNotes");
+    expect(created[0]?.args?.p_actor_id).toBe(actorId);
+    const readBackWrite = db.calls.find((call) => call.type === "update");
+    expect(readBackWrite?.row).toMatchObject({ front_door_readback: { summary: expect.stringContaining("Norman roller") } });
+    expect(readBackWrite?.row).not.toHaveProperty("installer_notes");
+    expect(db.calls.some((call) => call.type === "insert")).toBe(false);
+    expect(db.calls.some((call) => call.table === "crm_customers" && call.type === "insert")).toBe(false);
+    expect(db.calls.filter((call) => call.fn === "quote_validate_tapped_value")).toHaveLength(1);
+
+    const screen = await batchNext(post("/api/crm/quote-front-door/batch-next-field", {
+      manufacturer: "Norman", category: "roller", spec: { answers: { room_location: "Office" } },
+    }));
+    expect(screen.status).toBe(200);
+    const screenBody = await screen.json();
+    expect(screenBody.sent).toBe(false);
+    expect(screenBody.fields.map((field: { fieldKey: string }) => field.fieldKey)).not.toContain("room_location");
+
+    const lineA = "22222222-2222-4222-8222-222222222222";
+    const lineB = "33333333-3333-4333-8333-333333333333";
+    const quoteId = "44444444-4444-4444-8444-444444444444";
+    const batch = await batchValidate(post("/api/crm/quote-front-door/batch-validate", {
+      manufacturer: "Norman",
+      category: "roller",
+      spec: { answers: {} },
+      picks: { room_location: "Office", mount_type: "Inside Mount", quantity: 1 },
+      lines: [
+        { id: lineA, label: "Line A", answers: {} },
+        { id: lineB, label: "Line B", answers: {} },
+      ],
+      applyToLineIds: [lineA, lineB],
+      quoteId,
+      expectedRevision: 2,
+      idempotencyKey: "front-door-route-1",
+    }));
+    expect(batch.status).toBe(200);
+    expect(await batch.json()).toMatchObject({
+      saved: true,
+      sent: false,
+      reask: [],
+      quote: { id: quoteId, status: "draft", sent: false, quoteV2Status: "stale" },
+    });
+    const conflict = await batchValidate(post("/api/crm/quote-front-door/batch-validate", {
+      manufacturer: "Norman",
+      category: "roller",
+      spec: { answers: {} },
+      picks: { room_location: "Office", mount_type: "Ceiling" },
+      lines: [{ id: lineA, label: "Line A", answers: {} }],
+      applyToLineIds: [lineA],
+      quoteId,
+      expectedRevision: 2,
+      idempotencyKey: "front-door-route-2",
+    }));
+    const conflictBody = await conflict.json();
+    expect(conflictBody.sent).toBe(false);
+    expect(conflictBody.reask.map((item: { fieldKey: string }) => item.fieldKey)).toEqual(["mount_type"]);
+    const structure = db.calls.filter((call) => call.fn === "mutate_quote_v2_structure");
+    expect(structure).toHaveLength(2);
+    expect(structure[0]?.args).toMatchObject({
+      p_quote_id: quoteId,
+      p_actor_id: "11111111-1111-4111-8111-111111111111",
+      p_expected_revision: 2,
+      p_idempotency_key: "front-door-route-1",
+    });
+    expect(JSON.stringify(structure[0]?.args?.p_operations)).not.toContain("blocked");
+    expect(JSON.stringify(structure[1]?.args?.p_operations)).not.toContain("Ceiling");
+    expect(db.calls.some((call) => call.type === "insert")).toBe(false);
+    expect(db.calls.some((call) => call.table === "crm_quote_front_door_drafts" || call.table === "crm_quote_front_door_line_drafts")).toBe(false);
+  });
+});

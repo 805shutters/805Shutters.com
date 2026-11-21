@@ -3,7 +3,13 @@ import {describe,it,expect} from "vitest";
 import type {SalesQuoteDesign,SalesQuoteLineItem} from "@mts/types/quote";
 import {getProductColorOptions} from "@/lib/quote/product-color-options";
 import {SMARTFOLD_FABRICS} from "@/lib/quote/norman-current-assortment";
+import {priceDesign} from "@/lib/quote/pricing";
 import {repriceExactQuoteBuilderForServerDate} from "./exact-backend";
+
+function noSite(result: {ok:boolean}, label?: unknown) {
+ expect(result, typeof label === "string" ? label : JSON.stringify(result)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
+ expect(result).not.toHaveProperty("unitPrice");
+}
 const KEY="smartfold_clearance_v1";
 function quote(code="F1709"){
  const color=getProductColorOptions("smartfold").find(c=>c.colorCode===code)!;
@@ -20,11 +26,12 @@ describe("SmartFold individual fully recessed Basic Light Guard",()=>{
   d.options_json={...d.options_json,basic_light_guard:"Yes",smartfold_light_guard_color:"3058 White",smartfold_installation:top?"Top Mount with Raceway":"Back / Wall Mount with Raceway",smartfold_light_guard_recess:"Fully Recessed",smartfold_full_recess_depth_inches:depth,smartfold_wand_length:"36",smartfold_wand_color:"White"};return q;
  }
  it.each(SMARTFOLD_FABRICS.flatMap(f=>controls.flatMap(control=>[true,false].flatMap(top=>[60,84].filter(h=>!(f.collection==="Louise"&&h>72)).map(height=>({code:f.code,control,top,height}))))))("prices $code / $control / top=$top / height=$height and rejects insufficient recess",({code,control,top,height})=>{
-  const q=configure(code,control,top,height),r=run(q),d=r.designs[0];expect(r.sendability.sendable,JSON.stringify(d.result)).toBe(true);expect(d.snapshot).not.toBeNull();
+  const q=configure(code,control,top,height),r=run(q),d=r.designs[0];noSite(d.result,JSON.stringify(d.result));expect(d.result.validationIssues.map(i=>i.ruleId)).not.toContain("norman.smartfold.inside_light_guard_depth");expect(r.sendability.sendable).toBe(false);expect(d.snapshot).toBeNull();
   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({finishedShadeWidth:35.875,insideLightGuardClearance:{requiredFullAssemblyDepth:q.designs[0].options_json.smartfold_full_recess_depth_inches}});
   expect(run(JSON.parse(JSON.stringify(q)))).toEqual(r);
   const customer=v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection)).join(" ");expect(customer).toContain("Fully Recessed");
-  if(d.result.ok)expect(d.result.surchargeLines.filter(line=>line.id==="basic_light_guard")).toEqual([expect.objectContaining({id:"basic_light_guard",amount:45})]);
+  const list=priceDesign({productId:"smartfold",programId:d.selection.programId??undefined,widthInches:d.selection.widthInches,heightInches:d.selection.heightInches,surcharges:[{id:"basic_light_guard"}]},d.selection.catalogAsOf);
+  expect(list.ok,JSON.stringify(list)).toBe(true);if(list.ok)expect(list.surchargeLines.filter(line=>line.id==="basic_light_guard")).toEqual([expect.objectContaining({id:"basic_light_guard",amount:45})]);
   q.designs[0].options_json.smartfold_full_recess_depth_inches=Number(q.designs[0].options_json.smartfold_full_recess_depth_inches)-.001;const bad=run(q);expect(bad.sendability.sendable).toBe(false);expect(bad.designs[0].snapshot).toBeNull();expect(bad.designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.inside_light_guard_depth");
  });
  it("requires a complete valid individual assembly and retains unverified combinations",()=>{

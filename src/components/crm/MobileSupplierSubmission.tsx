@@ -2,13 +2,13 @@
 import {mobileRequiredQuoteIssues} from "@/lib/crm/mobile-quote-requirements";
 import { useEffect, useRef, useState } from 'react';
 import type { MobileQuoteDraft } from '@/lib/crm/mobile-quote-draft';
-import { buildSupplierSpec, validateSupplierSpec, COST_MULTIPLIERS, jobSettings, missingSupplierFields, type CostMultiplier } from '@/lib/crm/mobile-supplier-spec';
+import { buildSupplierSpec, validateSupplierSpec, COST_MULTIPLIERS, isPositiveCostMultiplier, jobSettings, missingSupplierFields, type CostMultiplier } from '@/lib/crm/mobile-supplier-spec';
 import type { DurableDraftJob } from '@/lib/crm/supplier-draft-orchestrator';
 import styles from './MobileSupplierWorkflow.module.css';
 import { supplierDraftProcessingAvailable, SUPPLIER_DRAFT_UNAVAILABLE_MESSAGE } from '@/lib/crm/supplier-draft-availability';
 
 export function MobileCostMultiplierButtons({value,onChange,disabled=false}:{value:CostMultiplier|null;onChange:(value:CostMultiplier)=>void;disabled?:boolean}){
-  return <fieldset className={styles.multipliers} disabled={disabled}><legend>Product cost multiplier</legend><div>{COST_MULTIPLIERS.map(factor=><button type="button" key={factor} aria-pressed={value===factor} onClick={()=>onChange(factor)}>{factor}×</button>)}</div><p>Multiply product cost, then add installation and shipping.</p></fieldset>;
+  return <fieldset className={styles.multipliers} disabled={disabled}><legend>Product cost multiplier</legend><div>{COST_MULTIPLIERS.map(factor=><button type="button" key={factor} aria-pressed={value===factor} onClick={()=>onChange(factor)}>{factor}×</button>)}</div><label>Other positive margin<input aria-label="Other positive margin" inputMode="decimal" defaultValue={value&&!COST_MULTIPLIERS.includes(value as typeof COST_MULTIPLIERS[number])?value:''} onBlur={event=>{const next=event.currentTarget.value.trim();if(isPositiveCostMultiplier(next))onChange(next);}}/></label><p>Any positive margin with up to three decimal places. Multiply product cost, then add installation and shipping.</p></fieldset>;
 }
 export function MobileSupplierSubmission({draft,onChange,persist,api,online}:{draft:MobileQuoteDraft;onChange:(draft:MobileQuoteDraft)=>void;persist:(draft:MobileQuoteDraft)=>Promise<void>;api:<T>(path:string,init?:RequestInit)=>Promise<T>;online:boolean}){
   const processingAvailable=supplierDraftProcessingAvailable();
