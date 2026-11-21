@@ -70,6 +70,7 @@ export function StaffQuoteDesk({ quotes, isLoading, isError, isFetching, onRetry
       <div className={styles.actions}>
         <button type="button" onClick={onOpenTools}>Quote tools</button>
         {onNewNormanQuote && <button type="button" onClick={onNewNormanQuote}><Plus size={17} /> New Norman quote</button>}
+        <a className={styles.entryLink} href="/crm/quote-entry">Enter line options</a>
         <button type="button" className={styles.primary} onClick={onNewQuote}><Plus size={17} /> New quote</button>
       </div>
     </header>

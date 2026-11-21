@@ -8,6 +8,8 @@ import {
   type QuoteFrontDoorStore,
   type QuoteV2DraftCreate,
   type SequenceChoice,
+  type SequenceChoiceRow,
+  type SequenceDetailRow,
   type SequenceFieldOrder,
   type SequenceNext,
   type TapResult,
@@ -77,6 +79,44 @@ export function quoteFrontDoorStore(db: QuoteFrontDoorDb): QuoteFrontDoorStore {
         if (!fieldKey || !Number.isFinite(askOrder)) return [];
         return [{ field_key: fieldKey, ask_order: askOrder }];
       }) satisfies SequenceFieldOrder[];
+    },
+    async sequenceRows(catalogVersion) {
+      const { data, error } = await db
+        .from("quote_category_field_sequence")
+        .select("field_key, ask_order, required, input_kind, depends_on")
+        .eq("catalog_version", catalogVersion)
+        .order("ask_order", { ascending: true })
+        .limit(500);
+      if (error) throw new CrmAuthError(502, "The quote field order could not be read.");
+      return (data ?? []).flatMap((row) => {
+        const record = asRecord(row);
+        const fieldKey = text(record.field_key);
+        const askOrder = typeof record.ask_order === "number" ? record.ask_order : Number(record.ask_order);
+        if (!fieldKey || !Number.isFinite(askOrder)) return [];
+        return [{
+          field_key: fieldKey,
+          ask_order: askOrder,
+          required: record.required === true,
+          input_kind: text(record.input_kind) ?? "typed",
+          depends_on: textList(record.depends_on),
+        }] satisfies SequenceDetailRow[];
+      });
+    },
+    async choiceRows(catalogVersion) {
+      const { data, error } = await db
+        .from("quote_catalog_field_choice")
+        .select("field_key, choice_value, choice_label")
+        .eq("catalog_version", catalogVersion)
+        .order("id", { ascending: true })
+        .limit(8000);
+      if (error) throw new CrmAuthError(502, "The quote button choices could not be read.");
+      return (data ?? []).flatMap((row) => {
+        const record = asRecord(row);
+        const fieldKey = text(record.field_key);
+        const value = text(record.choice_value);
+        if (!fieldKey || !value) return [];
+        return [{ field_key: fieldKey, value, label: text(record.choice_label) ?? value }] satisfies SequenceChoiceRow[];
+      });
     },
     findCustomerRecords(query) {
       return findCustomerRecords(db, query);
@@ -393,3 +433,6 @@ function text(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function textList(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}

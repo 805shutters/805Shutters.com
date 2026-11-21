@@ -13,6 +13,8 @@ import { POST as nextField } from "./next-field/route";
 import { POST as validateTap } from "./validate/route";
 import { POST as readBack } from "./read-back/route";
 import { POST as saveDraft } from "./draft/route";
+import { POST as batchNext } from "./batch-next-field/route";
+import { POST as batchValidate } from "./batch-validate/route";
 
 const catalog = "order-form:norman:roller:v1";
 
@@ -33,7 +35,7 @@ function database() {
     return api;
   };
   const client = {
-    rpc: async (fn: string, args: Record<string, unknown>) => {
+    rpc: async (fn: string, args: Record<string, unknown> = {}) => {
       calls.push({ type: "rpc", fn, args });
       if (fn === "quote_next_required_field") {
         return {
@@ -53,6 +55,18 @@ function database() {
           error: null,
         };
       }
+      if (args?.manufacturer === "Sundance" || args?.p_field_key === "mount_type" && args?.p_value === "Ceiling") {
+        return {
+          data: {
+            ok: false,
+            status: args?.manufacturer === "Sundance" ? "blocked" : "needs_input",
+            reason: args?.manufacturer === "Sundance" ? "unknown manufacturer or category" : "value is not a catalog choice",
+            choices: [],
+          },
+          error: null,
+        };
+      }
+      if (fn === "quote_validate_tapped_value") return { data: { ok: true, status: "ok", reason: null, choices: [] }, error: null };
       return { data: { ok: false, status: "blocked", reason: "unknown manufacturer or category", choices: [] }, error: null };
     },
     from(table: string) {
@@ -90,6 +104,10 @@ describe("quote front door routes", () => {
     expect((await nextField(post("/api/crm/quote-front-door/next-field", {}))).status).toBe(401);
     expect((await saveDraft(post("/api/crm/quote-front-door/draft", {}))).status).toBe(401);
     expect(isKenCrmRequestAllowed("khill31@msn.com", "POST", "/api/crm/quote-front-door/draft")).toBe(false);
+    expect(isKenCrmRequestAllowed("khill31@msn.com", "POST", "/api/crm/quote-front-door/batch-next-field")).toBe(false);
+    expect(isKenCrmRequestAllowed("khill31@msn.com", "POST", "/api/crm/quote-front-door/batch-validate")).toBe(false);
+    expect((await batchNext(post("/api/crm/quote-front-door/batch-next-field", {}))).status).toBe(401);
+    expect((await batchValidate(post("/api/crm/quote-front-door/batch-validate", {}))).status).toBe(401);
     expect(isKenCrmRequestAllowed("805shutters@gmail.com", "POST", "/api/crm/quote-front-door/draft")).toBe(true);
   });
 
@@ -152,5 +170,51 @@ describe("quote front door routes", () => {
     expect(db.calls.some((call) => call.type === "insert")).toBe(false);
     expect(db.calls.some((call) => call.table === "crm_customers" && call.type === "insert")).toBe(false);
     expect(db.calls.filter((call) => call.fn === "quote_validate_tapped_value")).toHaveLength(1);
+
+    const screen = await batchNext(post("/api/crm/quote-front-door/batch-next-field", {
+      manufacturer: "Norman", category: "roller", spec: { answers: { room_location: "Office" } },
+    }));
+    expect(screen.status).toBe(200);
+    const screenBody = await screen.json();
+    expect(screenBody.sent).toBe(false);
+    expect(screenBody.fields.map((field: { fieldKey: string }) => field.fieldKey)).not.toContain("room_location");
+
+    const batch = await batchValidate(post("/api/crm/quote-front-door/batch-validate", {
+      manufacturer: "Norman",
+      category: "roller",
+      spec: { answers: {} },
+      picks: { room_location: "Office", mount_type: "Inside Mount", quantity: 1 },
+      lines: [
+        { id: "a", label: "Line A", answers: {} },
+        { id: "b", label: "Line B", answers: {} },
+      ],
+      applyToLineIds: ["a", "b"],
+      customer: { name: "New Person", confirmNewCustomer: true },
+    }));
+    expect(batch.status).toBe(200);
+    expect(await batch.json()).toMatchObject({
+      saved: true,
+      sent: false,
+      reask: [],
+      draft: { status: "draft", sent: false },
+    });
+    const conflict = await batchValidate(post("/api/crm/quote-front-door/batch-validate", {
+      manufacturer: "Norman",
+      category: "roller",
+      spec: { answers: {} },
+      picks: { room_location: "Office", mount_type: "Ceiling" },
+      lines: [{ id: "a", label: "Line A", answers: {} }],
+      applyToLineIds: ["a"],
+      customer: { name: "New Person", confirmNewCustomer: true },
+    }));
+    const conflictBody = await conflict.json();
+    expect(conflictBody.sent).toBe(false);
+    expect(conflictBody.reask.map((item: { fieldKey: string }) => item.fieldKey)).toEqual(["mount_type"]);
+    const inserts = db.calls.filter((call) => call.type === "insert");
+    expect(inserts.map((call) => call.table)).toEqual([
+      "crm_quote_front_door_drafts",
+      "crm_quote_front_door_line_drafts",
+      "crm_quote_front_door_line_drafts",
+    ]);
   });
 });
