@@ -7,7 +7,9 @@ vi.mock("@/lib/crm/square-payment-links", async original => ({ ...await original
 const body = { quoteId: "quote-1", jobId: "job-1", paymentType: "balance", channel: "email", idempotencyKey: "11111111-1111-4111-8111-111111111111", expectedRecipient: "customer@example.test", expectedAmount: 400, expectedOutstanding: 1001.2, collectionMode: "partial", customAmount: 400 };
 const post = (patch: Record<string, unknown> = {}) => POST(new NextRequest("http://localhost/api/crm/mobile/customers", { method: "POST", body: JSON.stringify({ ...body, ...patch }) }));
 beforeEach(() => {
-  vi.clearAllMocks(); mocks.prior = null;
+  vi.clearAllMocks();
+  vi.stubEnv("CARD_PAYMENT_PROVIDER", "square");
+  mocks.prior = null;
   mocks.insert.mockResolvedValue({ error: null });
   mocks.update.mockImplementation(() => { const result = { eq: () => result, then: (resolve: (value: unknown) => unknown) => Promise.resolve({ error: null }).then(resolve) }; return result; });
   const db = { from: (table: string) => ({
@@ -31,6 +33,14 @@ describe("mobile amount selection POST", () => {
   });
   it.each([{ collectionMode: "other" }, { paymentType: "deposit" }, { collectionMode: "full" }, { expectedAmount: 0 }])("rejects invalid requests before reserving or sending: %j", async patch => {
     expect((await post(patch)).status).toBe(400);
+    expect(mocks.insert).not.toHaveBeenCalled();
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+  it("refuses an unset card provider before reserving or sending", async () => {
+    vi.stubEnv("CARD_PAYMENT_PROVIDER", "");
+    const response = await post();
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ message: "Card payment provider is not configured." });
     expect(mocks.insert).not.toHaveBeenCalled();
     expect(mocks.send).not.toHaveBeenCalled();
   });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { linkAutopayCard } from "@/lib/crm/payment-plans";
+import { CardProviderConfigError } from "@/lib/finance/card-provider";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
@@ -12,13 +13,20 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
   }
 
   const payload = (await request.json().catch(() => ({}))) as { sourceId?: string; cardholderName?: string };
-  const result = await linkAutopayCard(supabase, token, {
-    sourceId: String(payload.sourceId || ""),
-    cardholderName: typeof payload.cardholderName === "string" ? payload.cardholderName : null
-  });
+  try {
+    const result = await linkAutopayCard(supabase, token, {
+      sourceId: String(payload.sourceId || ""),
+      cardholderName: typeof payload.cardholderName === "string" ? payload.cardholderName : null
+    });
 
-  if (!result.ok) {
-    return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
+    if (!result.ok) {
+      return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
+    }
+    return NextResponse.json({ ok: true, cardBrand: result.cardBrand, cardLast4: result.cardLast4 });
+  } catch (error) {
+    if (error instanceof CardProviderConfigError) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: error.status });
+    }
+    throw error;
   }
-  return NextResponse.json({ ok: true, cardBrand: result.cardBrand, cardLast4: result.cardLast4 });
 }

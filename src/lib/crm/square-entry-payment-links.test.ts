@@ -6,6 +6,7 @@ import { recordCrmActivity } from "@/lib/crm/backend";
 import { POST } from "@/app/api/crm/bookkeeping/[id]/square-payment-link/route";
 import { sendSquareEntryPaymentLink } from "./square-entry-payment-links";
 import { createSquarePaymentLink, isSquareConfigured } from "@/lib/finance/square";
+import { createStripePaymentLink } from "@/lib/crm/stripe-collection";
 import { sendEmail } from "@/lib/notify/email";
 
 vi.mock("@/lib/crm/square-payment-requests", () => ({ trackSquarePaymentRequest: vi.fn().mockResolvedValue(undefined) }));
@@ -15,6 +16,11 @@ vi.mock("@/lib/finance/square", async (original) => ({
   ...await original<typeof import("@/lib/finance/square")>(),
   isSquareConfigured: vi.fn(() => true),
   createSquarePaymentLink: vi.fn().mockResolvedValue({ id: "link-1", url: "https://square.link/u/test" }),
+}));
+vi.mock("@/lib/finance/stripe", () => ({ isStripeConfigured: vi.fn(() => true) }));
+vi.mock("@/lib/crm/stripe-collection", () => ({ createStripePaymentLink: vi.fn() }));
+vi.mock("@/lib/crm/stripe-delivery", () => ({
+  deliverStripeRequest: vi.fn((_db: unknown, _id: unknown, _channel: unknown, _to: unknown, _key: unknown, _payload: unknown, send: () => Promise<unknown>) => send()),
 }));
 vi.mock("@/lib/notify/email", () => ({
   buildSquareOrderPaymentEmail: vi.fn(() => ({ subject: "Payment request", html: "preview", text: "preview" })),
@@ -50,7 +56,11 @@ function fixture(options: { entry?: Record<string, unknown>; quote?: Record<stri
 const actor = { email: "805@805shutters.com", userId: "staff-1" };
 const confirmation = { expectedAmount: 300, expectedRecipient: "exact@example.com" };
 
-beforeEach(() => { vi.clearAllMocks(); vi.mocked(isSquareConfigured).mockReturnValue(true); });
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.stubEnv("CARD_PAYMENT_PROVIDER", "square");
+  vi.mocked(isSquareConfigured).mockReturnValue(true);
+});
 
 describe("standalone entry Square requests", () => {
   it("uses the exact entry ledger and branded sender, not a quote ledger", async () => {
@@ -89,6 +99,13 @@ describe("standalone entry Square requests", () => {
     await expect(sendSquareEntryPaymentLink(fixture(options).supabase, "entry-1", "deposit", actor, confirmation)).rejects.toThrow(error);
     expect(createSquarePaymentLink).not.toHaveBeenCalled(); expect(sendEmail).not.toHaveBeenCalled();
   });
+  it("refuses an unset provider before Square or Stripe", async () => {
+    vi.stubEnv("CARD_PAYMENT_PROVIDER", "");
+    await expect(sendSquareEntryPaymentLink(fixture().supabase, "entry-1", "deposit", actor, confirmation)).rejects.toMatchObject({ status: 503 });
+    expect(createSquarePaymentLink).not.toHaveBeenCalled();
+    expect(createStripePaymentLink).not.toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
   it("rejects missing confirmation and stale amounts/recipients", async () => {
     for (const value of [undefined, { ...confirmation, expectedAmount: 310 }, { ...confirmation, expectedRecipient: "wrong@example.com" }]) {
       await expect(sendSquareEntryPaymentLink(fixture().supabase, "entry-1", "deposit", actor, value!)).rejects.toThrow();
@@ -111,6 +128,15 @@ describe("entry payment request route", () => {
   function authorize() {
     vi.mocked(requireCrmUser).mockResolvedValue({ supabase: fixture().supabase, email: actor.email, user: { id: actor.userId } } as Awaited<ReturnType<typeof requireCrmUser>>);
   }
+  it("returns 503 when the card provider is unset", async () => {
+    vi.stubEnv("CARD_PAYMENT_PROVIDER", "");
+    authorize();
+    const response = await POST(request({ paymentType: "deposit", ...confirmation }), { params: Promise.resolve({ id: routeId }) });
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ message: "Card payment provider is not configured." });
+    expect(createSquarePaymentLink).not.toHaveBeenCalled();
+    expect(createStripePaymentLink).not.toHaveBeenCalled();
+  });
   it("requires CRM authorization before looking up a ledger", async () => {
     vi.mocked(requireCrmUser).mockRejectedValue(new CrmAuthError(401, "CRM session is required."));
     expect((await POST(request({ paymentType: "deposit", ...confirmation }), { params: Promise.resolve({ id: routeId }) })).status).toBe(401);
