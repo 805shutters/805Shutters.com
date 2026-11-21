@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { normalizePhone } from "@/lib/crm/phone-matching";
 
@@ -6,7 +7,7 @@ import { normalizePhone } from "@/lib/crm/phone-matching";
  * Legend order comes from public.quote_next_required_field.
  * A tapped legend value is checked with public.quote_validate_tapped_value.
  * The margin multiplier is asked only after every required legend field is complete.
- * Saving writes a draft and does not send the quote.
+ * Saving calls create_quote_v2_draft and does not send the quote.
  */
 
 /** The product-cost multipliers already offered on a CRM supplier draft. */
@@ -125,23 +126,18 @@ export type QuoteFrontDoorReadBack = {
   nextField: string | null;
 };
 
-export type DraftInsert = {
-  status: "draft";
-  customer_id: string | null;
-  job_id: string | null;
-  calendar_event_id: string | null;
-  appointment_id: string | null;
-  customer_name: string;
-  customer_phone: string | null;
-  customer_address: string | null;
-  manufacturer: string;
-  category: string;
-  catalog_version: string | null;
-  spec: Record<string, unknown>;
-  multiplier: string;
-  read_back: string;
-  created_by: string | null;
-  created_by_email: string | null;
+/** Arguments for the existing create_quote_v2_draft(p_idempotency_key, p_actor_id, p_quote_patch). */
+export type FrontDoorReadBackRecord = {
+  summary: string;
+  customerId: string | null;
+  jobId: string | null;
+};
+
+export type QuoteV2DraftCreate = {
+  idempotencyKey: string;
+  actorId: string;
+  quotePatch: Record<string, unknown>;
+  readBack: FrontDoorReadBackRecord;
 };
 
 export type QuoteFrontDoorStore = {
@@ -155,7 +151,7 @@ export type QuoteFrontDoorStore = {
   ): Promise<TapResult>;
   sequenceFields(catalogVersion: string): Promise<SequenceFieldOrder[]>;
   findCustomerRecords(query: CustomerLookupQuery): Promise<{ records: CustomerRecord[]; truncated: boolean }>;
-  insertDraft(row: DraftInsert): Promise<{ id: string }>;
+  createQuoteV2Draft(input: QuoteV2DraftCreate): Promise<{ id: string; quoteNumber?: string | null }>;
 };
 
 export type FrontDoorActor = {
@@ -506,6 +502,39 @@ export async function lookupQuoteFrontDoorCustomers(store: QuoteFrontDoorStore, 
   };
 }
 
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,199}$/;
+
+export function frontDoorIdempotencyKey(explicit: string | null | undefined, actorId: string, quotePatch: Record<string, unknown>) {
+  const trimmed = (explicit ?? "").trim();
+  if (trimmed) {
+    if (!IDEMPOTENCY_KEY_PATTERN.test(trimmed)) {
+      throw new CrmAuthError(400, "idempotencyKey must be 8-200 safe identifier characters.");
+    }
+    return trimmed;
+  }
+  return `fd.${createHash("sha256").update(`${actorId}\n${stableJson(quotePatch)}`).digest("hex")}`;
+}
+
+export function frontDoorQuotePatch(input: {
+  customerName: string;
+  customerPhone: string | null;
+  customerEmail: string | null;
+  customerAddress: string | null;
+  appointmentDate: string | null;
+  customerId: string | null;
+  jobId: string | null;
+}) {
+  return {
+    customerName: input.customerName,
+    customerPhone: input.customerPhone,
+    customerEmail: input.customerEmail,
+    customerAddress: input.customerAddress,
+    appointmentDate: input.appointmentDate,
+    customerId: input.customerId,
+    jobId: input.jobId,
+  };
+}
+
 export async function saveQuoteFrontDoorDraft(
   store: QuoteFrontDoorStore,
   input: {
@@ -513,6 +542,7 @@ export async function saveQuoteFrontDoorDraft(
     category: string;
     spec?: QuoteFrontDoorSpec | null;
     customer: CustomerSelection;
+    idempotencyKey?: string | null;
   },
   actor: FrontDoorActor,
 ) {
@@ -553,24 +583,27 @@ export async function saveQuoteFrontDoorDraft(
   }
   const customerName = selected?.name || input.customer.name?.trim() || "";
   if (!customerName) return refused("customer_name_required", "Customer name is required.");
-  const prepared = sequenceSpec(input.spec);
-  const inserted = await store.insertDraft({
-    status: "draft",
-    customer_id: selected?.customerId ?? null,
-    job_id: selected?.jobId ?? null,
-    calendar_event_id: selected?.appointments.find((appointment) => appointment.source === "calendar")?.id ?? null,
-    appointment_id: selected?.appointments.find((appointment) => appointment.source === "appointment")?.id ?? null,
-    customer_name: customerName,
-    customer_phone: selected?.phone ?? input.customer.phone ?? null,
-    customer_address: selected?.address ?? input.customer.address ?? null,
-    manufacturer: input.manufacturer.trim(),
-    category: input.category.trim(),
-    catalog_version: next.catalog_version,
-    spec: { ...prepared.spec, multiplier: next.multiplier },
-    multiplier: next.multiplier,
-    read_back: readBack.summary,
-    created_by: actor.userId,
-    created_by_email: actor.email,
+  const actorId = actor.userId?.trim() ?? "";
+  if (!actorId) throw new CrmAuthError(401, "A signed-in staff actor is required.");
+  const quotePatch = frontDoorQuotePatch({
+    customerName,
+    customerPhone: blankToNull(selected?.phone ?? input.customer.phone),
+    customerEmail: blankToNull(selected?.email),
+    customerAddress: blankToNull(selected?.address ?? input.customer.address),
+    appointmentDate: appointmentDay(selected),
+    customerId: selected?.customerId ?? null,
+    jobId: selected?.jobId ?? null,
+  });
+  const readBackRecord = {
+    summary: readBack.summary,
+    customerId: selected?.customerId ?? null,
+    jobId: selected?.jobId ?? null,
+  };
+  const created = await store.createQuoteV2Draft({
+    idempotencyKey: frontDoorIdempotencyKey(input.idempotencyKey, actorId, { ...quotePatch, frontDoorReadBack: readBackRecord.summary }),
+    actorId,
+    quotePatch,
+    readBack: readBackRecord,
   });
   return {
     saved: true as const,
@@ -579,8 +612,28 @@ export async function saveQuoteFrontDoorDraft(
     candidates: selected ? [selected] : [],
     readBack,
     sent: false as const,
-    quote: { id: inserted.id, status: "draft" as const, sent: false as const },
+    quote: { id: created.id, quoteNumber: created.quoteNumber ?? null, status: "draft" as const, sent: false as const },
   };
+}
+
+function blankToNull(value: string | null | undefined) {
+  const text = (value ?? "").trim();
+  return text || null;
+}
+
+function appointmentDay(candidate: CustomerCandidate | null) {
+  const start = candidate?.appointments.find((appointment) => appointment.start)?.start ?? "";
+  const day = start.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map((item) => stableJson(item)).join(",")}]`;
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
 }
 
 function selectCandidate(candidates: CustomerCandidate[], selection: CustomerSelection) {

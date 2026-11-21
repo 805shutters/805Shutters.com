@@ -15,6 +15,7 @@ import {
   validateQuoteFrontDoorTap,
   type CustomerRecord,
   type QuoteFrontDoorStore,
+  type QuoteV2DraftCreate,
   type SequenceNext,
 } from "@/lib/crm/quote-front-door";
 import { quoteFrontDoorStore, type QuoteFrontDoorDb } from "@/lib/crm/quote-front-door-server";
@@ -76,11 +77,11 @@ function legend(spec: Record<string, unknown>, manufacturer: string, category: s
   };
 }
 
-function store(overrides: Partial<QuoteFrontDoorStore> = {}): QuoteFrontDoorStore & { inserts: unknown[]; taps: unknown[] } {
-  const inserts: unknown[] = [];
+function store(overrides: Partial<QuoteFrontDoorStore> = {}): QuoteFrontDoorStore & { creates: QuoteV2DraftCreate[]; taps: unknown[] } {
+  const creates: QuoteV2DraftCreate[] = [];
   const taps: unknown[] = [];
   return {
-    inserts,
+    creates,
     taps,
     nextRequiredField: vi.fn(async (spec, manufacturer, category) => legend(spec, manufacturer, category)),
     validateTappedValue: vi.fn(async (spec, manufacturer, category, fieldKey, value) => {
@@ -93,9 +94,9 @@ function store(overrides: Partial<QuoteFrontDoorStore> = {}): QuoteFrontDoorStor
       { field_key: "room_location", ask_order: 1 },
     ],
     findCustomerRecords: async () => ({ records: [], truncated: false }),
-    insertDraft: async (row) => {
-      inserts.push(row);
-      return { id: "draft-1" };
+    createQuoteV2Draft: async (input) => {
+      creates.push(input);
+      return { id: "draft-1", quoteNumber: "805-0001" };
     },
     ...overrides,
   };
@@ -275,7 +276,7 @@ describe("quote front door customer lookup", () => {
     const byPhone = collapseCustomerCandidates(people, { phone: "805-555-0100" });
     expect(byPhone).toHaveLength(1);
     expect(byPhone[0]?.records.map((record) => record.id).sort()).toEqual(["a1", "c1", "e1", "j1"]);
-    expect(db.inserts).toEqual([]);
+    expect(db.creates).toEqual([]);
     expect(db.findCustomerRecords).toHaveBeenCalledTimes(1);
 
     const blank = await lookupQuoteFrontDoorCustomers(db, { name: "J", phone: "555", address: "" });
@@ -297,19 +298,32 @@ describe("quote front door customer lookup", () => {
     expect(duplicate.saved).toBe(false);
     expect(duplicate.reason).toBe("existing_customer");
     expect(duplicate.sent).toBe(false);
-    expect(db.inserts).toEqual([]);
+    expect(db.creates).toEqual([]);
 
     const saved = await saveQuoteFrontDoorDraft(db, {
       manufacturer: "Norman",
       category: "roller",
       spec: readySpec,
       customer: { name: "Jane Smith", phone: "(805) 555-0100", customerId: "c1" },
+      idempotencyKey: "front-door-jane-1",
     }, actor);
     expect(saved.saved).toBe(true);
-    expect(saved.quote).toEqual({ id: "draft-1", status: "draft", sent: false });
+    expect(saved.quote).toEqual({ id: "draft-1", quoteNumber: "805-0001", status: "draft", sent: false });
     expect(saved.sent).toBe(false);
-    expect(db.inserts).toHaveLength(1);
-    expect(db.inserts[0]).toMatchObject({ status: "draft", customer_id: "c1", job_id: "j1", multiplier: "2.5" });
+    expect(db.creates).toHaveLength(1);
+    expect(db.creates[0]?.actorId).toBe(actor.userId);
+    expect(db.creates[0]?.idempotencyKey).toBe("front-door-jane-1");
+    expect(db.creates[0]?.quotePatch).toMatchObject({
+      customerName: "Jane Smith",
+      customerId: "c1",
+      jobId: "j1",
+      appointmentDate: "2026-11-22",
+    });
+    expect(db.creates[0]?.quotePatch).not.toHaveProperty("installerNotes");
+    expect(db.creates[0]?.readBack.summary).toContain("Norman roller");
+    expect(db.creates[0]?.readBack.summary).toContain("Room: Office");
+    expect(db.creates[0]?.readBack.summary).toContain("Multiplier: 2.5");
+    expect(db.creates[0]?.quotePatch).not.toHaveProperty("status");
 
     const fresh = store();
     const created = await saveQuoteFrontDoorDraft(fresh, {
@@ -320,7 +334,42 @@ describe("quote front door customer lookup", () => {
     }, actor);
     expect(created.saved).toBe(true);
     expect(created.quote?.status).toBe("draft");
-    expect(fresh.inserts[0]).toMatchObject({ status: "draft", customer_id: null, customer_name: "New Person" });
+    expect(created.sent).toBe(false);
+    expect(fresh.creates[0]?.actorId).toBe(actor.userId);
+    expect(fresh.creates[0]?.quotePatch).toMatchObject({ customerName: "New Person", customerId: null, jobId: null });
+    expect(fresh.creates[0]?.quotePatch).not.toHaveProperty("installerNotes");
+    expect(fresh.creates[0]?.readBack.summary).toContain("Norman roller");
+  });
+
+  it("writes nothing when customer details are missing", async () => {
+    const db = store();
+    const actor = { email: "805shutters@gmail.com", userId: "11111111-1111-4111-8111-111111111111" };
+    const missing = await saveQuoteFrontDoorDraft(db, {
+      manufacturer: "Norman",
+      category: "roller",
+      spec: readySpec,
+      customer: { confirmNewCustomer: true },
+    }, actor);
+    expect(missing).toMatchObject({ saved: false, reason: "customer_name_required", sent: false, quote: null });
+    expect(db.creates).toEqual([]);
+  });
+
+  it("repeats an idempotency key instead of minting a second one", async () => {
+    const db = store();
+    const actor = { email: "805shutters@gmail.com", userId: "11111111-1111-4111-8111-111111111111" };
+    const input = {
+      manufacturer: "Norman",
+      category: "roller",
+      spec: readySpec,
+      customer: { name: "New Person", phone: "805-555-0177", confirmNewCustomer: true },
+      idempotencyKey: "front-door-repeat-1",
+    };
+    await saveQuoteFrontDoorDraft(db, input, actor);
+    await saveQuoteFrontDoorDraft(db, input, actor);
+    expect(db.creates.map((create) => create.idempotencyKey)).toEqual(["front-door-repeat-1", "front-door-repeat-1"]);
+    expect(db.creates[0]?.quotePatch).toEqual(db.creates[1]?.quotePatch);
+    expect(db.creates[0]?.quotePatch).not.toHaveProperty("installerNotes");
+    expect(db.creates[0]?.readBack).toEqual(db.creates[1]?.readBack);
   });
 
   it("does not save a draft before the multiplier", async () => {
@@ -332,7 +381,7 @@ describe("quote front door customer lookup", () => {
       customer: { name: "New Person", confirmNewCustomer: true },
     }, { email: "jessica@805shutters.com", userId: null });
     expect(result).toMatchObject({ saved: false, reason: "multiplier_last", sent: false, quote: null });
-    expect(db.inserts).toEqual([]);
+    expect(db.creates).toEqual([]);
   });
 });
 
@@ -354,15 +403,23 @@ describe("quote front door boundaries", () => {
     expect(code).not.toMatch(/twilio|sendgrid|square|quickbooks|resend|nodemailer|fetch\(|mts-quote|customer-send/i);
     expect(code).toContain("quote_next_required_field");
     expect(code).toContain("quote_validate_tapped_value");
-    const migration = readFileSync("supabase/migrations/20261121233000_quote_front_door_drafts.sql", "utf8");
-    expect(migration).not.toMatch(/\bdrop\s+(table|column|schema|function)\b/i);
-    expect(migration).not.toMatch(/\bdelete\s+from\b/i);
+    expect(code).toContain("create_quote_v2_draft");
+    const created = readFileSync("supabase/migrations/20261121233000_quote_front_door_drafts.sql", "utf8");
+    expect(created).not.toMatch(/\bdrop\s+(table|column|schema|function)\b/i);
+    expect(created).not.toMatch(/\bdelete\s+from\b/i);
+    const removed = readFileSync("supabase/migrations/20261122035000_drop_empty_front_door_side_table.sql", "utf8");
+    expect(removed).toMatch(/raise exception/i);
+    expect(removed).not.toMatch(/\bdelete\s+from\b/i);
   });
 });
 
 describe("quote front door database adapter", () => {
-  it("calls the sequence functions and inserts only a draft", async () => {
+  it("calls the sequence functions and creates one quote draft", async () => {
     const calls: Array<{ type: string; table?: string; fn?: string; row?: Record<string, unknown>; args?: Record<string, unknown> }> = [];
+    const quoteId = "44444444-4444-4444-8444-444444444444";
+    const actorId = "11111111-1111-4111-8111-111111111111";
+    const jobId = "22222222-2222-4222-8222-222222222222";
+    const customerId = "33333333-3333-4333-8333-333333333333";
     const filter = (table: string) => {
       const api = {
         eq: () => api,
@@ -380,6 +437,20 @@ describe("quote front door database adapter", () => {
     const db: QuoteFrontDoorDb = {
       async rpc(fn, args) {
         calls.push({ type: "rpc", fn, args });
+        if (fn === "create_quote_v2_draft") {
+          return {
+            data: {
+              backend: "authoritative_v2",
+              quoteId,
+              quoteNumber: "805-0009",
+              revision: 1,
+              status: "draft",
+              quoteV2Status: "draft",
+              lineCount: 0,
+            },
+            error: null,
+          };
+        }
         return {
           data: {
             status: "complete",
@@ -400,9 +471,15 @@ describe("quote front door database adapter", () => {
       from(table: string) {
         return {
           select: () => filter(table),
-          insert(row: Record<string, unknown>) {
-            calls.push({ type: "insert", table, row });
-            return { select: () => ({ single: async () => ({ data: { id: "draft-9" }, error: null }) }) };
+          update(row: Record<string, unknown>) {
+            const update = {
+              eq: () => update,
+              is: async () => {
+                calls.push({ type: "update", table, row });
+                return { error: null };
+              },
+            };
+            return update;
           },
         };
       },
@@ -421,14 +498,77 @@ describe("quote front door database adapter", () => {
       manufacturer: "Norman",
       category: "roller",
       spec: { answers: { room_location: "Office", multiplier: "9" }, multiplier: "2.5" },
-      customer: { name: "New Person", phone: "805-555-0177", confirmNewCustomer: true },
-    }, { email: "805shutters@gmail.com", userId: "11111111-1111-4111-8111-111111111111" });
-    expect(saved.quote).toEqual({ id: "draft-9", status: "draft", sent: false });
+      customer: { name: "New Person", phone: "805-555-0177", confirmNewCustomer: true, customerId, jobId },
+      idempotencyKey: "front-door-route-1",
+    }, { email: "805shutters@gmail.com", userId: actorId });
+    expect(saved.quote).toEqual({ id: quoteId, quoteNumber: "805-0009", status: "draft", sent: false });
+    expect(saved.sent).toBe(false);
     const rpc = calls.find((call) => call.fn === "quote_next_required_field");
     expect((rpc?.args?.spec as { answers: Record<string, unknown> }).answers.multiplier).toBeUndefined();
-    const insert = calls.find((call) => call.type === "insert");
-    expect(insert?.table).toBe("crm_quote_front_door_drafts");
-    expect(insert?.row).toMatchObject({ status: "draft", multiplier: "2.5", customer_id: null });
-    expect(calls.some((call) => call.table === "crm_customers" && call.type === "insert")).toBe(false);
+    const created = calls.find((call) => call.fn === "create_quote_v2_draft");
+    expect(created?.args).toMatchObject({
+      p_idempotency_key: "front-door-route-1",
+      p_actor_id: actorId,
+      p_quote_patch: { customerName: "New Person", customerId: null, jobId: null },
+    });
+    expect(created?.args?.p_quote_patch).not.toHaveProperty("installerNotes");
+    expect(calls.some((call) => call.type === "insert")).toBe(false);
+    const readBackWrite = calls.find((call) => call.type === "update");
+    expect(readBackWrite).toMatchObject({ table: "sales_quotes" });
+    expect(readBackWrite?.row).not.toHaveProperty("installer_notes");
+    expect(String((readBackWrite?.row?.front_door_readback as { summary?: string } | undefined)?.summary)).toContain("Norman roller");
+    expect(calls.some((call) => call.table === "crm_customers" && call.type !== "select")).toBe(false);
+
+    calls.length = 0;
+    adapter.findCustomerRecords = async () => ({
+      records: [{
+        source: "customer",
+        id: customerId,
+        customerId,
+        jobId,
+        name: "Jane Smith",
+        phone: "+18055550100",
+        email: "jane@example.com",
+        address: "1 Main St",
+        city: "Ventura",
+        appointment: null,
+      }, {
+        source: "job",
+        id: jobId,
+        customerId,
+        jobId,
+        name: "Jane Smith",
+        phone: "+18055550100",
+        email: "jane@example.com",
+        address: "1 Main St",
+        city: "Ventura",
+        appointment: { id: jobId, source: "job", start: "2026-11-22T15:00:00Z", end: null, status: "scheduled", assignedTo: null, location: "1 Main St", eventType: "job" },
+      }],
+      truncated: false,
+    });
+    const matched = await saveQuoteFrontDoorDraft(adapter, {
+      manufacturer: "Norman",
+      category: "roller",
+      spec: { answers: { room_location: "Office" }, multiplier: "2.5" },
+      customer: { name: "Jane Smith", customerId, jobId },
+      idempotencyKey: "front-door-matched-1",
+    }, { email: "805shutters@gmail.com", userId: actorId });
+    expect(matched.sent).toBe(false);
+    const matchedCreate = calls.find((call) => call.fn === "create_quote_v2_draft");
+    expect(matchedCreate?.args?.p_actor_id).toBe(actorId);
+    expect(matchedCreate?.args?.p_quote_patch).toMatchObject({
+      customerName: "Jane Smith",
+      customerId,
+      jobId,
+      customerPhone: "+18055550100",
+      customerEmail: "jane@example.com",
+      customerAddress: "1 Main St",
+    });
+    const writes = calls.filter((call) => call.type === "update");
+    expect(writes.map((call) => call.row && Object.keys(call.row)[0])).toEqual(["front_door_readback", "created_job_id"]);
+    expect(writes[0]?.row).not.toHaveProperty("installer_notes");
+    expect(writes[1]).toMatchObject({ table: "sales_quotes", row: { created_job_id: jobId } });
+    expect((writes[0]?.row?.front_door_readback as { summary?: string; customerId?: string }).summary).toContain("Norman roller");
+    expect((writes[0]?.row?.front_door_readback as { customerId?: string }).customerId).toBe(customerId);
   });
 });

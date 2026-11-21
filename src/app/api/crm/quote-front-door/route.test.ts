@@ -13,12 +13,11 @@ import { POST as nextField } from "./next-field/route";
 import { POST as validateTap } from "./validate/route";
 import { POST as readBack } from "./read-back/route";
 import { POST as saveDraft } from "./draft/route";
-import { GET as listDrafts } from "./drafts/route";
 
 const catalog = "order-form:norman:roller:v1";
 
 function database() {
-  const calls: Array<{ type: string; table?: string; fn?: string }> = [];
+  const calls: Array<{ type: string; table?: string; fn?: string; args?: Record<string, unknown>; row?: Record<string, unknown> }> = [];
   const filter = (table: string) => {
     const api = {
       eq: () => api,
@@ -34,8 +33,8 @@ function database() {
     return api;
   };
   const client = {
-    rpc: async (fn: string) => {
-      calls.push({ type: "rpc", fn });
+    rpc: async (fn: string, args: Record<string, unknown>) => {
+      calls.push({ type: "rpc", fn, args });
       if (fn === "quote_next_required_field") {
         return {
           data: {
@@ -45,15 +44,29 @@ function database() {
           error: null,
         };
       }
+      if (fn === "create_quote_v2_draft") {
+        return {
+          data: {
+            backend: "authoritative_v2", quoteId: "draft-route", quoteNumber: "805-0108", revision: 1,
+            status: "draft", quoteV2Status: "draft", lineCount: 0,
+          },
+          error: null,
+        };
+      }
       return { data: { ok: false, status: "blocked", reason: "unknown manufacturer or category", choices: [] }, error: null };
     },
     from(table: string) {
       return {
         select: () => filter(table),
-        insert: (row: Record<string, unknown>) => {
-          calls.push({ type: "insert", table });
-          expect(row.status).toBe("draft");
-          return { select: () => ({ single: async () => ({ data: { id: "draft-route" }, error: null }) }) };
+        update: (row: Record<string, unknown>) => {
+          const update = {
+            eq: () => update,
+            is: async () => {
+              calls.push({ type: "update", table, row });
+              return { error: null };
+            },
+          };
+          return update;
         },
       };
     },
@@ -76,8 +89,6 @@ describe("quote front door routes", () => {
     mocks.auth.mockRejectedValue(new CrmAuthError(401, "CRM session is required."));
     expect((await nextField(post("/api/crm/quote-front-door/next-field", {}))).status).toBe(401);
     expect((await saveDraft(post("/api/crm/quote-front-door/draft", {}))).status).toBe(401);
-    expect((await listDrafts(new NextRequest("http://localhost/api/crm/quote-front-door/drafts"))).status).toBe(401);
-    expect(isKenCrmRequestAllowed("khill31@msn.com", "GET", "/api/crm/quote-front-door/drafts")).toBe(false);
     expect(isKenCrmRequestAllowed("khill31@msn.com", "POST", "/api/crm/quote-front-door/draft")).toBe(false);
     expect(isKenCrmRequestAllowed("805shutters@gmail.com", "POST", "/api/crm/quote-front-door/draft")).toBe(true);
   });
@@ -111,19 +122,33 @@ describe("quote front door routes", () => {
     expect(blocked.status).toBe(200);
     expect(await blocked.json()).toMatchObject({ ok: false, status: "blocked" });
 
+    const actorId = "11111111-1111-4111-8111-111111111111";
     const saved = await saveDraft(post("/api/crm/quote-front-door/draft", {
       manufacturer: "Norman",
       category: "roller",
       spec: { answers: { room_location: "Office" }, multiplier: "2.5" },
       customer: { name: "New Person", phone: "805-555-0177", confirmNewCustomer: true },
+      idempotencyKey: "front-door-route-key",
     }));
     expect(saved.status).toBe(200);
     expect(await saved.json()).toMatchObject({
       saved: true,
       sent: false,
-      quote: { id: "draft-route", status: "draft", sent: false },
+      quote: { id: "draft-route", quoteNumber: "805-0108", status: "draft", sent: false },
     });
-    expect(db.calls.filter((call) => call.type === "insert").map((call) => call.table)).toEqual(["crm_quote_front_door_drafts"]);
+    const created = db.calls.filter((call) => call.fn === "create_quote_v2_draft");
+    expect(created).toHaveLength(1);
+    expect(created[0]?.args).toMatchObject({
+      p_idempotency_key: "front-door-route-key",
+      p_actor_id: actorId,
+      p_quote_patch: { customerName: "New Person" },
+    });
+    expect(created[0]?.args?.p_quote_patch).not.toHaveProperty("installerNotes");
+    expect(created[0]?.args?.p_actor_id).toBe(actorId);
+    const readBackWrite = db.calls.find((call) => call.type === "update");
+    expect(readBackWrite?.row).toMatchObject({ front_door_readback: { summary: expect.stringContaining("Norman roller") } });
+    expect(readBackWrite?.row).not.toHaveProperty("installer_notes");
+    expect(db.calls.some((call) => call.type === "insert")).toBe(false);
     expect(db.calls.some((call) => call.table === "crm_customers" && call.type === "insert")).toBe(false);
     expect(db.calls.filter((call) => call.fn === "quote_validate_tapped_value")).toHaveLength(1);
   });

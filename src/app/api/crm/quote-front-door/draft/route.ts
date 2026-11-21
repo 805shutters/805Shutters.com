@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
         category: textField(body.category),
         spec: specField(body.spec),
         customer: customerField(body.customer),
+        idempotencyKey: textField(body.idempotencyKey),
       },
       { email, userId: user.id },
     );
