@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { quoterServiceGuard } from "@/lib/crm/quoter-service-auth";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { CONTACTS_ACCOUNT, CONTACTS_SCOPE, contactsOAuthConfig, decryptContactSecret, encryptContactSecret, googleContactToken, hashContactState, verifyContactIdentity } from "@/lib/crm/google-contacts-auth";
 import { enqueueContactsBackfill } from "@/lib/crm/google-contacts-sync";
 export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
+  const quoterDenied = quoterServiceGuard(request);
+  if (quoterDenied) return quoterDenied;
+
   // No OAuth codes/tokens or Google response bodies are logged or reflected.
   let result = "connection_failed";
   try {
