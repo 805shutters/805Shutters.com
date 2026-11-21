@@ -6,24 +6,8 @@ import { orderCostKey, productOrderCosts } from './product-order-cost';
 import { completeProductMilestone } from './product-completion';
 import type { CrmDashboardData } from './types';
 import type { ShipmentEvidence } from './shipment-evidence';
-
-export type ShippingNotice = { manufacturer: 'Norman' | 'Onyx'; references: string[]; shippedOn: string | null; carrier?: string; trackingNumber?: string };
-/** Only vendor dispatch templates qualify; order confirmations and delivery discussions do not. */
-export function extractShippingNotice(subject: string, body: string, from: string): ShippingNotice | null {
-  const sender = (/<([^>]+)>/.exec(from)?.[1] || from).trim().toLowerCase();
-  const text = `${subject}\n${body}`.replace(/<[^>]*>/g, ' ').replace(/\r/g, '\n');
-  const norman = sender.endsWith('@normanusa.com') && /shipping notification.*has shipped/i.test(subject);
-  const onyx = sender === 'orders@onyxshutters.com' && /^Onyx Shipping Notice$/i.test(subject.trim());
-  if (!norman && !onyx) return null;
-  const references = [...new Set(norman
-    ? [...text.matchAll(/WO\s*#\s*:?\s*(\d{8,14})/gi)].map(match => match[1])
-    : [...text.split(/SHIP OUT AT/i)[0].matchAll(/\b(\d{11})\b/g)].map(match => match[1]))];
-  const date = /(?:SHIP OUT AT|(?:actual\s+)?ship(?:ped|ping)?\s+date)\s*:?\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/i.exec(text);
-  const shippedOn = date ? `${date[3]}-${date[1].padStart(2,'0')}-${date[2].padStart(2,'0')}` : null;
-  const carrier = /(?:Carrier:|\bBY)\s*([^\n]+?)(?:\s+TRACKING|\n|$)/i.exec(text)?.[1]?.trim();
-  const trackingNumber = /TRACKING\s*(?:Number|NO\.)\s*:?\s*([^\n]+?)(?:\s+https?:|\s+Please|\n|$)/i.exec(text)?.[1]?.trim();
-  return { manufacturer: norman ? 'Norman' : 'Onyx', references, shippedOn, ...(carrier ? {carrier:carrier.slice(0,250)} : {}), ...(trackingNumber ? {trackingNumber:trackingNumber.slice(0,250)} : {}) };
-}
+export { extractShippingNotice, shippingOrderReferences, type ShippingNotice } from './shipping-notice';
+import type { ShippingNotice } from './shipping-notice';
 
 function parentMeta(item: OperationsItem) { return item.source.row?.costMeta || item.source.quote?.meta || item.source.job?.meta; }
 /** Exact vendor order to exact product allocation. A customer name cannot ship a whole mixed job. */

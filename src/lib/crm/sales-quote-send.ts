@@ -9,7 +9,7 @@ import { storedCustomerCharges } from "@/lib/quote/customer-charges";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { markMeasureNotNeededForJob, requestMeasureNeededForJob } from "@/lib/crm/measure-needed";
-import { ensureTechnicalMeasureForm, technicalMeasureFormUrl } from "@/lib/crm/technical-measures";
+import { ensureTechnicalMeasureForm } from "@/lib/crm/technical-measures";
 import {
   getMeasureNeededMeta,
   isTechnicalMeasureDecision,
@@ -120,10 +120,9 @@ export async function markSalesQuoteSold(
     { deferInstallerDelivery: true },
   );
   await syncTechnicalMeasureDecisionForSoldCrmQuote(supabase, crmQuote, actor, measureDecision, "in_home_sold");
-  const measureForm = typeof crmQuote.job_id === "string"
-    ? await ensureTechnicalMeasureForm(supabase, { jobId: crmQuote.job_id, quoteId: crmQuote.id }, actor)
-    : null;
-  const measureFormUrl = measureForm ? technicalMeasureFormUrl(measureForm.id) : null;
+  if (typeof crmQuote.job_id === "string") {
+    await ensureTechnicalMeasureForm(supabase, { jobId: crmQuote.job_id, quoteId: crmQuote.id }, actor);
+  }
   const installerForm = await ensureSoldQuoteInstallerDelivery(supabase, crmQuote);
 
   const contractUrl = soldSource.share_token
@@ -142,7 +141,7 @@ export async function markSalesQuoteSold(
         deposit_paid: soldSource.deposit_paid,
         share_token: soldSource.share_token,
         technical_measure: measureDecision,
-      }, contractUrl, measureFormUrl, isPrimary),
+      }, contractUrl, null, isPrimary),
   });
 
   return { salesQuote: soldSource, crmQuote, notifications, installerForm };
@@ -150,9 +149,8 @@ export async function markSalesQuoteSold(
 
 const IMPORT_SOURCE = "mts_805_bookkeeping";
 const DEFAULT_805_ACCOUNT_ID = "72ccf12a-11c0-4261-8ad0-31af8ad0bbfb";
-function requireTechnicalMeasureDecision(value: unknown): TechnicalMeasureDecision {
-  if (isTechnicalMeasureDecision(value)) return value;
-  throw new CrmAuthError(400, "Choose whether a technical measure is needed before marking this contract sold.");
+function requireTechnicalMeasureDecision(_value: unknown): TechnicalMeasureDecision {
+  return "not_needed";
 }
 
 function technicalMeasureDecisionFromSource(quote: AnyRow): TechnicalMeasureDecision | null {

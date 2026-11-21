@@ -73,6 +73,7 @@ beforeAll(async () => {
     create table public.crm_installer_forms(id uuid primary key, quote_id uuid not null references public.crm_quotes(id), status text not null default 'sent');
     ${migration}
     ${readFileSync("supabase/migrations/20260929042500_prevent_stale_installer_delivery.sql", "utf8")}
+    ${readFileSync("supabase/migrations/20261111131337_every_sold_contract_installer_packet.sql", "utf8")}
   `);
 });
 
@@ -87,10 +88,15 @@ describe("installer delivery outbox migration", () => {
     const jobId = await insertJob();
     const quoteId = await insertQuote(jobId);
     await db.query("update crm_quotes set status='sold',signed_at=now(),sold_at=now() where id=$1", [quoteId]);
-    const rows = await db.query<{ quote_id: string; kind: string; status: string }>(
-      "select quote_id,kind,status from crm_installer_delivery_outbox",
+    const rows = await db.query<{ quote_id: string; kind: string; status: string; recipient: string }>(
+      "select quote_id,kind,status,recipient from crm_installer_delivery_outbox",
     );
-    expect(rows.rows).toEqual([{ quote_id: quoteId, kind: "base_packet", status: "pending" }]);
+    expect(rows.rows).toEqual([{
+      quote_id: quoteId,
+      kind: "base_packet",
+      status: "pending",
+      recipient: "mtsinstallations@gmail.com,mtsshutters@mail.grokbot.com",
+    }]);
   });
 
   it("does not backfill an existing sale on later lifecycle updates", async () => {
@@ -108,10 +114,9 @@ describe("installer delivery outbox migration", () => {
     { quote: { archived_at: new Date().toISOString() } },
     { quote: { status: "archived" } },
     { quote: { meta: { historical_recordkeeping_only: true } } },
-    { quote: { meta: { no_external_notification: true } } },
     { job: { source: "mts_bookkeeping_import" } },
     { job: { customer_name: "Test Customer", email: "test@example.com" } },
-  ])("excludes archive, import, suppression, and fixture case %#", async ({ job = {}, quote = {} }) => {
+  ])("excludes archive, historical import, and fixture case %#", async ({ job = {}, quote = {} }) => {
     const jobId = await insertJob(job);
     const signedAt = new Date().toISOString();
     await insertQuote(jobId, { status: "sold", signed_at: signedAt, sold_at: signedAt, ...quote });
@@ -131,10 +136,42 @@ describe("installer delivery outbox migration", () => {
     expect((await db.query("select * from crm_installer_delivery_outbox")).rows).toHaveLength(1);
   });
 
-  it("requires signature proof in addition to sale status", async () => {
+  it("queues a contract marked sold before a signature is stored", async () => {
     const jobId = await insertJob();
     await insertQuote(jobId, { status: "sold", sold_at: new Date().toISOString() });
+    expect((await db.query("select kind,status from crm_installer_delivery_outbox")).rows).toEqual([
+      { kind: "base_packet", status: "pending" },
+    ]);
+  });
+
+  it.each([
+    ["customer e-sign", "update crm_quotes set status='sold', signed_at=now(), sold_at=now() where id=$1"],
+    ["in-person signing", "update crm_quotes set status='sold', signed_at=now(), sold_at=now(), meta='{\"signed_via\":\"in_person\"}' where id=$1"],
+    ["manual mark sold", "update crm_quotes set status='sold', sold_at=now() where id=$1"],
+    ["admin status sold", "update crm_quotes set status='approved', signed_at=now() where id=$1"],
+    ["deposit or paid", "update crm_quotes set status='paid', signed_at=now(), sold_at=now() where id=$1"],
+    ["installed at sale", "update crm_quotes set status='installed', signed_at=now(), installed_at=now(), sold_at=now() where id=$1"],
+    ["notification suppressed", "update crm_quotes set status='sold', signed_at=now(), meta='{\"no_external_notification\":true}' where id=$1"],
+    ["installer form flag", "update crm_quotes set status='sold', signed_at=now(), meta='{\"no_installer_form\":true}' where id=$1"],
+  ])("queues exactly one packet for %s and ignores re-save, re-sign, and status flaps", async (_label, saleSql) => {
+    const jobId = await insertJob();
+    const quoteId = await insertQuote(jobId);
     expect((await db.query("select * from crm_installer_delivery_outbox")).rows).toHaveLength(0);
+    await db.query(saleSql, [quoteId]);
+    expect((await db.query<{ n: number }>("select count(*)::int n from crm_installer_delivery_outbox")).rows[0].n).toBe(1);
+    await db.query("update crm_quotes set signed_at=coalesce(signed_at, now()), status='ordered', meta=coalesce(meta,'{}'::jsonb)||'{\"resaved\":true}' where id=$1", [quoteId]);
+    await db.query("update crm_quotes set status='sold', signed_at=now() where id=$1", [quoteId]);
+    await db.query("update crm_quotes set status='paid' where id=$1", [quoteId]);
+    expect((await db.query<{ result: { id: string } | null }>("select installer_delivery_enqueue($1) result", [quoteId])).rows[0].result).toBeTruthy();
+    expect((await db.query<{ n: number }>("select count(*)::int n from crm_installer_delivery_outbox where quote_id=$1", [quoteId])).rows[0].n).toBe(1);
+  });
+
+  it("queues a sale whose job is already closed", async () => {
+    const jobId = await insertJob();
+    await db.query("update crm_jobs set status='closed' where id=$1", [jobId]);
+    const quoteId = await insertQuote(jobId);
+    await db.query("update crm_quotes set status='sold', signed_at=now() where id=$1", [quoteId]);
+    expect((await db.query<{ n: number }>("select count(*)::int n from crm_installer_delivery_outbox")).rows[0].n).toBe(1);
   });
 
   it("blocks a queued delivery if the quote is archived before a worker claims it", async () => {
@@ -171,7 +208,7 @@ describe("installer delivery outbox migration", () => {
   });
 
   it.each(["installed_at", "quote_status", "job_status", "quote_stage", "job_stage", "completed_form", "suppressed"])(
-    "blocks queued sends and explicit enqueue for %s", async (completion) => {
+    "still sends the one queued packet after %s", async (completion) => {
       const jobId = await insertJob();
       const quoteId = await insertQuote(jobId, { status: "sold", signed_at: new Date().toISOString() });
       if (completion === "installed_at") await db.query("update crm_quotes set installed_at=now(),meta=jsonb_build_object('lastUpdatedAt',now()) where id=$1", [quoteId]);
@@ -181,18 +218,19 @@ describe("installer delivery outbox migration", () => {
       if (completion === "job_stage") await db.query("update crm_jobs set meta='{\"job_tracking\":{\"stage\":\"complete\"}}' where id=$1", [jobId]);
       if (completion === "completed_form") await db.query("insert into crm_installer_forms(id,quote_id,status) values($1,$2,'completed')", [randomUUID(), quoteId]);
       if (completion === "suppressed") await db.query("update crm_quotes set meta='{\"no_installer_form\":true}' where id=$1", [quoteId]);
-      expect((await db.query<{ result: unknown }>("select installer_delivery_enqueue($1) result", [quoteId])).rows[0].result).toBeNull();
-      expect((await db.query<{ result: unknown }>("select installer_delivery_claim($1) result", [quoteId])).rows[0].result).toBeNull();
-      expect((await db.query<{ status: string }>("select status from crm_installer_delivery_outbox where quote_id=$1", [quoteId])).rows[0].status).toBe("blocked");
+      expect((await db.query<{ result: { id: string } | null }>("select installer_delivery_enqueue($1) result", [quoteId])).rows[0].result).toBeTruthy();
+      expect((await db.query<{ result: { quote_id: string } | null }>("select installer_delivery_claim($1) result", [quoteId])).rows[0].result?.quote_id).toBe(quoteId);
+      expect((await db.query<{ n: number }>("select count(*)::int n from crm_installer_delivery_outbox where quote_id=$1", [quoteId])).rows[0].n).toBe(1);
     },
   );
 
-  it("keeps paid but not installed work eligible and preserves explicit missed-packet repair", async () => {
+  it("does not backfill a packet after the sale row is removed", async () => {
     const jobId = await insertJob();
     const quoteId = await insertQuote(jobId, { status: "paid", signed_at: new Date().toISOString() });
+    expect((await db.query("select * from crm_installer_delivery_outbox")).rows).toHaveLength(1);
     await db.exec("truncate crm_installer_delivery_outbox");
-    expect((await db.query<{ result: unknown }>("select installer_delivery_enqueue($1) result", [quoteId])).rows[0].result).toBeTruthy();
-    expect((await db.query<{ result: unknown }>("select installer_delivery_claim($1) result", [quoteId])).rows[0].result).toBeTruthy();
+    expect((await db.query<{ result: unknown }>("select installer_delivery_enqueue($1) result", [quoteId])).rows[0].result).toBeNull();
+    expect((await db.query("select * from crm_installer_delivery_outbox")).rows).toHaveLength(0);
   });
 
   it("claims once, protects the lease token, and recovers an expired pre-send claim", async () => {
@@ -221,9 +259,20 @@ describe("installer delivery outbox migration", () => {
     const claimed = (await db.query<{ result: Record<string, unknown> }>("select installer_delivery_claim($1) result", [quoteId])).rows[0].result;
     await db.query("update crm_installer_delivery_outbox set status='uncertain',lease_token=null,lease_expires_at=null,first_send_attempt_at=now()-interval '23 hours' where id=$1", [claimed.id]);
     expect((await db.query<{ installer_delivery_claim: unknown }>("select installer_delivery_claim($1)", [quoteId])).rows[0].installer_delivery_claim).toBeTruthy();
-    await db.query("update crm_installer_delivery_outbox set status='retry',lease_token=null,lease_expires_at=null,first_send_attempt_at=now()-interval '25 hours' where id=$1", [claimed.id]);
+    await db.query("update crm_installer_delivery_outbox set status='uncertain',lease_token=null,lease_expires_at=null,first_send_attempt_at=now()-interval '25 hours' where id=$1", [claimed.id]);
     expect((await db.query<{ installer_delivery_claim: unknown }>("select installer_delivery_claim($1)", [quoteId])).rows[0].installer_delivery_claim).toBeNull();
     expect((await db.query<{ status: string }>("select status from crm_installer_delivery_outbox where id=$1", [claimed.id])).rows[0].status).toBe("blocked");
+  });
+
+  it("keeps retrying a definite provider rejection after the 24-hour window", async () => {
+    const jobId = await insertJob();
+    const signedAt = new Date().toISOString();
+    const quoteId = await insertQuote(jobId, { status: "sold", signed_at: signedAt, sold_at: signedAt });
+    const claimed = (await db.query<{ result: Record<string, unknown> }>("select installer_delivery_claim($1) result", [quoteId])).rows[0].result;
+    await db.query("update crm_installer_delivery_outbox set status='retry',lease_token=null,lease_expires_at=null,first_send_attempt_at=now()-interval '25 hours',provider_message_id=null where id=$1", [claimed.id]);
+    const retried = (await db.query<{ result: Record<string, unknown> | null }>("select installer_delivery_claim($1) result", [quoteId])).rows[0].result;
+    expect(retried?.id).toBe(claimed.id);
+    expect((await db.query<{ n: number }>("select count(*)::int n from crm_installer_delivery_outbox where quote_id=$1", [quoteId])).rows[0].n).toBe(1);
   });
 
   it("requires provider proof before a row can enter accepted status", async () => {

@@ -529,7 +529,6 @@ export function buildOperationsReports(
       deriveFulfillment(physical, i.progress.identity.quoteId || "", today)
         .complete &&
       i.signatureRecorded &&
-      ["Measured", "Not needed"].includes(i.measureStatus) &&
       i.progress.service === "none_known" &&
       !i.progress.blockers.length &&
       i.progress.installation !== "complete",
@@ -538,7 +537,7 @@ export function buildOperationsReports(
     "ready",
     "Ready to schedule",
     "accepted order",
-    "Verified purchased quantities physically received, signed scope, required measure satisfied, no blocking issue or deposit prerequisite.",
+    "Verified purchased quantities physically received, signed scope, no blocking issue or deposit prerequisite.",
     "Current snapshot",
     ready.map((i) => ({
       ...itemRecord(i),

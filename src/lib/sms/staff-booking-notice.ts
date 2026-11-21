@@ -20,8 +20,8 @@ export const staffBookingSmsNotice = {
   frequency: "Message frequency varies.",
   rates: "Message and data rates may apply.",
   email: "805@805shutters.com",
-  phoneDisplay: "805-590-8050",
-  phoneHref: "tel:+18055908050",
+  phoneDisplay: "805-806-9344",
+  phoneHref: "tel:+18058069344",
   carrierNotice: "Carriers are not liable for delayed or undelivered messages.",
   enrollment: "These notices go only to 805 Shutters staff who have verbally agreed to receive them.",
 } as const;

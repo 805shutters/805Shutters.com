@@ -1,6 +1,7 @@
 import registryJson from "./manufacturer-order-form-registry.json";
+import { sundanceAliases, sundanceCatalogProductRoutes } from "./sundance-order-form-routes";
 
-export type OrderFormManufacturer = "onyx" | "norman" | "lotus" | "polar";
+export type OrderFormManufacturer = "onyx" | "norman" | "lotus" | "polar" | "sundance";
 
 export type OrderFormRegistryEntry = {
   routing_key: string;
@@ -102,6 +103,7 @@ const catalogProductRoutes: Record<string, { manufacturer: OrderFormManufacturer
   polar_awning_premium: { manufacturer: "polar", productKey: "premium_awning" },
   polar_awning_select: { manufacturer: "polar", productKey: "select_awning" },
   polar_awning_drop_arm: { manufacturer: "polar", productKey: "drop_arm_window_awning" },
+  ...sundanceCatalogProductRoutes,
 };
 
 const aliases: Record<OrderFormManufacturer, Record<string, string>> = {
@@ -211,6 +213,7 @@ const aliases: Record<OrderFormManufacturer, Record<string, string>> = {
     titan_patio: "titan_patio",
     titan_patio_roll_shade: "titan_patio",
   },
+  sundance: sundanceAliases,
 };
 
 function text(value: unknown): string {
@@ -269,6 +272,7 @@ export function detectOrderFormManufacturer(
     source.fabric_program_id,
   ].map(key).join(" ");
 
+  if (haystack.includes("sundance")) return "sundance";
   if (haystack.includes("onyx")) return "onyx";
   if (haystack.includes("norman") || haystack.includes("woodlore") || haystack.includes("normandy")) return "norman";
   if (haystack.includes("lotus")) return "lotus";

@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { CitySearchIntro, CityServiceLinks } from "./CityServiceContent";
 import { useCommercialMode } from "./CommercialModeProvider";
 import { LeadForm } from "./LeadForm";
 import { ServiceGrid } from "./ServiceGrid";
 import { TrackedPhoneLink } from "./TrackedPhoneLink";
 import { AppointmentBooking } from "./booking/AppointmentBooking";
-import { CrmHomeLogin } from "./crm/CrmHomeLogin";
+import { GalleryContactLinks } from "./GalleryContactLinks";
 import { HomeHeroCarousel, type HomeHeroSlide } from "./HomeHeroCarousel";
 import { LazyVideo } from "./LazyVideo";
 import { SitePage, homeHeroImage, site } from "@/lib/site-data";
@@ -961,21 +962,21 @@ function leadInterestForPath(path: string): "consultation" | "shutters" | "shade
   return "consultation";
 }
 
-export function PageSections({ page }: { page: SitePage }) {
+export function PageSections({ page, editorial }: { page: SitePage; editorial?: ReactNode }) {
   const { isCommercialMode } = useCommercialMode();
 
   if (page.path === "/commercial-window-coverings/") {
-    return <CommercialSeoPage page={page} />;
+    return <CommercialSeoPage page={page} editorial={editorial} />;
   }
 
   if (!isCommercialMode && page.path === "/shutters/") {
-    return <ShuttersCategoryPage page={page} />;
+    return <ShuttersCategoryPage page={page} editorial={editorial} />;
   }
 
   const activePage = isCommercialMode ? commercializePage(page) : page;
 
   if (activePage.path === "/") {
-    return <HomePageSections page={activePage} commercialMode={isCommercialMode} />;
+    return <HomePageSections page={activePage} commercialMode={isCommercialMode} editorial={editorial} />;
   }
 
   return (
@@ -1021,7 +1022,7 @@ export function PageSections({ page }: { page: SitePage }) {
       {activePage.path === "/" ? <ServiceGrid commercialMode={isCommercialMode} /> : null}
 
       <section className="content-wrap section-stack">
-        {activePage.sections.map((section) => (
+        {(!isCommercialMode && editorial) || activePage.sections.map((section) => (
           <article className="copy-block" key={section.heading}>
             <h2>{section.heading}</h2>
             <p style={section.heading === "Mailing Address" ? { whiteSpace: "pre-line" } : undefined}>{section.body}</p>
@@ -1047,11 +1048,14 @@ export function PageSections({ page }: { page: SitePage }) {
       <CityServiceLinks path={page.path} />
 
       {activePage.form ? (
-        <section className="form-band">
+        <section className="form-band" id={activePage.path === "/contact/" ? "email-805" : undefined}>
           <div className="content-wrap form-layout">
             <div>
               <p className="eyebrow">Start here</p>
               <h2>Request Your Free Consultation</h2>
+              {activePage.path === "/contact/" && (
+                <p>Email <a href={site.emailHref}>{site.email}</a> or use the form below.</p>
+              )}
               <p>
                 Send the project details and {isCommercialMode ? "805 Commercial" : "805 Shutters"} will follow up. Prefer to talk now?{" "}
                 <TrackedPhoneLink location={`${activePage.path} form copy`}>Call {site.phone}</TrackedPhoneLink>.
@@ -1082,7 +1086,7 @@ export function PageSections({ page }: { page: SitePage }) {
   );
 }
 
-function ShuttersCategoryPage({ page }: { page: SitePage }) {
+function ShuttersCategoryPage({ page, editorial }: { page: SitePage; editorial?: ReactNode }) {
   return (
     <>
       <section className="shutter-category-strip" aria-label="Shutter product categories">
@@ -1206,6 +1210,7 @@ function ShuttersCategoryPage({ page }: { page: SitePage }) {
         </div>
       </section>
 
+      {editorial && <section className="content-wrap section-stack">{editorial}</section>}
       <PageFaqSection faqs={page.faqs} heading="Common shutter questions" />
       <CityServiceLinks path={page.path} />
 
@@ -1226,7 +1231,7 @@ function ShuttersCategoryPage({ page }: { page: SitePage }) {
   );
 }
 
-function CommercialSeoPage({ page }: { page: SitePage }) {
+function CommercialSeoPage({ page, editorial }: { page: SitePage; editorial?: ReactNode }) {
   return (
     <>
       <section className="page-editorial commercial-seo-hero">
@@ -1320,7 +1325,7 @@ function CommercialSeoPage({ page }: { page: SitePage }) {
       </section>
 
       <section className="content-wrap section-stack commercial-seo-depth">
-        {page.sections.map((section) => (
+        {editorial || page.sections.map((section) => (
           <article className="copy-block" key={section.heading}>
             <h2>{section.heading}</h2>
             <p>{section.body}</p>
@@ -1373,7 +1378,7 @@ function CommercialSeoPage({ page }: { page: SitePage }) {
   );
 }
 
-function HomePageSections({ page, commercialMode }: { page: SitePage; commercialMode: boolean }) {
+function HomePageSections({ page, commercialMode, editorial }: { page: SitePage; commercialMode: boolean; editorial?: ReactNode }) {
   const stories = commercialMode ? commercialPortfolioStories : portfolioStories;
   const installedPhotos = commercialMode ? commercialInstalledPortfolioPhotos : residentialRecentWorkPhotos;
   const sections = commercialMode ? commercialHomeSections : page.sections;
@@ -1384,11 +1389,12 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
   const heroTitle = commercialMode
     ? "Commercial shade systems for every workspace"
     : "Custom Shutters, Shades & Blinds — Proudly Serving Ventura County for 30 Years";
-  const heroCta = commercialMode ? "Schedule a Meeting" : "Book your Free In-home Consultation";
+  const heroCta = commercialMode ? "Schedule a Meeting" : "Schedule a Free In-Home Consultation";
   const heroHref = commercialMode ? "/commercial-window-coverings/" : "/book-consultation/";
 
   return (
     <>
+      {!commercialMode && editorial}
       <section className="home-editorial">
         <div className="home-editorial-panel">
           <HomeHeroCarousel
@@ -1396,13 +1402,14 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
             mobileSlides={commercialMode ? undefined : mobileHomeHeroSlides}
           />
           <div className="home-hero-overlay">
-            <h1 className="home-intro">{heroTitle}</h1>
+            {!commercialMode && editorial ? <h2 className="home-intro">{heroTitle}</h2> : <h1 className="home-intro">{heroTitle}</h1>}
             <div className="home-hero-actions">
               <Link className="button primary" href={heroHref}>
                 {heroCta}
               </Link>
             </div>
           </div>
+          {!commercialMode && <GalleryContactLinks />}
         </div>
       </section>
 
@@ -1517,24 +1524,6 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
         ))}
       </section>
 
-      <section className="cta-band">
-        <div className="content-wrap cta-layout">
-          <div>
-            <p className="eyebrow">Next step</p>
-            <h2>{page.cta || "Schedule a free consultation"}</h2>
-          </div>
-          <div className="hero-actions">
-            <AppointmentBooking
-              label={commercialMode ? "Book a commercial shade audit" : "Book an appointment here"}
-              bookingVariant={commercialMode ? "commercial" : "standard"}
-            />
-            <TrackedPhoneLink className="button secondary" location="home cta">
-              Call {site.phone}
-            </TrackedPhoneLink>
-          </div>
-        </div>
-      </section>
-
       {!commercialMode && residentialPhotoFlowSlides.length ? (
         <>
           <section className="home-photo-flow-intro" aria-label="More window treatment inspiration">
@@ -1570,7 +1559,23 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
         </>
       ) : null}
 
-      <CrmHomeLogin />
+      <section className="cta-band">
+        <div className="content-wrap cta-layout">
+          <div>
+            <p className="eyebrow">Next step</p>
+            <h2>{page.cta || "Schedule a free consultation"}</h2>
+          </div>
+          <div className="hero-actions">
+            <AppointmentBooking
+              label={commercialMode ? "Book a commercial shade audit" : "Book Online Now"}
+              bookingVariant={commercialMode ? "commercial" : "standard"}
+            />
+            <TrackedPhoneLink className="button secondary" location="home cta">
+              Call {site.phone}
+            </TrackedPhoneLink>
+          </div>
+        </div>
+      </section>
     </>
   );
 }

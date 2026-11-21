@@ -1,3 +1,5 @@
+import { editorialPage } from "@/lib/wordpress-editorial";
+import { WordPressContent } from "@/components/WordPressContent";
 import { normalizeStructuredData } from "@/lib/structured-data-identity";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -18,6 +20,22 @@ type PageProps = {
   }>;
 };
 
+function resolvePage(slug: string[]) {
+  const original = getPageBySlug(slug);
+  const editorial = original && editorialPage(original.path);
+  if (!original || !editorial) return { page: original, editorial };
+
+  return {
+    page: {
+      ...original,
+      h1: editorial.title,
+      intro: editorial.intro || original.intro,
+      description: editorial.description || original.description
+    },
+    editorial
+  };
+}
+
 export function generateStaticParams() {
   return allPages
     .filter((page) => page.path !== "/")
@@ -28,7 +46,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const page = getPageBySlug(slug);
+  const { page } = resolvePage(slug);
 
   if (!page) {
     return {};
@@ -58,7 +76,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function DynamicPage({ params }: PageProps) {
   const { slug } = await params;
-  const page = getPageBySlug(slug);
+  const { page, editorial } = resolvePage(slug);
 
   if (!page) {
     notFound();
@@ -72,11 +90,11 @@ export default async function DynamicPage({ params }: PageProps) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(normalizeStructuredData(pageJsonLd))
+            __html: JSON.stringify(normalizeStructuredData(pageJsonLd)).replace(/</g, "\\u003c")
           }}
         />
       ) : null}
-      <PageSections page={page} />
+      <PageSections page={page} editorial={editorial && <WordPressContent page={editorial} />} />
     </>
   );
 }

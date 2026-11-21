@@ -13,7 +13,7 @@ export const jobStatusFilters = [
 // Other workflow queries remain available internally without adding toolbar buttons.
 export type JobStatusFilter = typeof jobStatusFilters[number]['id']
   | 'active' | 'all' | 'scheduled' | 'need_follow_up' | 'deposit_needed'
-  | 'need_measure' | 'ordered' | 'shipped' | 'received' | 'installation_needed'
+  | 'ordered' | 'shipped' | 'received' | 'installation_needed'
   | 'balance_needed' | 'closed' | 'completed' | 'attention' | 'lost' | 'archived';
 
 export function matchesJobStatusFilter(item: OperationsItem, filter: JobStatusFilter): boolean {

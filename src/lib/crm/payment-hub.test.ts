@@ -40,3 +40,8 @@ it('uses explicit historical deposit/balance adjustments and distinguishes negat
  const i=input();i.objects=[];i.payments=[ledger('correction',{amount:-25,payment_label:'Deposit adjustment'})];
  expect(buildPaymentHub(i)[0]).toMatchObject({amountCents:-2500,creditCents:-2500,status:'ADJUSTMENT',purposes:['deposit']});
 });
+it('deduplicates Stripe by account and payment identity while preserving distinct same-amount receipts',()=>{
+ const i=input();i.objects=[];i.payments=[ledger('stripe',{external_source:'stripe',external_id:'acct_one:pi_one',payment_type:'credit_card'}),ledger('manual')];
+ const rows=buildPaymentHub({...i,stripeObjects:[{...square,id:'pi_one',account_id:'acct_one',status:'succeeded',details:{refunded_cents:500}}],stripeAllocations:[{account_id:'acct_one',payment_intent_id:'pi_one',ledger_payment_id:'stripe'}]});
+ expect(rows).toHaveLength(2);expect(rows.find(r=>r.stripeId)?.creditCents).toBe(10000);expect(rows.find(r=>r.stripeId)?.detail).toContain('review adjustment');expect(rows.some(r=>r.ledger?.id==='manual')).toBe(true);
+});

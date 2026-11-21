@@ -7,7 +7,6 @@ export const JOB_TRACKING_STAGES = [
   { id: "scheduled", label: "Scheduled", color: "#236c77" },
   { id: "need_follow_up", label: "Follow Up", color: "#85631c" },
   { id: "sold_need_deposit", label: "Sold / Deposit Needed", color: "#ad4f2f" },
-  { id: "need_measure", label: "Measure Needed", color: "#7353a0" },
   { id: "need_to_order", label: "Need to Order", color: "#317b48" },
   { id: "ordered", label: "Ordered", color: "#28689b" },
   { id: "shipped", label: "Receipt Recorded", color: "#007f77" },

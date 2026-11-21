@@ -1,10 +1,11 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState, type MouseEvent } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { commercialBrand } from "@/lib/commercial-mode-data";
 import { commercialCategoryItems, residentialCategoryItems } from "@/lib/product-preview-data";
+import { trackAsk805 } from "@/lib/client-tracking";
 import { site } from "@/lib/site-data";
 import { CommercialModeBadge, useCommercialMode } from "./CommercialModeProvider";
 import { HeaderScrollState } from "./HeaderScrollState";
@@ -77,19 +78,6 @@ export function SiteHeader() {
     });
   };
 
-  // On the homepage the "About Us" link smooth-scrolls to the About band instead
-  // of doing a hash navigation; on every other page it falls back to /#about.
-  const scrollToAbout = (event: MouseEvent<HTMLAnchorElement>) => {
-    if (!isHome) {
-      return;
-    }
-    const target = document.getElementById("about");
-    if (target) {
-      event.preventDefault();
-      target.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
   return (
     <>
       {!isCommercialMode ? (
@@ -121,8 +109,7 @@ export function SiteHeader() {
           <div className="masthead-social-row">
             <Link
               className="masthead-link masthead-about-link"
-              href="/#about"
-              onClick={scrollToAbout}
+              href="/about/"
             >
               About Us
             </Link>
@@ -166,13 +153,24 @@ export function SiteHeader() {
                 CALL
               </TrackedPhoneLink>{" "}
               <span aria-hidden="true">•</span>{" "}
-              <a href={site.smsHref} aria-label="Text 805 Shutters">
+              <a
+                href={site.smsHref}
+                aria-label="Text 805 Shutters"
+                onClick={(event) => {
+                  if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                    trackAsk805("sms_open", "header");
+                    return;
+                  }
+                  event.preventDefault();
+                  window.dispatchEvent(new Event("805:open-text-request"));
+                }}
+              >
                 TEXT
               </a>{" "}
               <span aria-hidden="true">•</span>{" "}
-              <a href={site.emailHref} aria-label="Email 805 Shutters">
+              <Link href="/contact/#email-805" aria-label="Email 805 Shutters">
                 EMAIL
-              </a>
+              </Link>
             </span>
           </div>
         </div>
@@ -249,12 +247,14 @@ export function SiteHeader() {
             <span>Book a Consultation</span>
           </Link>
 
-          <nav className="mobile-menu-nav" aria-label="Mobile primary navigation">
+          <nav className="mobile-menu-nav" aria-label="Mobile products">
             {activeCategoryItems.map((item) => (
               <Link key={`menu-${item.href}`} href={item.href} onClick={() => setMenuOpen(false)}>
                 {item.label}
               </Link>
             ))}
+          </nav>
+          <nav className="mobile-menu-nav" aria-label="More information">
             {!isCommercialMode ? (
               <Link href="/financing/" onClick={() => setMenuOpen(false)}>
                 Financing
@@ -263,18 +263,22 @@ export function SiteHeader() {
             <Link href="/reviews/" onClick={() => setMenuOpen(false)}>
               Reviews
             </Link>
-            <Link href="/gallery/" onClick={() => setMenuOpen(false)}>
-              Gallery
-            </Link>
+            {isCommercialMode && (
+              <Link href="/gallery/" onClick={() => setMenuOpen(false)}>
+                Gallery
+              </Link>
+            )}
             <Link href="/about/" onClick={() => setMenuOpen(false)}>
               About
             </Link>
             <Link href="/faq/" onClick={() => setMenuOpen(false)}>
               FAQ
             </Link>
-            <Link href="/contact/" onClick={() => setMenuOpen(false)}>
-              Contact
-            </Link>
+            {isCommercialMode && (
+              <Link href="/contact/" onClick={() => setMenuOpen(false)}>
+                Contact
+              </Link>
+            )}
             <Link href={site.officialPath} onClick={() => setMenuOpen(false)}>
               Official Contact
             </Link>

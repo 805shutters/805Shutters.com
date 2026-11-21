@@ -37,6 +37,40 @@ export type CrmBookkeepingSalesOwner = "mike" | "jessica";
 export type CrmCommissionRecipient = "mike" | "jessica";
 export type CrmInstallationMatchStatus = "unmatched" | "matched" | "needs_review";
 
+export type MtsInstallMatchBasis = "job_ref" | "contract_number" | "work_order" | "purchase_order";
+export type MtsInstallMatchStatus = "verified" | "ambiguous";
+export type MtsInstallChargeBasis = "estimated" | "invoiced";
+export type MtsInstallRecordReferences = {
+  mts_job_ref?: string;
+  mts_invoice_number?: string;
+  bill_805_ref?: string;
+  contract_number?: string;
+  work_order?: string;
+  purchase_order?: string;
+};
+
+/** Fields 805 Financial may write. Customer, payroll, and MTS labor fields are not part of this shape. */
+export type MtsInstallLinkInput = {
+  mts_job_id: string | null;
+  mts_job_number: string | null;
+  scheduled_install_date: string | null;
+  install_status: string | null;
+  verified_completion_date: string | null;
+  open_issues: string[];
+  charge_amount: number | null;
+  charge_basis: MtsInstallChargeBasis | null;
+  record_references: MtsInstallRecordReferences;
+  match_basis: MtsInstallMatchBasis;
+  match_status: MtsInstallMatchStatus;
+};
+
+/** One linked MTS install summary attached from crm_job_mts_install_links. Not a crm_jobs column. */
+export type MtsInstallLink = MtsInstallLinkInput & {
+  job_id: string;
+  last_verified_at: string;
+  verified_by: string;
+};
+
 export type CrmJob = {
   source_status?: CrmJobStatus;
   id: string;
@@ -63,6 +97,8 @@ export type CrmJob = {
   notes: string | null;
   meta?: Record<string, unknown> | null;
   quote_total?: number;
+  /** Present after the dashboard load. Null when this job has no linked MTS install summary. */
+  mts_install_link?: MtsInstallLink | null;
 };
 
 export type CrmDeletedJob = Pick<CrmJob, "id" | "customer_name" | "product_interest"> & {
@@ -602,8 +638,6 @@ export type CrmSummary = {
   balanceDueCompletedAmount: number;
   missingCogs: number;
   awaitingProduct: number;
-  measureNeeded: number;
-  measureScheduled: number;
 };
 
 export type CrmCommissionPayment = {

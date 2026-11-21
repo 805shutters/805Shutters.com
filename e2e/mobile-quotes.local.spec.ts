@@ -94,7 +94,7 @@ const customers: MobileQuoteCustomer[] = [
     contracts: [contract("single", "sent")],
   },
 ];
-async function setup(page: Page, workspace: "quotes" | "contracts" = "quotes") {
+async function setup(page: Page, workspace: "quotes" | "contracts" = "contracts") {
   const writes: { path: string; body: Record<string, unknown> }[] = [];
   const flags = {
     signed: false,
@@ -244,7 +244,7 @@ async function setup(page: Page, workspace: "quotes" | "contracts" = "quotes") {
           });
         }
         flags.signed = true;
-        return route.fulfill({ json: { ok: true } });
+        return route.fulfill({ json: { ok: true, alreadySigned: false } });
       }
     }
     return route.fulfill({
@@ -297,7 +297,7 @@ for (const viewport of [
       page.getByRole("button", { name: "New Quote", exact: true }),
     ).toHaveCount(0);
     await page
-      .getByRole("img", { name: "805 Shutters" })
+      .locator(".customer-contract-print-root").getByRole("img", { name: "805 Shutters" })
       .evaluate((img: HTMLImageElement) => img.decode());
     await page.screenshot({
       path: `reports/mobile-qa/mobile-quotes/contract-${viewport.width}.png`,
@@ -346,7 +346,7 @@ for (const viewport of [
       .getByRole("button", { name: "Sign & approve", exact: true })
       .click();
     await expect(
-      page.getByText("Please check the authorization box to continue."),
+      page.getByText("Check the “I have reviewed my contract” authorization box, then tap Sign & approve."),
     ).toBeVisible();
     await page.getByRole("checkbox").check();
     await page.screenshot({
@@ -376,7 +376,7 @@ for (const viewport of [
     await expect(page.getByRole("checkbox")).not.toBeChecked();
     await page.getByRole("checkbox").check();
     await page
-      .getByRole("button", { name: "Sign & approve", exact: true })
+      .getByRole("button", { name: "Approve contract", exact: true })
       .click();
     await expect(
       page.getByRole("button", { name: "Signed", exact: true }),
@@ -450,7 +450,7 @@ test("single contract, alphabet, errors, stale searches and expired sessions", a
   flags.expired = true;
   await page.getByRole("searchbox").fill("expire");
   await expect(
-    page.getByRole("heading", { name: "Quote login." }),
+    page.getByRole("heading", { name: "Contract login." }),
   ).toBeVisible();
 });
 

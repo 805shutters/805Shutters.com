@@ -1,3 +1,6 @@
+import {deliverStripeRequest} from './stripe-delivery';
+import {cardProvider} from '@/lib/finance/card-provider';
+import {createCardPaymentLink,isCardConfigured} from '@/lib/crm/card-payment-links';
 import { squarePaymentMessage, type CustomerPaymentChoice } from "./customer-payment-request";
 import { trackSquarePaymentRequest } from "@/lib/crm/square-payment-requests";
 import { collectCrmPages } from "@/lib/crm/pagination";
@@ -6,7 +9,7 @@ import { brandIdentity } from "@/lib/brand-identity";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
 import { ensureShareToken, loadPublicQuoteByToken } from "@/lib/crm/public-quote";
-import { createSquarePaymentLink, dollarsToCents, isSquareConfigured } from "@/lib/finance/square";
+import { dollarsToCents } from "@/lib/finance/square";
 import { buildSquareOrderPaymentEmail, sendEmail } from "@/lib/notify/email";
 import { sendSms, toE164 } from "@/lib/notify/twilio";
 import {
@@ -71,9 +74,9 @@ export class SquarePaymentDeliveryError extends CrmAuthError {
 
 export function squarePaymentRecipient(savedEmail: string | null | undefined, alternateEmail?: string | null) {
   const recipient = String(alternateEmail || "").trim() || String(savedEmail || "").trim();
-  if (!recipient) throw new CrmAuthError(400, "Add a customer email or enter a different email before sending a Square payment link.");
+  if (!recipient) throw new CrmAuthError(400, "Add a customer email or enter a different email before sending a card payment link.");
   if (recipient.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
-    throw new CrmAuthError(400, "Enter a valid email address before sending the Square payment link.");
+    throw new CrmAuthError(400, "Enter a valid email address before sending the card payment link.");
   }
   return recipient;
 }
@@ -101,12 +104,13 @@ export async function sendSquareOrderPaymentLink(
   delivery?: { channel: "email" | "text"; idempotencyKey?: string; phone?: string | null },
   confirmation?: SquarePaymentConfirmation,
 ) {
-  if (!isSquareConfigured()) throw new CrmAuthError(503, "Square card payments are not configured.");
+  if (!isCardConfigured()) throw new CrmAuthError(503, "Card payments are not configured.");
 
   const { token } = await ensureShareToken(supabase, quoteId, actor);
   const publicQuote = await loadPublicQuoteByToken(supabase, token);
   if (!publicQuote) throw new CrmAuthError(404, "Quote was not found.");
 
+  if(cardProvider() === "stripe" && !publicQuote.signed)throw new CrmAuthError(409,"The selected contract must be signed before requesting a card payment.");
   const [paymentsResult, creditsInResult, creditsOutResult] = await Promise.all([
     collectCrmPages<QuoteLedgerPayment>((from, to) => supabase.from("crm_quote_bookkeeping_payments")
       .select("amount,payment_label").eq("quote_id", quoteId).order("id", { ascending: true }).range(from, to)),
@@ -172,7 +176,7 @@ export async function sendSquareOrderPaymentLink(
   if (quoteIdentityError || !quoteIdentity?.job_id) {
     throw new CrmAuthError(502, "The exact CRM job for this payment link could not be verified.");
   }
-  const link = await createSquarePaymentLink({
+  const link = await createCardPaymentLink(supabase, {
     amountCents: dollarsToCents(amount),
     title: `${label} — 805 Shutters${publicQuote.quoteNumber ? ` (${publicQuote.quoteNumber})` : ""}`,
     quoteId,
@@ -198,20 +202,23 @@ export async function sendSquareOrderPaymentLink(
     fullAmount: kind === "full" || collectionMode === "full",
     logoUrl: `${brandIdentity.website}/brand/805-shutters-logo-header.png`,
   });
-  const email = delivery?.channel === "text" ? null : await sendEmail({
+  const sendMail = () => sendEmail({
     to: customerEmail as string,
     from: "805 Shutters <805@805shutters.com>",
     ...mail,
-    idempotencyKey: delivery?.idempotencyKey ? `square-payment-link-${delivery.idempotencyKey}` : undefined,
+    idempotencyKey: delivery?.idempotencyKey ? `square-payment-link-${delivery.idempotencyKey}` : link.provider === "stripe" ? `stripe-request-${link.requestId}` : undefined,
   });
-  const sms = delivery?.channel === "text" ? await sendSms({to:phone,body:squarePaymentMessage(publicQuote.customerName, link.url, {paymentType, amount, customAmount: confirmation?.customAmount !== undefined, fullAmount: kind === "full" || collectionMode === "full"}).sms}) : null;
+  const smsBody=squarePaymentMessage(publicQuote.customerName, link.url, {paymentType, amount, customAmount: confirmation?.customAmount !== undefined, fullAmount: kind === "full" || collectionMode === "full"}).sms;
+  const sendText=()=>sendSms({to:phone,body:smsBody});
+  const email=delivery?.channel === "text" ? null : link.provider === "stripe" ? await deliverStripeRequest(supabase,link.requestId!,"email",customerEmail!,delivery?.idempotencyKey,mail,sendMail) : await sendMail();
+  const sms=delivery?.channel !== "text" ? null : link.provider === "stripe" ? await deliverStripeRequest(supabase,link.requestId!,"text",phone!,delivery?.idempotencyKey,smsBody,sendText) : await sendText();
 
   let auditRecorded = false;
   try {
   const audit = await recordCrmActivity(supabase, actor, {
     entityType: "quote",
     entityId: quoteId,
-    action: `square_${paymentType}_link.send`,
+    action: `${link.provider || "square"}_${paymentType}_link.send`,
     metadata: {
       amount,
       collectionMode: collectionMode || null,
@@ -224,8 +231,11 @@ export async function sendSquareOrderPaymentLink(
       idempotencyKey: delivery?.idempotencyKey || null,
       savedCustomerEmail,
       recipientOverridden: Boolean(alternateEmail?.trim() && customerEmail !== savedCustomerEmail),
-      squarePaymentLinkId: link.id,
-      squarePaymentLinkUrl: link.url,
+      cardProvider: link.provider || "square",
+      cardPaymentLinkId: link.id,
+      squarePaymentLinkId: link.provider === "stripe" ? null : link.id,
+      cardPaymentLinkUrl: link.url,
+      squarePaymentLinkUrl: link.provider === "stripe" ? null : link.url,
       emailSent: email?.sent || false,
       emailProviderMessageId: email?.id || null,
       emailDeliveryState: email?.sent ? "accepted" : email?.uncertain ? "unknown" : "failed",

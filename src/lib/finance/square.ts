@@ -82,7 +82,7 @@ export function verifySquareWebhookSignature(
   }
 }
 
-export type SquarePaymentLink = { id: string; url: string; orderId?: string };
+export type SquarePaymentLink = { id: string; url: string; orderId?: string; provider?: 'square' | 'stripe'; requestId?: string };
 export type SquarePaymentLinkInput = {
   amountCents: number;
   title: string;

@@ -10,7 +10,7 @@ import {IN_HOUSE_SCHEDULE,IN_HOUSE_TERMS,scheduleAmounts} from "@/lib/crm/paymen
 import {unpaidCents,installmentStatus} from "@/lib/crm/in-house-plan-model";
 import { customerQuoteText } from "@/lib/crm/customer-quote-branding";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { QuoteLineItemCard } from "@/components/quote/QuoteLineItemCard";
 import type { PublicQuote } from "@/lib/crm/public-quote";
 import type { PaymentOptions } from "@/lib/finance/payment-options";
@@ -73,6 +73,8 @@ export function QuoteSelection({ printItemsPerPage = 1, quote, paymentOptions, w
   const [computedKey, setComputedKey] = useState("all");
   const [totalError, setTotalError] = useState<string | null>(null);
   const [totalRetry, setTotalRetry] = useState(0);
+  const signatureFormId = useId();
+  const [consented, setConsented] = useState(false);
   const [signingBusy, setSigningBusy] = useState(false);
   const live = mode === "all" ? fullMoney : computedMoney;
   const [computing, setComputing] = useState(false);
@@ -224,7 +226,13 @@ export function QuoteSelection({ printItemsPerPage = 1, quote, paymentOptions, w
 
       {showActionPanel ? (
         <nav className={`${styles.mobileActionBar} no-print`} aria-label="Contract actions">
-          {canSign ? <a className={styles.mobileActionButton} href="#sign-contract">Sign contract here</a> : null}
+          {canSign && (consented && !selectionEmpty ? (
+            <button type="submit" form={signatureFormId} className={styles.mobileActionButton} disabled={actionBlocked}>
+              {signingBusy ? "Submitting…" : "Approve contract"}
+            </button>
+          ) : (
+            <a className={styles.mobileActionButton} href="#sign-contract">Go to signature</a>
+          ))}
           {!quote.superseded && paymentOptions && paymentType ? (
             <a
               className={`${styles.mobileActionButton} ${styles.mobileActionButtonSecondary} ${depositReady ? styles.mobileActionButtonPaymentReady : ""}`}
@@ -340,6 +348,8 @@ export function QuoteSelection({ printItemsPerPage = 1, quote, paymentOptions, w
                         customerName={quote.customerName}
                         total={acknowledgedTotal}
                         selectedLineIds={selectedLineIds}
+                        formId={signatureFormId}
+                        onConsentChange={setConsented}
                         onSigned={() => setSignedNow(true)}
                         onBusyChange={setSigningBusy}
                         disabled={actionBlocked}
@@ -411,7 +421,7 @@ export function QuoteSelection({ printItemsPerPage = 1, quote, paymentOptions, w
                     </div>
                   </>
                 ) : (
-                  <p className={styles.paidMessage}>{isInHouse&&!planCollectible?"Payment collection is paused. Please call or text 805-590-8050 for help.":"No payment is currently due."}</p>
+                  <p className={styles.paidMessage}>{isInHouse&&!planCollectible?"Payment collection is paused. Please call or text 805-806-9344 for help.":"No payment is currently due."}</p>
                 )}
               </section>
             ) : null}
@@ -546,7 +556,7 @@ const discountTag = {
   padding: "2px 8px",
 } as const;
 
-const FINANCING_SMS_NUMBER = "+18055908050";
+const FINANCING_SMS_NUMBER = "+18058069344";
 
 function financingSmsHref(body: string) {
   return `sms:${FINANCING_SMS_NUMBER}?&body=${encodeURIComponent(body)}`;

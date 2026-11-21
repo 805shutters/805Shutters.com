@@ -6,12 +6,14 @@ const state = vi.hoisted(() => ({ pathname: "/book-consultation/" }));
 vi.mock("next/navigation", () => ({ usePathname: () => state.pathname }));
 vi.mock("@vercel/analytics", () => ({ track: vi.fn() }));
 import { RouteTracking } from "@/components/RouteTracking";
-import { captureFirstTouchAttribution, getLeadAttribution, trackBookingEvent } from "./client-tracking";
+import { captureFirstTouchAttribution, getLeadAttribution, trackLeadEvent, trackBookingEvent } from "./client-tracking";
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(); window.sessionStorage.clear(); });
 
 it("queues one PageView per public route even before the Meta script loads, then a deduplicatable Schedule", async () => {
   (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
   vi.stubEnv("NEXT_PUBLIC_META_PIXEL_ID", "117872572252906"); // Legacy override must not win.
+  const post = vi.fn().mockResolvedValue(new Response(null, {status:204}));
+  vi.stubGlobal("fetch", post);
   delete window.fbq;
   vi.spyOn(document.head, "appendChild").mockImplementation(node => node);
   const host = document.createElement("div"); document.body.append(host);
@@ -19,7 +21,14 @@ it("queues one PageView per public route even before the Meta script loads, then
   const render = () => act(async () => root.render(createElement(StrictMode, null, createElement(RouteTracking))));
   await render();
   const queue = (window.fbq as unknown as { queue: unknown[][] }).queue;
-  expect(queue).toEqual([["init", "549342503537516"], ["track", "PageView"]]);
+  expect(queue).toEqual([["init", "549342503537516"], ["track", "PageView", {}, {eventID:expect.any(String)}]]);
+  expect(JSON.parse(post.mock.calls[0][1].body)).toEqual({ eventName:"PageView", eventId:(queue[1][3] as {eventID:string}).eventID, pagePath:state.pathname });
+  for (const protocol of ["tel:", "mailto:", "sms:"]) {
+    const link = document.createElement("a"); link.href = protocol + "example"; link.onclick = event => event.preventDefault(); host.append(link);
+    link.dispatchEvent(new MouseEvent("click", { bubbles:true, cancelable:true }));
+    expect(queue.at(-1)?.[1]).toBe("Contact");
+    expect(JSON.parse(post.mock.lastCall![1].body).eventId).toBe((queue.at(-1)?.[3] as {eventID:string}).eventID);
+  }
   state.pathname = "/shutters/";
   await render();
   expect(queue.filter(args => args[1] === "PageView")).toHaveLength(2);
@@ -29,6 +38,10 @@ it("queues one PageView per public route even before the Meta script loads, then
   trackBookingEvent({ eventId: "saved-lead-id", productTypes: ["Roman Shades"] });
   expect(queue.at(-1)).toEqual(["track", "Schedule", expect.any(Object), {eventID:"saved-lead-id"}]);
   expect(queue.filter(args => args[1] === "Lead")).toHaveLength(0);
+  trackLeadEvent({});
+  expect(queue.filter(args => args[1] === "Lead")).toHaveLength(0);
+  trackLeadEvent({eventId:"saved-inquiry"});
+  expect(queue.at(-1)).toEqual(["track","Lead",expect.any(Object),{eventID:"saved-inquiry"}]);
   const count = queue.length;
   trackBookingEvent({});
   expect(queue).toHaveLength(count);
@@ -40,4 +53,17 @@ it("uses the booking landing campaign even when an older campaign is in session 
   captureFirstTouchAttribution();
   history.replaceState(null, "", "/book-consultation/?utm_source=test&utm_medium=cpc&utm_campaign=verify&utm_content=roman-book-now");
   expect(getLeadAttribution()).toMatchObject({ utm_source:"test",utm_medium:"cpc",utm_campaign:"verify",utm_content:"roman-book-now" });
+});
+
+it("emits one Google booking and one configured Ads conversion per saved booking, independent of the URL", () => {
+  vi.stubEnv("NEXT_PUBLIC_GOOGLE_ADS_ID","AW-123"); vi.stubEnv("NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL","example");
+  const gtag = vi.fn(); window.gtag = gtag;
+  try {
+    history.replaceState(null,"","/booking-thank-you/?lead_id=made-up");
+    trackBookingEvent({});
+    expect(gtag).not.toHaveBeenCalled();
+    for (const id of ["same-booking","same-booking","second-booking"]) trackBookingEvent({eventId:id});
+    expect(gtag.mock.calls.filter(c=>c[1]==="booking_confirmed").map(c=>c[2].transaction_id)).toEqual(["same-booking","second-booking"]);
+    expect(gtag.mock.calls.filter(c=>c[1]==="conversion").map(c=>c[2])).toEqual(["same-booking","second-booking"].map(transaction_id=>({transaction_id,value:1,currency:"USD",send_to:"AW-123/example"})));
+  } finally { delete window.gtag; }
 });

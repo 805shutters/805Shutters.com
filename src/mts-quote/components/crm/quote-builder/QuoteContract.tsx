@@ -79,7 +79,6 @@ import { QuoteLineItemCard } from "@/components/quote/QuoteLineItemCard";
 import { QuoteGroupTabs } from "./QuoteGroupTabs";
 import { SendQuoteDialog } from "./SendQuoteDialog";
 import type { SalesQuote, SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
-import type { TechnicalMeasureDecision } from "@/lib/crm/measure-needed-state";
 import {
   historicalUnitPrice,
   shouldUseHistoricalQuotePriceLock,
@@ -174,7 +173,7 @@ const CONTRACT_HEADERS: Record<
 > = {
   [ACCOUNT_IDS.SHUTTERS_805]: {
     title: "805 SHUTTERS",
-    phone: "(805) 590-8050",
+    phone: "(805) 806-9344",
     website: "805shutters.com",
     email: "805@805shutters.com",
     logoUrl: "/brand/805-shutters-logo-header.png",
@@ -197,7 +196,6 @@ export function QuoteContract({
   const [editingInfo, setEditingInfo] = useState(false);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [showSendDialog, setShowSendDialog] = useState(false);
-  const [measureDecision, setMeasureDecision] = useState<TechnicalMeasureDecision | "">("");
   const [adminControls, setAdminControls] = useState<QuoteAdminControls>({
     showExtras: false,
     showDiscount: false,
@@ -360,7 +358,6 @@ export function QuoteContract({
   // Mark as sold
   const markAsSold = useMutation({
     mutationFn: async () => {
-      if (!measureDecision) throw new Error("Choose whether a technical measure is needed.");
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
       if (!token) throw new Error("Your CRM session expired. Sign in again and retry.");
@@ -372,7 +369,7 @@ export function QuoteContract({
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ measureDecision, expectedRevision: quote?.quote_v2_revision, acknowledgedTotal: totalAmount }),
+          body: JSON.stringify({ expectedRevision: quote?.quote_v2_revision, acknowledgedTotal: totalAmount }),
         },
       );
       const result = (await response.json().catch(() => ({}))) as {
@@ -1369,7 +1366,7 @@ export function QuoteContract({
           <InPersonSigning
             key={quote.id}
             quote={quote}
-            measureDecision={measureDecision}
+            measureDecision="not_needed"
             disabled={designWritesPending || updateQuote.isPending || markAsSold.isPending}
           />
         </CardContent>
@@ -1396,30 +1393,15 @@ export function QuoteContract({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Label htmlFor="technical-measure-decision">
-            Technical measure decision
-          </Label>
-          <select
-            id="technical-measure-decision"
-            value={measureDecision}
-            onChange={(event) => setMeasureDecision(event.target.value as TechnicalMeasureDecision | "")}
-            disabled={markAsSold.isPending}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            <option value="">Technical measure?</option>
-            <option value="needed">Measure needed</option>
-            <option value="not_needed">No measure needed</option>
-          </select>
           <Button
             size="lg"
             onClick={() => markAsSold.mutate()}
-            disabled={markAsSold.isPending || !measureDecision || designWritesPending || updateQuote.isPending}
+            disabled={markAsSold.isPending || designWritesPending || updateQuote.isPending}
             className="bg-emerald-600 hover:bg-emerald-700"
           >
             <CheckCircle2 className="h-5 w-5 mr-2" />
             {quote.status === "sold" ? "Retry Sold Handoff" : "Mark as Sold"}
           </Button>
-          {!measureDecision && <p className="w-full text-sm text-muted-foreground">Choose “Measure needed” or “No measure needed” to enable Mark as Sold.</p>}
         </div>
       </div>
 

@@ -1,3 +1,4 @@
+import {cardProvider} from '@/lib/finance/card-provider';
 import { validPaymentAmount, type CustomerPaymentChoice } from "@/lib/crm/customer-payment-request";
 import { NextRequest, NextResponse } from "next/server";
 import { crmAuthErrorResponse, CrmAuthError, requireCrmUser } from "@/lib/crm/auth";
@@ -108,7 +109,7 @@ export async function POST(request:NextRequest) {
     const expectedRecipient = channel === "text" ? toE164(body.expectedRecipient) : body.expectedRecipient.trim().toLowerCase();
     if (expectedRecipient !== recipient) throw new CrmAuthError(409,"The customer contact changed. Refresh and review the payment request again.");
     const maskedRecipient=maskedPaymentRecipient(channel,recipient);
-    const requestRow={idempotency_key:body.idempotencyKey,quote_id:body.quoteId,job_id:body.jobId,actor_auth_user_id:user.id,actor_email:email,payment_type:body.paymentType,channel,recipient,amount:body.expectedAmount,status:"sending"};
+    const requestRow={card_provider:cardProvider(),idempotency_key:body.idempotencyKey,quote_id:body.quoteId,job_id:body.jobId,actor_auth_user_id:user.id,actor_email:email,payment_type:body.paymentType,channel,recipient,amount:body.expectedAmount,status:"sending"};
     const claim=await supabase.from("crm_payment_link_send_requests").insert(requestRow);
     if(claim.error){
       if(claim.error.code!=="23505") throw new CrmAuthError(502,"The send request could not be safely reserved.");

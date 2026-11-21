@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { quoterServiceGuard } from "@/lib/crm/quoter-service-auth";
 import { crossesMarketingBoundary } from "@/lib/marketing-tracking";
 
 export function proxy(request: NextRequest) {
+  const quoterDenied = quoterServiceGuard(request);
+  if (quoterDenied) return quoterDenied;
+
   // Next's router falls back to a document navigation for a non-RSC response.
   // Apply this to prefetches too, so private content cannot enter the public
   // document's router cache while GTM is running. The document referrer retains

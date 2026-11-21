@@ -1,4 +1,4 @@
-import { CUSTOMER_CHARGE_POLICY_VERSION, storedCustomerCharges } from "@/lib/quote/customer-charges";
+import { CUSTOMER_CHARGE_POLICY_VERSION, LEGACY_CUSTOMER_CHARGE_POLICY_VERSION, storedCustomerCharges } from "@/lib/quote/customer-charges";
 import { lotusCustomerDeliveryBlock } from "@/lib/quote/lotus-authority";
 import { CrmAuthError } from "./auth";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -13,8 +13,8 @@ export function matchesSavedStaffPrice(design: Row, override: Row): boolean {
   const amount = Number(override.unit_price), actual = Number(design.unit_price);
   if (!Number.isFinite(amount) || amount < 0 || !Number.isFinite(actual) || actual < 0) return false;
   let fixed = 0;
-  if (override.customer_charge_policy === CUSTOMER_CHARGE_POLICY_VERSION) {
-    if (options.manual_customer_charge_policy !== CUSTOMER_CHARGE_POLICY_VERSION ||
+  if (override.customer_charge_policy === CUSTOMER_CHARGE_POLICY_VERSION || override.customer_charge_policy === LEGACY_CUSTOMER_CHARGE_POLICY_VERSION) {
+    if (options.manual_customer_charge_policy !== override.customer_charge_policy ||
       options.manual_merchandise_unit_price == null || Number(options.manual_merchandise_unit_price) !== amount) return false;
     fixed = storedCustomerCharges(options)?.perWindowTotal ?? 0;
     if (options.customer_charges && !storedCustomerCharges(options)) return false;

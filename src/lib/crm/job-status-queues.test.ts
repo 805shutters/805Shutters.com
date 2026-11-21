@@ -10,27 +10,25 @@ const event = (id: string, overrides: Partial<CrmCalendarEvent> = {}) => ({ id, 
 const data = (overrides: Partial<CrmDashboardData> = {}) => ({ jobs: [], quotes: [], events: [], customerFiles: [], customerProducts: [], bookkeepingRows: [], orderCogsEmails: [], installationInvoiceEmails: [], ...overrides } as CrmDashboardData);
 
 describe('job status queues', () => {
-  it('moves a sold job from measure-needed to order-needed, then clears both when the order is placed', () => {
+  it('sends every sold unordered job to need to order, including old needed and not_needed jobs', () => {
     const dashboard = data({ jobs: [job('a', { measure_needed: { status: 'needed', form_status: 'draft' } })], quotes: [quote('a')] });
-    expect(buildJobStatusQueues(dashboard, undefined, now)).toMatchObject({ active_jobs: ['a'], measures_needed: ['a'], need_to_order: [] });
+    expect(buildJobStatusQueues(dashboard, undefined, now)).toMatchObject({ active_jobs: ['a'], need_to_order: ['a'] });
     dashboard.jobs[0].meta = { measure_needed: { status: 'needed', form_status: 'awaiting_signature' } };
-    expect(buildJobStatusQueues(dashboard).measures_needed).toEqual(['a']);
-    dashboard.jobs[0].meta = { measure_needed: { status: 'measured', measured_at: now.toISOString(), form_status: 'submitted' } };
-    expect(buildJobStatusQueues(dashboard)).toMatchObject({ measures_needed: [], need_to_order: ['a'] });
+    expect(buildJobStatusQueues(dashboard).need_to_order).toEqual(['a']);
+    dashboard.jobs[0].meta = { measure_needed: { status: 'not_needed' } };
+    expect(buildJobStatusQueues(dashboard).need_to_order).toEqual(['a']);
     dashboard.quotes[0].ordered_at = now.toISOString();
-    expect(buildJobStatusQueues(dashboard)).toMatchObject({ active_jobs: ['a'], measures_needed: [], need_to_order: [] });
+    expect(buildJobStatusQueues(dashboard)).toMatchObject({ active_jobs: ['a'], need_to_order: [] });
   });
 
-  it('uses submitted form evidence when the job flag is stale, without requiring a vendor-preparation task', () => {
-    const dashboard = data({ jobs: [job('a', { measure_needed: { status: 'needed' } })], quotes: [quote('a')], technicalMeasureSubmissions: [{ formId: 'f', jobId: 'a', quoteId: 'q-a', submittedAt: now.toISOString() }] });
-    expect(buildJobStatusQueues(dashboard)).toMatchObject({ measures_needed: [], need_to_order: ['a'] });
-    dashboard.technicalMeasureSubmissions![0].quoteId = 'another-quote';
-    expect(buildJobStatusQueues(dashboard)).toMatchObject({ measures_needed: ['a'], need_to_order: [] });
+  it('does not leave a not_needed job with no submitted form out of the order queue', () => {
+    const dashboard = data({ jobs: [job('a', { measure_needed: { status: 'not_needed' } })], quotes: [quote('a')] });
+    expect(buildJobStatusQueues(dashboard).need_to_order).toEqual(['a']);
   });
 
   it('removes an ordered job even if its measure flag still says needed, and retains partially ordered product groups', () => {
     const dashboard = data({ jobs: [job('a', { measure_needed: { status: 'needed' } })], quotes: [quote('a', { ordered_at: now.toISOString() })] });
-    expect(buildJobStatusQueues(dashboard).measures_needed).toEqual([]);
+    expect(buildJobStatusQueues(dashboard).need_to_order).toEqual([]);
     dashboard.jobs[0].meta = { measure_needed: { status: 'measured', measured_at: now.toISOString() } };
     dashboard.quotes[0].ordered_at = null;
     const item = buildOperationsItems(dashboard)[0];

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { SquareObject } from '@/lib/finance/square-reporting';
@@ -15,6 +16,8 @@ type Ledger = HubLedger;
 type Target = { id: string; customer_name: string; status?: string; source?: string; quote_total?: number; total_amount?: number; meta: Record<string, unknown> };
 type State = { cursor?: string; until?: string; completedThrough?: string; error?: string };
 type Data = {
+  stripeObjects?: (ObjectRow & {account_id:string})[];
+  stripeAllocations?: {account_id:string;payment_intent_id:string;ledger_payment_id:string}[];
   smsConfigured: boolean; alerts: {id: string; square_payment_id: string; status: string; body: string | null; provider_sid: string | null; error: string | null; created_at: string}[];
   environment: string; canReview: boolean; objects: ObjectRow[]; allocations: Allocation[];
   bankMatches: { id: string; payout_id: string; amount_cents: number; bank_date: string; statement_reference: string; actor_email: string }[];
@@ -36,7 +39,7 @@ function receiptUrl(value: unknown) { try { const u = new URL(String(value)); re
 export function SquareFinanceWorkspace({ session }: { session: Session }) {
   const [view, setView] = useState<'customers' | 'history'>('customers');
   return <section className={customerStyles.hub} aria-label="Payment Hub">
-    <h1>Payment Hub</h1><p>Customer deposits, balances, and payment links.</p>
+    <h1>Payment Hub</h1><Link href="/crm/stripe/">Stripe payments and Mercury payouts</Link><p>Customer deposits, balances, and payment links.</p>
     <nav className={customerStyles.tabs} aria-label="Payment Hub sections">
       <button aria-pressed={view === 'customers'} onClick={() => setView('customers')}>Customer Payments</button>
       <button aria-pressed={view === 'history'} onClick={() => setView('history')}>Payment History</button>

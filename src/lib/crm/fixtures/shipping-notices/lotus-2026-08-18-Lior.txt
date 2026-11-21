@@ -1,0 +1,238 @@
+From: "Orders Lotus (orders@lotusblind.com)" <system@sent-via.netsuite.com>
+To: 805@805shutters.com
+Cc: 
+Subject: Lotus Blind Order Fulfillment Notification – Lior
+Date: 2026-08-18T15:42:59Z
+Gmail-Message-Id: 1a0158a50d5b62b7
+Gmail-Thread-Id: 1a0158a50d5b62b7
+Labels: Label_2,IMPORTANT,CATEGORY_UPDATES
+Body-Truncated: False
+
+===== TEXT BODY (whitespace-collapsed) =====
+LOTUS TEST
+
+96
+
+On 08/18/2026, your Order # SO292663, Your Purchase Order # Lior was shipped.
+
+Billed To Customer Name: 1213316 California Homes dba 805 Shutters
+
+Shipping Address:
+
+Addressee: Mike Shepard
+
+Address: 150 Wood Road, Suite D
+
+Attn: Mike Shepard
+
+City St Zip: Camarillo CA 93010
+
+The following items were shipped:
+
+Item
+
+Part No.
+
+Description
+
+Qty
+
+UOM
+
+Notes
+
+CFCX7296W
+
+-
+
+Custom 2" Faux Wood Smooth-White
+
+1
+
+EA
+
+70 X 94 I/M Dining Room
+
+CFCX3096W
+
+-
+
+Custom 2" Faux Wood Smooth-White
+
+1
+
+EA
+
+28 X 94 I/M Living Room 1
+
+CFCX3096W
+
+-
+
+Custom 2" Faux Wood Smooth-White
+
+1
+
+EA
+
+28 X 94 I/M Entry
+
+CFCX5960W
+
+-
+
+Custom 2" Faux Wood Smooth-White
+
+1
+
+EA
+
+58.25 X 58 I/M Office
+
+CFCX9572W
+
+-
+
+Custom 2" Faux Wood Smooth-White
+
+1
+
+EA
+
+94.5 X 70 I/M Family Room
+
+CFCX2796W
+
+-
+
+Custom 2" Faux Wood Smooth-White
+
+1
+
+EA
+
+25 X 86 I/M Family Door
+
+CFCX9572W
+
+-
+
+Custom 2" Faux Wood Smooth-White
+
+1
+
+EA
+
+94.25 X 70 I/M Kitchen
+
+CFCX3036W
+
+-
+
+Custom 2" Faux Wood Smooth-White
+
+2
+
+EA
+
+28.25 X 30 I/M Front Bedroom Window 1 & 2
+
+CFCX5948W
+
+-
+
+Custom 2" Faux Wood Smooth-White
+
+2
+
+EA
+
+58.25 X 46 I/M Front Bedroom Window 3 & Side Bedroom
+
+CFCX4860W
+
+-
+
+Custom 2" Faux Wood Smooth-White
+
+1
+
+EA
+
+46.5 X 52 I/M Primary Bath
+
+CFCX3036W
+
+-
+
+Custom 2" Faux Wood Smooth-White
+
+1
+
+EA
+
+28 X 34 I/M Primary Bath
+
+CFCX9560W
+
+-
+
+Custom 2" Faux Wood Smooth-White
+
+1
+
+EA
+
+94.25 X 58 I/M Primary Bedroom
+
+Your carrier and shipping numbers are below:
+
+LTL
+
+Carrier: Freight Masters
+
+Tracking #: 217817
+Tracking #: 217817
+Tracking #: 217817 (https://8211042.app.netsuite.com/app/common/shipping/packagetracker.nl?id=2690953)
+
+Tracking Details (https://8211042.app.netsuite.com/app/common/shipping/packagetracker.nl?id=2690953)
+
+-->
+
+Your freight amount for this shipment is $0
+
+The following items have not shipped yet:
+
+Item
+
+Part No.
+
+Description
+
+Qty
+
+UOM
+
+Notes
+
+FREIGHT Freight
+
+-
+
+FREIGHT CHARGE
+
+1
+
+EA
+
+Attachments:
+
+Packing List (Attached as File)
+
+Photo of Pallet(s)
+
+Thank you for your order!
+
+orders@lotusblind.com
+
+The content of this message is confidential. If you have received it by mistake, please inform us and then delete the message. It is forbidden to copy, forward, or in any way reveal the contents of this message to anyone.

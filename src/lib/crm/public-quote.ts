@@ -19,12 +19,10 @@ import { markMeasureNotNeededForJob, requestMeasureNeededForJob } from "@/lib/cr
 import { quoteProductDetails } from "@/lib/crm/customer-quote-details";
 import { shutterFrameProfile } from "@/lib/quote/shutter-frame-profiles";
 import { customerQuoteOptions, customerQuoteProductName, customerQuoteStyleName, customerQuoteText } from "@/lib/crm/customer-quote-branding";
-import { ensureTechnicalMeasureForm, technicalMeasureFormUrl } from "@/lib/crm/technical-measures";
+import { ensureTechnicalMeasureForm } from "@/lib/crm/technical-measures";
 import {
   getMeasureNeededMeta,
-  isTechnicalMeasureDecision,
   MEASURE_NEEDED_META_KEY,
-  technicalMeasureSmsLine,
   type TechnicalMeasureDecision,
 } from "@/lib/crm/measure-needed-state";
 import {
@@ -1311,10 +1309,8 @@ export function buildSignedShopSms(
     `Customer Name: ${customerName}`,
     `Total Sale Amount: ${money(total)}`,
     `Deposit Amount: ${money(depositAmount)}`,
-    technicalMeasureSmsLine(contact.technicalMeasure),
     optionalSmsLine("Customer Phone", contact.customerPhone),
     optionalSmsLine("Customer Address", contact.customerAddress),
-    optionalSmsLine("Measure Form", contact.measureFormUrl),
   ].filter((line): line is string => Boolean(line)).join("\n");
 }
 
@@ -1672,11 +1668,6 @@ async function syncSoldBookkeeping(
   return { customerPhone, job: soldJob };
 }
 
-function technicalMeasureDecisionFromMeta(meta: unknown): TechnicalMeasureDecision | null {
-  const status = getMeasureNeededMeta(meta).status;
-  return isTechnicalMeasureDecision(status) ? status : null;
-}
-
 function metaWithTechnicalMeasureDecision(
   meta: unknown,
   decision: TechnicalMeasureDecision,
@@ -1727,11 +1718,11 @@ async function saveTechnicalMeasureDecisionForQuote(
 }
 
 export function technicalMeasureDecisionForSignedQuote(
-  quote: Pick<CrmQuote, "meta">,
-  job: Pick<CrmJob, "meta"> | null,
+  _quote: Pick<CrmQuote, "meta">,
+  _job: Pick<CrmJob, "meta"> | null,
 ): TechnicalMeasureDecision {
-  // Closing a contract requires a remeasure unless staff explicitly waived it.
-  return technicalMeasureDecisionFromMeta(quote.meta) || technicalMeasureDecisionFromMeta(job?.meta) || "needed";
+  // Every job is measured outside this app. A stored "needed" decision is ignored.
+  return "not_needed";
 }
 
 async function syncTechnicalMeasureDecisionForSoldJob(
@@ -1818,18 +1809,17 @@ export async function acceptPublicQuote(
         signature,
         soldTotal: pub.total,
       });
-      const measureForm = soldSync.job
-        ? await ensureTechnicalMeasureForm(
-            supabase,
-            { jobId: soldSync.job.id, quoteId: quote.id },
-            { email: "automation:quote_signed" }
-          )
-        : null;
+      if (soldSync.job) {
+        await ensureTechnicalMeasureForm(
+          supabase,
+          { jobId: soldSync.job.id, quoteId: quote.id },
+          { email: "automation:quote_signed" },
+        );
+      }
       const retryShopSmsContact: SignedShopSmsContact = {
         customerPhone: quote.customer_phone || soldSync.customerPhone,
         customerAddress: quote.customer_address || soldSync.job?.address || null,
         technicalMeasure,
-        measureFormUrl: measureForm ? technicalMeasureFormUrl(measureForm.id) : null,
       };
       if (input.notify !== false) {
         await sendSoldQuoteSmsNotifications(supabase, {
@@ -2048,14 +2038,13 @@ export async function acceptPublicQuote(
     technicalMeasure,
   };
 
-  const measureForm = soldSync.job
-    ? await ensureTechnicalMeasureForm(
+  if (soldSync.job) {
+    await ensureTechnicalMeasureForm(
       supabase,
       { jobId: soldSync.job.id, quoteId: signedQuote.id },
-      { email: "automation:quote_signed" }
-    )
-    : null;
-  shopSmsContact.measureFormUrl = measureForm ? technicalMeasureFormUrl(measureForm.id) : null;
+      { email: "automation:quote_signed" },
+    );
+  }
 
   if (input.notify !== false) {
     // Claim the signed-contract notification before fallible artifact and
@@ -2422,8 +2411,8 @@ export function buildQuotePaymentLinkSms(
         ? Number(details.total)
         : 0;
   const amountText = amountDue > 0 ? ` ${hasDepositDue ? "Deposit due" : "Amount due"}: ${money(amountDue)}.` : "";
-  if(details.paymentSchedule === IN_HOUSE_SCHEDULE)return `805 Shutters three-month payment link.${amountText} Pay securely: ${url}. Questions? Call or text 805-590-8050. Reply STOP to stop text messages.`;
-  return `805 Shutters ${hasDepositDue ? "deposit " : ""}payment link.${amountText} Square card: ${url}. Zelle ${ZELLE_DESTINATION}. In-house plan: approved projects can split the remaining balance into 3 monthly payments. Verify this request at ${brandIdentity.domain} or ${brandIdentity.phone}.`;
+  if(details.paymentSchedule === IN_HOUSE_SCHEDULE)return `805 Shutters three-month payment link.${amountText} Pay securely: ${url}. Questions? Call or text 805-806-9344. Reply STOP to stop text messages.`;
+  return `805 Shutters ${hasDepositDue ? "deposit " : ""}payment link.${amountText} Card: ${url}. Zelle ${ZELLE_DESTINATION}. In-house plan: approved projects can split the remaining balance into 3 monthly payments. Verify this request at ${brandIdentity.domain} or ${brandIdentity.phone}.`;
 }
 
 export async function sendQuotePaymentLinkToCustomer(
