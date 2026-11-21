@@ -52,8 +52,18 @@ export function lineListField(value: unknown) {
     const answers = record.answers && typeof record.answers === "object" && !Array.isArray(record.answers)
       ? record.answers as Record<string, unknown>
       : {};
+    const options = record.options && typeof record.options === "object" && !Array.isArray(record.options)
+      ? record.options as Record<string, unknown>
+      : undefined;
     const label = typeof record.label === "string" && record.label.trim() ? record.label.trim() : id;
-    return [{ id, label, answers }];
+    return [{
+      id,
+      label,
+      answers,
+      designId: typeof record.designId === "string" ? record.designId : null,
+      variant: typeof record.variant === "string" ? record.variant : undefined,
+      options,
+    }];
   });
 }
 

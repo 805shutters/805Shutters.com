@@ -1,18 +1,18 @@
-import { quoteFrontDoorFieldLabel, quoteFrontDoorPlainValue } from "@/lib/crm/quote-front-door";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { quoteFrontDoorFieldLabel } from "@/lib/crm/quote-front-door";
 import {
   canonicalMultiplier,
   multiplierChoices,
   nextQuoteFrontDoorField,
-  resolveQuoteFrontDoorCustomer,
   sequenceSpec,
   validateQuoteFrontDoorTap,
-  type CustomerSelection,
   type FrontDoorActor,
   type QuoteFrontDoorSpec,
   type QuoteFrontDoorStore,
   type SequenceChoice,
   type SequenceDetailRow,
 } from "@/lib/crm/quote-front-door";
+import { mutateSalesQuoteV2Structure, parseSalesQuoteV2StructureBody } from "@/lib/crm/sales-quote-v2-structure";
 import {
   quoteButtonProduct,
   type QuoteButtonChoice,
@@ -22,11 +22,12 @@ import {
   type QuoteButtonScreenField,
   type QuoteButtonValueKind,
 } from "@/lib/crm/quote-button-catalog";
-import { isDimensionStep } from "@/lib/crm/quote-line-buttons";
+import { isDimensionStep, splitInches } from "@/lib/crm/quote-line-buttons";
 
 /**
  * One screen of the remaining required line fields.
- * Valid picks are saved as a draft. Nothing here sends a quote.
+ * Valid picks are written onto the real Quote V2 draft through mutate_quote_v2_structure.
+ * That keeps the quote in draft, marks prices stale, and does not mark a line blocked or send it.
  */
 
 const ORDER_FIELDS = new Set([
@@ -48,6 +49,30 @@ export type QuoteButtonLine = {
   id: string;
   label: string;
   answers: Record<string, unknown>;
+  designId?: string | null;
+  variant?: string;
+  options?: Record<string, unknown>;
+};
+
+export type QuoteButtonStructureOperation =
+  | { type: "line.update"; lineItemId: string; patch: Record<string, unknown> }
+  | {
+      type: "design.upsert";
+      lineItemId: string;
+      designId?: string;
+      variant: string;
+      selectDesign: true;
+      patch: Record<string, unknown>;
+    };
+
+export type QuoteStructureWriter = {
+  save(input: {
+    quoteId: string;
+    actorId: string;
+    expectedRevision: number;
+    idempotencyKey: string;
+    operations: QuoteButtonStructureOperation[];
+  }): Promise<{ quoteId: string; revision: number; status: "draft"; quoteV2Status: "draft" | "stale" }>;
 };
 
 export type QuoteButtonReask = {
@@ -74,9 +99,9 @@ export type QuoteButtonBatchResult = {
   saved: boolean;
   reason: string | null;
   message: string;
-  candidates: Awaited<ReturnType<typeof resolveQuoteFrontDoorCustomer>>["candidates"];
   sent: false;
-  draft: { id: string; status: "draft"; sent: false } | null;
+  operations: QuoteButtonStructureOperation[];
+  quote: { id: string; status: "draft"; sent: false; revision: number; quoteV2Status: "draft" | "stale" } | null;
 };
 
 type ScreenModel = {
@@ -142,10 +167,11 @@ export async function validateQuoteButtonBatch(
     picks: Record<string, unknown>;
     lines?: QuoteButtonLine[];
     applyToLineIds?: string[];
-    customer: CustomerSelection;
+    quote?: { id: string; expectedRevision: number; idempotencyKey: string } | null;
     packs?: QuoteButtonFieldPack[];
   },
   actor: FrontDoorActor,
+  writer?: QuoteStructureWriter,
 ): Promise<QuoteButtonBatchResult> {
   const sequence = await nextQuoteFrontDoorField(store, input);
   const prepared = sequenceSpec(input.spec);
@@ -222,7 +248,9 @@ export async function validateQuoteButtonBatch(
     },
     packs: input.packs,
   });
-  const empty = (reason: string, message: string, candidates: QuoteButtonBatchResult["candidates"] = []) => ({
+  const chosenLines = applied.lines.filter((line) => applied.chosen.includes(line.id));
+  const operations = quoteButtonLineOperations(chosenLines, accepted);
+  const empty = (reason: string, message: string) => ({
     accepted,
     reask,
     lines: applied.lines,
@@ -230,36 +258,26 @@ export async function validateQuoteButtonBatch(
     saved: false as const,
     reason,
     message,
-    candidates,
     sent: false as const,
-    draft: null,
+    operations,
+    quote: null,
   });
   if (sequence.phase === "blocked" && !sequence.catalog_version) return empty("blocked", sequence.reason ?? "This manufacturer is not in the quote sequence.");
   if (Object.keys(accepted).length === 0) return empty(reask.length ? "needs_input" : "no_picks", reask.length ? "One field needs another choice." : "Nothing to save.");
-  if (applied.chosen.length === 0) return empty("no_lines", "Choose at least one line.");
-  const customer = await resolveQuoteFrontDoorCustomer(store, input.customer);
-  if (!customer.ok) return empty(customer.reason, customer.message, customer.candidates);
-  const readBack = lineReadBack(input.manufacturer.trim(), input.category.trim(), applied.lines);
-  const inserted = await store.insertLineDraft({
-    status: "draft",
-    customer_id: customer.selected?.customerId ?? null,
-    job_id: customer.selected?.jobId ?? null,
-    customer_name: customer.name,
-    customer_phone: customer.phone,
-    customer_address: customer.address,
-    manufacturer: input.manufacturer.trim(),
-    category: input.category.trim(),
-    catalog_version: sequence.catalog_version,
-    spec: {
-      answers: applied.lines.find((line) => applied.chosen.includes(line.id))?.answers ?? {},
-      lines: applied.lines,
-      catalog_version: sequence.catalog_version,
-      multiplier,
-    },
-    read_back: readBack,
-    created_by: actor.userId,
-    created_by_email: actor.email,
+  if (applied.chosen.length === 0 || operations.length === 0) return empty("no_lines", "Choose at least one line.");
+  if (!input.quote?.id || !input.quote.idempotencyKey || !Number.isInteger(input.quote.expectedRevision)) {
+    return empty("quote_required", "Choose the CRM quote draft before saving.");
+  }
+  if (!actor.userId) return empty("actor_required", "A signed-in staff member is required.");
+  if (!writer) return empty("quote_required", "Choose the CRM quote draft before saving.");
+  const savedQuote = await writer.save({
+    quoteId: input.quote.id,
+    actorId: actor.userId,
+    expectedRevision: input.quote.expectedRevision,
+    idempotencyKey: input.quote.idempotencyKey,
+    operations,
   });
+  if (savedQuote.status !== "draft") return empty("not_draft", "The quote did not stay a draft.");
   return {
     accepted,
     reask,
@@ -268,9 +286,90 @@ export async function validateQuoteButtonBatch(
     saved: true,
     reason: reask.length ? "needs_input" : null,
     message: reask.length ? "Draft saved. One field needs another choice." : "Draft quote saved.",
-    candidates: customer.candidates,
     sent: false,
-    draft: { id: inserted.id, status: "draft", sent: false },
+    operations,
+    quote: { id: savedQuote.quoteId, status: "draft", sent: false, revision: savedQuote.revision, quoteV2Status: savedQuote.quoteV2Status },
+  };
+}
+
+const LINE_MEASURE_KEYS = new Set(["room_location", "quantity", "ordered_width", "ordered_height", "multiplier"]);
+
+const DESIGN_COLUMNS: Record<string, string> = {
+  mount_type: "mountType",
+  product_type: "productType",
+  supplier: "supplier",
+  material: "material",
+  louver_size: "louverSize",
+  tilt_type: "tiltType",
+  hinge_color: "hingeColor",
+  panel_config: "panelConfig",
+  shade_type: "shadeType",
+  lift_system: "liftSystem",
+  valance: "valance",
+  fabric: "fabric",
+  motor_type: "motorType",
+  remote_type: "remoteType",
+};
+
+export function quoteButtonLineOperations(lines: QuoteButtonLine[], accepted: Record<string, unknown>): QuoteButtonStructureOperation[] {
+  const operations: QuoteButtonStructureOperation[] = [];
+  for (const line of lines) {
+    const linePatch: Record<string, unknown> = {};
+    const designPatch: Record<string, unknown> = {};
+    const options: Record<string, unknown> = { ...(line.options ?? {}) };
+    if (typeof accepted.room_location === "string") linePatch.roomName = accepted.room_location;
+    if (typeof accepted.quantity === "number") linePatch.quantity = accepted.quantity;
+    if (typeof accepted.ordered_width === "number") {
+      const width = splitInches(accepted.ordered_width, "1/8");
+      linePatch.widthWhole = width.whole;
+      linePatch.widthFraction = width.fraction;
+    }
+    if (typeof accepted.ordered_height === "number") {
+      const height = splitInches(accepted.ordered_height, "1/8");
+      linePatch.heightWhole = height.whole;
+      linePatch.heightFraction = height.fraction;
+    }
+    for (const [key, value] of Object.entries(accepted)) {
+      if (LINE_MEASURE_KEYS.has(key)) continue;
+      if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") continue;
+      const column = DESIGN_COLUMNS[key];
+      if (column && typeof value === "string") designPatch[column] = value;
+      options[key] = value;
+    }
+    if (Object.keys(linePatch).length) {
+      operations.push({ type: "line.update", lineItemId: line.id, patch: linePatch });
+    }
+    if (Object.keys(designPatch).length || Object.keys(options).length) {
+      if (Object.keys(options).length) designPatch.optionsJson = options;
+      operations.push({
+        type: "design.upsert",
+        lineItemId: line.id,
+        ...(line.designId ? { designId: line.designId } : {}),
+        variant: line.variant || "A",
+        selectDesign: true,
+        patch: designPatch,
+      });
+    }
+  }
+  return operations;
+}
+
+export function salesQuoteStructureWriter(supabase: SupabaseClient): QuoteStructureWriter {
+  return {
+    async save(input) {
+      const parsed = parseSalesQuoteV2StructureBody({
+        expectedRevision: input.expectedRevision,
+        idempotencyKey: input.idempotencyKey,
+        operations: input.operations,
+      });
+      const result = await mutateSalesQuoteV2Structure(supabase, input.quoteId, input.actorId, parsed);
+      return {
+        quoteId: result.quoteId,
+        revision: result.revision,
+        status: "draft",
+        quoteV2Status: result.quoteV2Status,
+      };
+    },
   };
 }
 
@@ -489,16 +588,6 @@ function applyPicks(lines: QuoteButtonLine[], requestedIds: string[], accepted: 
     }
   }
   return { lines: ordered, chosen };
-}
-
-function lineReadBack(manufacturer: string, category: string, lines: QuoteButtonLine[]) {
-  const rows = lines.map((line) => {
-    const pairs = Object.entries(line.answers)
-      .filter(([, value]) => hasValue(value))
-      .map(([key, value]) => `${quoteFrontDoorFieldLabel(key)}: ${quoteFrontDoorPlainValue(value)}`);
-    return `${line.label}: ${pairs.join(", ") || "no picks"}`;
-  });
-  return [`${manufacturer} ${category}`, ...rows, "Draft only."].join("\n");
 }
 
 function emptyModel(): ScreenModel {

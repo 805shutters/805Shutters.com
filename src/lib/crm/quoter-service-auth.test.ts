@@ -49,6 +49,8 @@ import * as nextFieldRoute from "@/app/api/crm/quote-front-door/next-field/route
 import * as validateRoute from "@/app/api/crm/quote-front-door/validate/route";
 import * as readBackRoute from "@/app/api/crm/quote-front-door/read-back/route";
 import * as draftRoute from "@/app/api/crm/quote-front-door/draft/route";
+import * as batchNextRoute from "@/app/api/crm/quote-front-door/batch-next-field/route";
+import * as batchValidateRoute from "@/app/api/crm/quote-front-door/batch-validate/route";
 
 const catalog = "order-form:norman:roller:v1";
 const repo = process.cwd();
@@ -240,15 +242,17 @@ describe("Quoter service token", () => {
 describe("Quoter front-door allowlist", () => {
   const routeFiles = walk(path.join(repo, "src/app/api/crm"));
 
-  it("is exactly the five quote front-door routes", () => {
+  it("is exactly the quote front-door routes, including the batch screen", () => {
     expect([...QUOTER_FRONT_DOOR_ROUTES]).toEqual([
       "/api/crm/quote-front-door/customers",
       "/api/crm/quote-front-door/next-field",
       "/api/crm/quote-front-door/validate",
       "/api/crm/quote-front-door/read-back",
       "/api/crm/quote-front-door/draft",
+      "/api/crm/quote-front-door/batch-next-field",
+      "/api/crm/quote-front-door/batch-validate",
     ]);
-    expect(new Set(QUOTER_FRONT_DOOR_ROUTES).size).toBe(5);
+    expect(new Set(QUOTER_FRONT_DOOR_ROUTES).size).toBe(QUOTER_FRONT_DOOR_ROUTES.length);
     for (const route of QUOTER_FRONT_DOOR_ROUTES) {
       expect(isQuoterFrontDoorRoute(route)).toBe(true);
       expect(isQuoterFrontDoorRoute(`${route}/`)).toBe(true);
@@ -265,7 +269,7 @@ describe("Quoter front-door allowlist", () => {
     }
   });
 
-  it("allows the token through only those five route files", () => {
+  it("allows the token through only the front-door route files", () => {
     const accepting = routeFiles.filter((file) => readFileSync(file, "utf8").includes("requireQuoteFrontDoorActor"));
     expect(accepting.map(routePath).sort()).toEqual([...QUOTER_FRONT_DOOR_ROUTES].sort());
     expect(readFileSync(path.join(repo, "src/proxy.ts"), "utf8")).toContain("quoterServiceGuard");
@@ -284,6 +288,8 @@ describe("Quoter front-door allowlist", () => {
     expect(Object.keys(validateRoute).sort()).toEqual(["POST", "runtime"]);
     expect(Object.keys(readBackRoute).sort()).toEqual(["POST", "runtime"]);
     expect(Object.keys(draftRoute).sort()).toEqual(["POST", "runtime"]);
+    expect(Object.keys(batchNextRoute).sort()).toEqual(["POST", "runtime"]);
+    expect(Object.keys(batchValidateRoute).sort()).toEqual(["POST", "runtime"]);
   });
 
   it("denies every other CRM route path in the guard and the proxy", () => {

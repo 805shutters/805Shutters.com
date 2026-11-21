@@ -140,23 +140,6 @@ export type QuoteV2DraftCreate = {
   readBack: FrontDoorReadBackRecord;
 };
 
-/** A line-entry draft. Status is draft only. There is no multiplier until the line is complete. */
-export type LineDraftInsert = {
-  status: "draft";
-  customer_id: string | null;
-  job_id: string | null;
-  customer_name: string;
-  customer_phone: string | null;
-  customer_address: string | null;
-  manufacturer: string;
-  category: string;
-  catalog_version: string | null;
-  spec: Record<string, unknown>;
-  read_back: string;
-  created_by: string | null;
-  created_by_email: string | null;
-};
-
 export type SequenceDetailRow = {
   field_key: string;
   ask_order: number;

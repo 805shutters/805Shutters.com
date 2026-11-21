@@ -22,12 +22,17 @@ type BatchResult = {
   reask: Array<{ fieldKey: string; reason: string | null }>;
   lines: QuoteLineChoice[];
   next: BatchNext;
-  draft: { id: string; status: "draft"; sent: false } | null;
+  quote: { id: string; status: "draft"; sent: false } | null;
+};
+
+type Props = {
+  quoteId?: string;
+  expectedRevision?: number;
 };
 
 const products = quoteButtonProductIndex;
 
-export function QuoteLineEntry() {
+export function QuoteLineEntry({ quoteId, expectedRevision = 1 }: Props = {}) {
   const [productKey, setProductKey] = useState<string | null>(null);
   const [fields, setFields] = useState<QuoteButtonScreenField[]>([]);
   const [reason, setReason] = useState<string | null>(null);
@@ -87,7 +92,9 @@ export function QuoteLineEntry() {
           picks,
           lines,
           applyToLineIds: selectedLineIds,
-          customer: { name: customerName, confirmNewCustomer: true },
+          quoteId,
+          expectedRevision,
+          idempotencyKey: `front-door-${crypto.randomUUID()}`,
         }),
       });
       const body = await response.json() as BatchResult;
@@ -98,7 +105,7 @@ export function QuoteLineEntry() {
         setFields(Array.isArray(body.next.fields) ? body.next.fields : []);
         setReason(body.next.reason ?? null);
       }
-      if (body.draft?.status === "draft") {
+      if (body.quote?.status === "draft") {
         setSpec((current) => ({ answers: { ...current.answers, ...(body.accepted ?? {}) } }));
       }
     } finally {

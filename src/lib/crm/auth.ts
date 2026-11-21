@@ -125,7 +125,7 @@ export async function requireCrmUser(request: NextRequest) {
 
 /**
  * Staff sessions use requireCrmUser. A matching Quoter service token is accepted
- * only on the five front-door routes. It does not upsert crm_profiles. The draft
+ * only on the quote front-door routes. It does not upsert crm_profiles. The draft
  * actor is the active profile named by QUOTER_SERVICE_ACTOR_EMAIL.
  */
 export async function requireQuoteFrontDoorActor(request: NextRequest): Promise<{

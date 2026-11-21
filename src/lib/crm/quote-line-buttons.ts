@@ -22,6 +22,14 @@ export function isDimensionStep(value: unknown, step: "1/8" | "1/16" | null) {
   return Math.abs(units - Math.round(units)) < 1e-6;
 }
 
+export function splitInches(value: number, step: "1/8" | "1/16" | null) {
+  const parts = dimensionParts(step);
+  const total = Math.round(value * parts);
+  const whole = Math.trunc(total / parts);
+  const numerator = ((total % parts) + parts) % parts;
+  return { whole, fraction: numerator === 0 ? "0" : reduceFraction(numerator, parts) };
+}
+
 export function formatInches(value: number | null, step: "1/8" | "1/16" | null) {
   if (value == null || !Number.isFinite(value)) return "";
   const parts = dimensionParts(step);

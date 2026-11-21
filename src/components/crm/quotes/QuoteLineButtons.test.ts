@@ -161,7 +161,7 @@ describe("quote line entry", () => {
           reask: [],
           lines: [{ id: "1", label: "Line 1" }],
           next: { phase: "line", reason: null, sent: false, fields: [] },
-          draft: { id: "line-1", status: "draft", sent: false },
+          quote: { id: "44444444-4444-4444-8444-444444444444", status: "draft", sent: false },
         }),
       };
     }));
