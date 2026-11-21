@@ -75,7 +75,7 @@ describe("front-door side table removal", () => {
     expect(added.rows).toEqual([]);
     const stillThere = await blocked.query<{ name: string }>(`select customer_name as name from public.${table}`);
     expect(stillThere.rows).toEqual([{ name: "Jane Smith" }]);
-  }, 30_000);
+  }, 20000);
 
   it("drops the side table, its policies, and its grants when the table is empty", async () => {
     await installSideTable(empty);
