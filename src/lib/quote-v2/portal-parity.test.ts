@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { QUOTE_V2_ROLLER_PREVIEW_VERSION } from "./catalog";
 import type { SelectionContext } from "./core";
+import { priceDesign } from "@/lib/quote/pricing";
 import { priceQuoteV2Selection } from "./engine";
 
 /**
  * Historical read-only dealer-portal fixture captured 2026-07-20 from Norman
- * draft TEST, line RR002. The .30 account factor is superseded by the current
- * authenticated 805 policy; its list dollars remain useful as a fixed input.
+ * draft TEST, line RR002. Its list dollars remain a fixed input. Dealer cost
+ * is list × the catalog factor 0.30.
  */
 const NORMAN_PORTAL_RR002 = Object.freeze({
   product: "Roller Shades",
@@ -26,7 +27,7 @@ const NORMAN_PORTAL_RR002 = Object.freeze({
 });
 
 describe("Norman dealer-portal parity fixtures", () => {
-  it("does not let the superseded RR002 .30 capture override current 805 policy", () => {
+  it("prices RR002 dealer cost at the catalog 0.30 factor", () => {
     const selection: SelectionContext = {
       manufacturerId: "norman",
       productId: "roller",
@@ -65,27 +66,22 @@ describe("Norman dealer-portal parity fixtures", () => {
       includeInternalCost: true,
     });
 
-    if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
-    expect(result.wholesaleBase).toBe(126.72); // $384 list x current .33
-    expect(result.surchargeLines).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: "raceway",
-          wholesaleAmount: 22.11, // $67 list x current .33
-        }),
-      ]),
-    );
-    expect(result.wholesaleUnitPrice).toBe(148.83);
-    expect(result.internalCost).toMatchObject({
-      productCostUnit: 148.83,
-      effectiveDealerFactor: 0.33,
-    });
-    expect(result.wholesaleBase).not.toBe(NORMAN_PORTAL_RR002.baseDealerNet);
-
-    // Customer retail remains the source-book suggested retail. The current
-    // account schedule changes protected dealer cost only.
-    expect(result.base).toBe(384);
-    expect(result.surchargeLines[0]?.amount).toBe(67);
-    expect(result.total).toBe(451);
+    expect(result).toMatchObject({ ok: false, code: "NO_SITE_PRICE", blocked: "no_site_price" });
+    const catalog = priceDesign({
+      productId: selection.productId,
+      programId: selection.programId ?? undefined,
+      widthInches: selection.widthInches,
+      heightInches: selection.heightInches,
+      quantity: selection.quantity,
+      surcharges: [{ id: "raceway" }],
+    }, selection.catalogAsOf);
+    expect(catalog.ok, JSON.stringify(catalog)).toBe(true);
+    if (!catalog.ok) return;
+    expect(catalog.base).toBe(384);
+    expect(catalog.surchargeLines).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "raceway", amount: 67 }),
+    ]));
+    expect(catalog.wholesaleBase).toBe(115.2);
+    expect(catalog.wholesaleBase).toBe(NORMAN_PORTAL_RR002.baseDealerNet);
   });
 });

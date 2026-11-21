@@ -1,0 +1,16 @@
+.screen { background:#0b0b0b; color:#fbfbfa; font:15px/1.45 var(--crm-ui-font, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif); padding:24px; display:grid; gap:18px; }
+.screen * { box-sizing:border-box; }
+.header h1 { font:600 28px/1.15 var(--crm-ui-font, sans-serif); margin:0; }
+.screen p { color:#b8b6ae; margin:6px 0 0; }
+.lines, .field { border:1px solid #343330; border-radius:13px; padding:14px; margin:0; }
+.lines legend, .field legend { padding:0 6px; font-size:13px; color:#deddd6; }
+.lines { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+.lines label { display:inline-flex; gap:8px; align-items:center; min-height:44px; }
+.choices { display:flex; flex-wrap:wrap; gap:8px; }
+.screen button { font:inherit; color:#fbfbfa; background:#1d1d1b; border:1px solid #343330; border-radius:8px; min-height:44px; padding:10px 14px; cursor:pointer; }
+.screen button[aria-pressed="true"] { background:#fbfbfa; color:#0b0b0b; border-color:#fbfbfa; }
+.screen button:focus-visible, .screen input:focus-visible { outline:2px solid #75dfab; outline-offset:3px; }
+.dimension { display:grid; gap:10px; }
+.dimension strong { font-size:22px; font-weight:500; }
+.save { justify-self:start; background:#fbfbfa; color:#0b0b0b; border-color:#fbfbfa; }
+.screen button:disabled { opacity:.5; cursor:default; }

@@ -12,6 +12,7 @@
 .header,.actions,.toolbar,.filters,.resultsHeader,.pagination { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
 .header { margin-bottom:26px; }
 .desk .primary { background:#fbfbfa; color:#0b0b0b; border-color:#fbfbfa; }
+.desk a.entryLink { display:inline-flex; align-items:center; color:#fbfbfa; background:#1d1d1b; border:1px solid #343330; border-radius:8px; padding:9px 12px; text-decoration:none; }
 .metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-bottom:24px; }
 .desk .metrics button { display:block; text-align:left; padding:20px; border-radius:13px; }
 .metrics span { color:#b8b6ae; display:block; }

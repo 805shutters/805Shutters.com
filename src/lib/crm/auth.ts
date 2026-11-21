@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, User } from "@supabase/supabase-js";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { allowedCrmEmails, isAllowedCrmEmail, isKenCrmEmail, normalizeCrmEmail } from "@/lib/crm/allowed-users";
+import {
+  QUOTER_SERVICE_DENIED_MESSAGE,
+  QuoterServiceAuthError,
+  isQuoterFrontDoorRoute,
+  quoterFrontDoorDb,
+  quoterServiceTokenMatches,
+  resolveQuoterStaffActor,
+  type QuoterDb,
+  type QuoterProfileClient,
+} from "@/lib/crm/quoter-service-auth";
 
 export class CrmAuthError extends Error {
   status: number;
@@ -64,6 +74,10 @@ export async function requireCrmUser(request: NextRequest) {
     throw new CrmAuthError(401, "CRM session is required.");
   }
 
+  if (quoterServiceTokenMatches(token)) {
+    throw new CrmAuthError(403, QUOTER_SERVICE_DENIED_MESSAGE);
+  }
+
   const user = await getUserFromToken(token);
   const email = user.email ? normalizeCrmEmail(user.email) : "";
 
@@ -109,8 +123,46 @@ export async function requireCrmUser(request: NextRequest) {
   };
 }
 
+/**
+ * Staff sessions use requireCrmUser. A matching Quoter service token is accepted
+ * only on the quote front-door routes. It does not upsert crm_profiles. The draft
+ * actor is the active profile named by QUOTER_SERVICE_ACTOR_EMAIL.
+ */
+export async function requireQuoteFrontDoorActor(request: NextRequest): Promise<{
+  supabase: QuoterDb;
+  email: string;
+  userId: string | null;
+  kind: "quoter-service" | "staff";
+}> {
+  const token = getBearerToken(request);
+  if (token && quoterServiceTokenMatches(token)) {
+    if (!isQuoterFrontDoorRoute(request.nextUrl.pathname)) {
+      throw new CrmAuthError(403, QUOTER_SERVICE_DENIED_MESSAGE);
+    }
+    const supabase = getSupabaseServiceClient();
+    if (!supabase) {
+      throw new CrmAuthError(503, "Dedicated Supabase database is not configured.");
+    }
+    const actor = await resolveQuoterStaffActor(supabase as unknown as QuoterProfileClient);
+    return {
+      supabase: quoterFrontDoorDb(supabase as unknown as QuoterDb, actor.id),
+      email: actor.email,
+      userId: actor.id,
+      kind: "quoter-service",
+    };
+  }
+
+  const staff = await requireCrmUser(request);
+  return {
+    supabase: staff.supabase as unknown as QuoterDb,
+    email: staff.email,
+    userId: staff.user.id,
+    kind: "staff",
+  };
+}
+
 export function crmAuthErrorResponse(error: unknown) {
-  if (error instanceof CrmAuthError) {
+  if (error instanceof CrmAuthError || error instanceof QuoterServiceAuthError) {
     return NextResponse.json({ message: error.message }, { status: error.status });
   }
 

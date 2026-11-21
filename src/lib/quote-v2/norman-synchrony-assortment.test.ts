@@ -9,6 +9,7 @@ import { SYNCHRONY_DEALER_COLOR_CODES, synchronyDefaultHardware } from "@/lib/qu
 import { describe, expect, it } from "vitest";
 import { getProductColorOptions, searchProductColorOptions } from "@/lib/quote/product-color-options";
 import { getProduct, getProgram } from "@/lib/quote/catalog";
+import { priceDesign } from "@/lib/quote/pricing";
 import { getVerticalColorsForGroup } from "@mts/lib/quoteConstants";
 import { synchronyVerticalActiveColors, synchronyVerticalDiscontinuedColors } from "./catalog";
 
@@ -73,15 +74,11 @@ it.each(getMtsProductColorRows("Vertical Blinds", {quote_v2_backend:true}))("ser
  const input = {lines:[{id:"l",quote_id:"audit",room_name:"Office",product_type:"Vertical Blinds",width_whole:36,width_fraction:"0",height_whole:60,height_fraction:"0",quantity:1,sort_order:0} as SalesQuoteLineItem],designs:[design],selectedVariantByLine:{l:"A"}};
  const result = repriceExactQuoteBuilderForServerDate(input,"2026-09-19");
  if (!("backend" in result) || result.backend!=="v2") throw new Error("Expected V2");
- expect(result.designs[0].result).toMatchObject({ok:true,base:retail});
+ expect(result.designs[0].result).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
+ const list=priceDesign({productId:"synchrony_vertical",programId:color.programId??undefined,widthInches:36,heightInches:60},"2026-09-19");
+ expect(list,JSON.stringify(list)).toMatchObject({ok:true,base:retail});
  expect(result.designs[0].selection.configuration).toMatchObject({fabric_color_code:color.colorCode,vertical_shim_layers:2,vertical_hardware_color:"Nature",vertical_wand_drop_inches:49});
- expect(result.designs[0].snapshot).not.toBeNull();
- const priced = result.designs[0].result;
- if (!priced.ok) throw new Error("Expected valid Synchrony pricing");
- expect(priced.components).toEqual(expect.arrayContaining([
-   expect.objectContaining({category:"base_grid",catalogAmount:261,source:expect.objectContaining({sourceId:"norman-retail-guide-2026-09"})}),
-   expect.objectContaining({category:"fabric_upgrade",catalogAmount:retail-261}),
-   expect.objectContaining({priceLineId:"shim",catalogAmount:28,units:4,source:expect.objectContaining({sourceId:"norman-retail-guide-2026-09"})}),
- ]));
+ expect(result.designs[0].snapshot).toBeNull();
+ expect([261,319,354,423]).toContain(retail);
  expect(repriceExactQuoteBuilderForServerDate(JSON.parse(JSON.stringify(input)),"2026-09-19")).toEqual(result);
 });

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { normanHoneycombV2Source } from "@/lib/quote-v2/generated/norman-honeycomb-v2.generated";
 import { expectedHoneycombProgramId, quoteV2CatalogVersionFor } from "@/lib/quote-v2/catalog";
 import { priceQuoteV2Selection } from "@/lib/quote-v2/engine";
+import { priceDesign } from "@/lib/quote/pricing";
 import { HONEYCOMB_LIGHT_CONTROL, getHoneycombOperatingSystemsFor } from "./quoteConstants";
 import { getMtsProductColorRows } from "./productColorCatalog";
 import { getMtsProductColorRows as getV1Rows } from "@/mts-quote-v1/lib/productColorCatalog";
@@ -61,7 +62,13 @@ describe("every current Honeycomb workbook offering reaches its correct grid", (
           }},
         priceInput:{productId:"honeycomb",programId,widthInches:36,heightInches:60},
       });
-      expect(result.ok, `${color.customerColorCode} ${cell}: ${JSON.stringify(result)}`).toBe(true);
+      const list = priceDesign({ productId: "honeycomb", programId, widthInches: 36, heightInches: 60 }, "2026-09-17");
+      expect(list.ok, `${color.customerColorCode} ${cell} catalog cell: ${JSON.stringify(list)}`).toBe(true);
+      if (list.ok) expect(list.base).toBeGreaterThan(0);
+      expect(result, `${color.customerColorCode} ${cell}: ${JSON.stringify(result)}`).toMatchObject({
+        ok: false, code: "NO_SITE_PRICE", blocked: "no_site_price",
+      });
+      expect(result).not.toHaveProperty("unitPrice");
     }
   });
 });

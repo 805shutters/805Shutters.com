@@ -4,6 +4,7 @@ import { createSelectionFingerprint } from "./core";
 import { deriveNormanOrderRecords } from "./norman-assemblies";
 import { validateNormanFamilyRules } from "./norman-family-rules";
 import { PALLADIAN_FINISHES } from "@/lib/quote/norman-current-assortment";
+import { priceDesign } from "@/lib/quote/pricing";
 import { priceQuoteV2Selection } from "./engine";
 import { productRuleStatusForSelection } from "./rules";
 import { quoteV2CatalogVersionFor } from "./catalog";
@@ -29,13 +30,14 @@ describe("Palladian current dealer guide", () => {
     const input={lines:[{id:"l",quote_id:"audit",room_name:"Foyer",product_type:"Palladian Shelf",width_whole:36,width_fraction:"0",height_whole:60,height_fraction:"0",quantity:2,sort_order:0} as SalesQuoteLineItem],designs:[{id:"d",line_item_id:"l",variant:"A",supplier:"Norman",product_type:"Palladian Shelf",mount_type:"Inside Mount",material:null,louver_size:null,tilt_type:null,hinge_color:null,panel_config:null,shade_type:null,lift_system:null,valance:null,fabric:null,motor_type:null,remote_type:null,hard_surface_install:false,ladder_over_15ft:false,requires_takedown:false,options_json:{surcharges:[],motorization_selections:[],catalog_program_id:null,quote_lab_program_id:null,accompanying_line_id:null,catalog_manufacturer:"Norman",catalog_product_type:"Palladian Shelf",quote_v2_backend:true,catalog_product_id:"palladian_shelf",quote_lab_product_id:"palladian_shelf",color:"Winchester White 2010",shelf_depth:2.125,shelf_supported_weight_lbs:20,accompanying_product_id:"none",shelf_measurement_basis:"Custom"}} as unknown as SalesQuoteDesign],selectedVariantByLine:{l:"A"}};
     const result=repriceExactQuoteBuilderForServerDate(input,"2026-09-19");
     if (!("backend" in result) || result.backend!=="v2") throw new Error("Expected V2");
-    expect(result.designs[0].result).toMatchObject({ok:true,base:450,validationStatus:"valid"});
+    expect(result.designs[0].result).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
+    expect(priceDesign({productId:"palladian_shelf",programId:"palladian_shelf_palladian_shelf_without_product",widthInches:36,heightInches:60},"2026-09-19")).toMatchObject({ok:true,base:450});
     expect(result.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({finishCode:"066",shelfQuantity:2,finishedShelfWidth:36,accompanyingLineId:null});
-    expect(result.designs[0].snapshot).not.toBeNull();
+    expect(result.designs[0].snapshot).toBeNull();
     expect(repriceExactQuoteBuilderForServerDate(JSON.parse(JSON.stringify(input)),"2026-09-19")).toEqual(result);
     const batch=prepareSalesQuoteV2PricingBatch({lines:input.lines,selectedDesigns:input.designs,serverDate:"2026-09-19"});
-    expect(batch.repriced.designs[0].result).toMatchObject({ok:true,base:450,internalCost:{freightStatus:"unresolved"}});
-    expect(batch.prepared[0]).toMatchObject({priceStatus:"unpriceable",rpcResult:{authoritativeSnapshot:null,internalCostSnapshot:null}});
+    expect(batch.repriced.designs[0].result).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
+    expect(batch.prepared[0]).toMatchObject({priceStatus:"blocked",rpcResult:{authoritativeSnapshot:null,internalCostSnapshot:null}});
   });
   it("prices every September retail breakpoint for both shelf schedules and all finishes", () => {
     const widths = [24,32,36,42,48,54,60,66,72,78,84,90,96];
@@ -53,7 +55,8 @@ describe("Palladian current dealer guide", () => {
             selection.catalogVersion=quoteV2CatalogVersionFor(selection.productId,selection.catalogAsOf);
             selection.widthInches=width; rows[1].selection.widthInches=width;
             const result=priceQuoteV2Selection({selection,priceInput:{productId:selection.productId,programId:selection.programId,widthInches:width,heightInches:60},additionalValidationIssues:deriveNormanOrderRecords(rows)});
-            expect(result, `${schedule} ${finish.code} ${width}`).toMatchObject({ok:true,base:prices[index],validationStatus:"valid"});
+            expect(result, `${schedule} ${finish.code} ${width}`).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
+            expect(priceDesign({productId:selection.productId,programId:selection.programId??undefined,widthInches:width,heightInches:60},selection.catalogAsOf), `${schedule} ${finish.code} ${width}`).toMatchObject({ok:true,base:prices[index]});
           }
         }
       }

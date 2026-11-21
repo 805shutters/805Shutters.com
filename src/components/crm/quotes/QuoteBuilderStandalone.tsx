@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
+import { LiveLookupQuoteBanner } from "@/components/crm/quotes/LiveLookupQuoteBanner";
 import { QuoteWorkspace } from "@mts/QuoteWorkspace";
 
 /** Dedicated full-page quote builder. Gets the Supabase session client-side
@@ -39,11 +40,16 @@ export function QuoteBuilderStandalone({ quoteId, salesQuote = false }: { quoteI
   if (!session) return null;
 
   // Mobile saves return the canonical sales quote ID, not a legacy CRM mirror ID.
-  if (salesQuote) return <QuoteWorkspace openRequest={{
-    quoteId, tab: "builder", requestId: 1, historicalPriceLock: null,
-  }} />;
+  if (salesQuote) return <>
+    <LiveLookupQuoteBanner quoteId={quoteId} />
+    <QuoteWorkspace openRequest={{
+      quoteId, tab: "builder", requestId: 1, historicalPriceLock: null,
+    }} />
+  </>;
 
   return (
+    <>
+    <LiveLookupQuoteBanner quoteId={quoteId} />
     <QuoteBuilderPanel
       session={session}
       quoteId={quoteId}
@@ -51,5 +57,6 @@ export function QuoteBuilderStandalone({ quoteId, salesQuote = false }: { quoteI
       onClose={() => router.push("/crm")}
       onSwitch={(id) => router.push(`/crm/quote/${id}`)}
     />
+    </>
   );
 }

@@ -5,6 +5,7 @@ import {woodComponents,woodValancePriceWidth} from "./norman-wood";
 import {deriveWoodAssemblies} from "./norman-wood-assemblies";
 import {deriveNormanOrderRecords} from "./norman-assemblies";
 import {quoteV2CatalogVersionFor} from "./catalog";
+import {priceDesign} from "@/lib/quote/pricing";
 import {priceQuoteV2Selection,authoritativeAutomaticSurchargeSelections} from "./engine";
 import type {SelectionContext} from "./core";
 const colors=getProductColorOptions("wood_blinds");
@@ -12,7 +13,7 @@ function blind(c:SelectionContext["configuration"]={},w=36,h=60):SelectionContex
 const rules=(s:SelectionContext)=>woodComponents(s)!.issues.map(i=>i.ruleId.split('.').pop());
 function price(s:SelectionContext){deriveNormanOrderRecords([{lineId:"a",selection:s}]);return priceQuoteV2Selection({selection:s,priceInput:{productId:s.productId,programId:s.programId!,widthInches:s.widthInches,heightInches:s.heightInches,quantity:s.quantity,valanceWidthInches:woodValancePriceWidth(s),surcharges:authoritativeAutomaticSurchargeSelections(s)},includeInternalCost:true});}
 describe("Normandy September assortment and hardware",()=>{
- for(const slat of ['2"','2.5"'])for(const code of WOOD_CODES)it(`prices ${code} with ${slat} slats`,()=>{const s=blind({slat_size:slat,fabric_color_code:code});expect(colors.find(r=>r.colorCode===code)?.available).toBe(true);expect(rules(s)).toEqual([]);const p=price(s);expect(p.ok,JSON.stringify(p)).toBe(true);});
+ for(const slat of ['2"','2.5"'])for(const code of WOOD_CODES)it(`prices ${code} with ${slat} slats`,()=>{const s=blind({slat_size:slat,fabric_color_code:code});expect(colors.find(r=>r.colorCode===code)?.available).toBe(true);expect(rules(s)).toEqual([]);const p=price(s);expect(p,JSON.stringify(p)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});});
  it("retains historical color but rejects new ordering",()=>{expect(colors.find(r=>r.colorCode==="ND118")?.available).toBe(false);expect(rules(blind({fabric_color_code:"ND118"}))).toContain("legacy_color_conflict");});
  it.each([[6.5,16],[96,96],[36,96]])("accepts net bounds %s × %s",(w,h)=>expect(rules(blind({},w,h))).toEqual([]));
  it.each([[6.4375,60],[96.0625,60],[36,15.9375],[36,96.0625]])("blocks invalid net bounds %s × %s",(w,h)=>expect(rules(blind({},w,h))).toContain("dimensions"));
@@ -36,13 +37,18 @@ describe("Normandy September assortment and hardware",()=>{
   const rows=Array.from({length:count},(_,i)=>({lineId:String(i),selection:blind({valance:"Linear",wood_common_group:"1",wood_common_position:i+1,wood_common_gap_after:i<count-1?.375:0,wood_valance_width_inches:width},w)}));
   deriveNormanOrderRecords(rows);
   const priced=rows.map(({selection:s})=>priceQuoteV2Selection({selection:s,priceInput:{productId:s.productId,programId:s.programId!,widthInches:s.widthInches,heightInches:s.heightInches,quantity:1,valanceWidthInches:woodValancePriceWidth(s),surcharges:authoritativeAutomaticSurchargeSelections(s)},includeInternalCost:true}));
-  for(const p of priced)expect(p.ok,JSON.stringify(p)).toBe(true);
-  expect(priced.flatMap(p=>p.ok?p.surchargeLines:[]).filter(c=>c.id==="valance_surcharge_contempo").map(c=>c.amount)).toEqual([charge]);
+  for(const p of priced)expect(p,JSON.stringify(p)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
+  const lists=rows.map(({selection:s})=>priceDesign({productId:s.productId,programId:s.programId!,widthInches:s.widthInches,heightInches:s.heightInches,quantity:1,valanceWidthInches:woodValancePriceWidth(s),surcharges:authoritativeAutomaticSurchargeSelections(s)},s.catalogAsOf));
+  expect(lists.flatMap(p=>p.ok?p.surchargeLines:[]).filter(c=>c.id==="valance_surcharge_contempo").map(c=>c.amount)).toEqual([charge]);
  });
  it("matches independent custom and multiple-keystone dealer samples",()=>{
-  const custom=price(blind({valance:"Linear",wood_valance_width_inches:40}));expect(custom.ok&&custom.total).toBe(634);
-  const multiple=price(blind({valance:"Linear",wood_keystone_count:2},60));expect(multiple.ok&&multiple.total).toBe(1118);
-  const three=price(blind({valance:"Linear",wood_keystone_count:3},84));expect(three.ok&&three.surchargeLines.find(c=>c.id==="keystone")?.amount).toBe(243);
+  const customSel=blind({valance:"Linear",wood_valance_width_inches:40});expect(price(customSel)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
+  expect(priceDesign({productId:customSel.productId,programId:customSel.programId!,widthInches:customSel.widthInches,heightInches:customSel.heightInches,valanceWidthInches:woodValancePriceWidth(customSel),surcharges:authoritativeAutomaticSurchargeSelections(customSel)},customSel.catalogAsOf)).toMatchObject({ok:true,total:634});
+  const multipleSel=blind({valance:"Linear",wood_keystone_count:2},60);expect(price(multipleSel)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
+  expect(priceDesign({productId:multipleSel.productId,programId:multipleSel.programId!,widthInches:60,heightInches:60,valanceWidthInches:woodValancePriceWidth(multipleSel),surcharges:authoritativeAutomaticSurchargeSelections(multipleSel)},multipleSel.catalogAsOf)).toMatchObject({ok:true,total:1118});
+  const threeSel=blind({valance:"Linear",wood_keystone_count:3},84);expect(price(threeSel)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
+  const threeList=priceDesign({productId:threeSel.productId,programId:threeSel.programId!,widthInches:84,heightInches:60,valanceWidthInches:woodValancePriceWidth(threeSel),surcharges:authoritativeAutomaticSurchargeSelections(threeSel)},threeSel.catalogAsOf);
+  expect(threeList.ok&&threeList.surchargeLines.find(c=>c.id==="keystone")?.amount).toBe(243);
   expect(rules(blind({valance:"Linear",wood_keystone_count:3},60))).toContain("keystone_spacing");
  });
  it("preserves older catalog behavior",()=>{const s=blind();s.catalogAsOf="2026-09-18";expect(woodComponents(s)).toBeNull();});
