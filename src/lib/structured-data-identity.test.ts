@@ -19,7 +19,7 @@ describe("approved schema-only business identity", () => {
     expect(business().contactPoint).toMatchObject({ telephone: "+1-805-806-9344", email: "805@805shutters.com" });
   });
 
-  it("includes the fourteen Ventura areas plus Santa Clarita and north LA County without an address", () => {
+  it("includes the fourteen Ventura areas plus Santa Clarita and north LA County without a private street address", () => {
     expect(business().areaServed.map((area: Node) => area.name)).toEqual([
       "Ventura County", "Oxnard", "Ventura", "Camarillo", "Ojai", "Simi Valley", "Port Hueneme",
       "Thousand Oaks", "Fillmore", "Moorpark", "Oak Park", "Westlake Village", "Santa Paula", "Santa Rosa Valley", "Newbury Park",
@@ -27,7 +27,12 @@ describe("approved schema-only business identity", () => {
     ]);
     expect(business().contactPoint.areaServed).toEqual(business().areaServed);
     expect(business().serviceArea).toEqual(business().areaServed);
-    expect(business()).not.toHaveProperty("address");
+    expect(business().address).toEqual({
+      "@type": "PostalAddress", addressLocality: "Camarillo", addressRegion: "CA",
+      postalCode: "93010", addressCountry: "US"
+    });
+    expect(business().address).not.toHaveProperty("streetAddress");
+    expect(business()).not.toHaveProperty("geo");
     expect(business().sameAs).toEqual(expect.arrayContaining([
       "https://www.facebook.com/805shutters", "https://www.instagram.com/805shutters",
       "https://www.yelp.com/biz/805-shutters-shades-blinds-camarillo-2", "https://maps.google.com/?cid=14597332202667384985"

@@ -42,3 +42,13 @@ The live Yelp endpoint reports `configured: false` and returns no reviews. The s
 ## Rollback
 
 Revert the audit implementation commit and redeploy the previously approved version. No migrations, stored business data, booking records, or page deletions are involved.
+
+## Validation evidence
+
+- Preview deployment for source commit `23d37a9`: `https://805-nsn5uqitj-805-shutters.vercel.app` (Vercel READY). Access remains protected; no public sharing grant was created.
+- 44 focused regression tests pass across editorial image delivery, Meta queue/loading/deduplication, booking recovery, structured data, and sitemap generation. The historical quote evidence test also passes after fetching its pinned historical commit.
+- Browser layout checks at 390/1280/1440 pixels: no header overlap, no horizontal overflow, no page exceptions, and keyboard skip-link focus succeeds.
+- Shutters/gallery/reviews/booking routes return 200 locally. Checked image counts: 29/58/3/3; all have dimensions and no broken loaded image sources.
+- Hero source: 230,105 bytes. Optimized AVIF: 29,677 bytes for the tall mobile crop and 37,858 bytes at desktop sizing. These asset sizes are not field-performance measurements.
+- Local redirect requests with apex Host: both `/shutters` and `/shutters/` return a single permanent 308 to `https://www.805shutters.com/shutters/`; `/shutters/camarillo/` preserves its slash. Asset URLs retain their file extension path.
+- Full repository suite and final local build are still running. Some database tests timed out under concurrent build/typecheck load; rerun them with isolated resources before claiming a clean full suite.
