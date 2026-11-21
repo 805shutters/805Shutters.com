@@ -1,4 +1,4 @@
--- Sundance line-event consumer. Stacked on the Norman consumer.
+-- Sundance line-event consumer. Stacked on the Onyx consumer, which is stacked on Norman.
 -- Additive only: new role, tables, and functions. No drops, deletes, or truncates.
 -- Not applied to production by the pull request that adds this file.
 -- Does not read or write crm_live_lookup_switch. The Sundance switch stays off.
@@ -20,14 +20,19 @@
 -- (sha256 e42412f4efecf94cd03f6fe2e254ebf64e62798b7521b369892d4e3f21211656). This migration does not seed public.quote_category_field_sequence.
 -- Follow-up: seed that table from the same file after the field list is confirmed.
 --
--- public.wake_line_event_worker keeps the Norman gate on line_event.wake_http,
--- line_event.worker_url, and line_event.worker_secret. Sundance stays closed
--- until an operator, outside this migration, sets every one of these:
+-- public.wake_line_event_worker keeps every earlier gate. Norman stays on
+-- line_event.wake_http, line_event.worker_url, and line_event.worker_secret
+-- (route NORMAN_LINE_EVENT_WAKE_ENABLED). Onyx stays on line_event.onyx_wake_http,
+-- line_event.onyx_worker_url, and line_event.onyx_worker_secret
+-- (route ONYX_LINE_EVENT_WAKE_ENABLED). Sundance stays closed until an operator,
+-- outside this migration, sets every one of these:
 --   line_event.sundance_wake_http = on
 --   line_event.sundance_worker_url = https://www.805shutters.com/api/crm/sundance-line-event-worker
 --   line_event.sundance_worker_secret = the server env SUNDANCE_LINE_EVENT_WORKER_SECRET
 -- The route also stays closed until SUNDANCE_LINE_EVENT_WAKE_ENABLED=true and
--- SUNDANCE_LINE_EVENT_WORKER_SECRET is set. A missing URL or secret fails closed.
+-- SUNDANCE_LINE_EVENT_WORKER_SECRET is set. Lotus stays wake_disabled.
+-- A missing URL or secret fails closed. Applying this after Norman and Onyx
+-- does not remove either of those branches.
 
 
 create table if not exists line_event.sundance_order_field_source (
@@ -13801,14 +13806,18 @@ begin
   if p_event_id is null then
     raise exception 'event_id is required';
   end if;
-  if v_manufacturer = 'sundance' then
-    v_enabled := current_setting('line_event.sundance_wake_http', true);
-    v_url := nullif(btrim(coalesce(current_setting('line_event.sundance_worker_url', true), '')), '');
-    v_secret := nullif(btrim(coalesce(current_setting('line_event.sundance_worker_secret', true), '')), '');
-  elsif v_manufacturer = 'norman' then
+  if v_manufacturer = 'norman' then
     v_enabled := current_setting('line_event.wake_http', true);
     v_url := nullif(btrim(coalesce(current_setting('line_event.worker_url', true), '')), '');
     v_secret := nullif(btrim(coalesce(current_setting('line_event.worker_secret', true), '')), '');
+  elsif v_manufacturer = 'onyx' then
+    v_enabled := current_setting('line_event.onyx_wake_http', true);
+    v_url := nullif(btrim(coalesce(current_setting('line_event.onyx_worker_url', true), '')), '');
+    v_secret := nullif(btrim(coalesce(current_setting('line_event.onyx_worker_secret', true), '')), '');
+  elsif v_manufacturer = 'sundance' then
+    v_enabled := current_setting('line_event.sundance_wake_http', true);
+    v_url := nullif(btrim(coalesce(current_setting('line_event.sundance_worker_url', true), '')), '');
+    v_secret := nullif(btrim(coalesce(current_setting('line_event.sundance_worker_secret', true), '')), '');
   else
     return jsonb_build_object(
       'woken', false,
@@ -13872,7 +13881,7 @@ end
 $fn$;
 
 comment on function public.wake_line_event_worker(text, uuid) is
-  'Posts one Norman or Sundance line event when that manufacturer wake is configured. Otherwise returns wake_disabled or wake_unconfigured and does not call out. enqueue_line_event is the only caller. Sundance defaults off.';
+  'Posts one Norman, Onyx, or Sundance line event when that maker''s own wake gate, URL, and secret are set. Otherwise returns wake_disabled or wake_unconfigured and does not call out. Lotus stays disabled. enqueue_line_event is the only caller.';
 
 create or replace function public.consume_sundance_line_event(
   p_idempotency_key text,

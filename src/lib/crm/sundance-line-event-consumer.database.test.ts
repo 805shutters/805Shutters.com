@@ -133,6 +133,7 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/20261121223000_line_event_queue.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/20261121234500_onyx_sundance_price_records.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/20261121235500_norman_line_event_consumer.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/20261122040000_onyx_line_event_consumer.sql", "utf8"));
   await db.exec(`
     alter table sales_quotes add column if not exists manufacturer_order_ref text;
     create table crm_jobs(id uuid primary key);
@@ -449,10 +450,22 @@ describe("sundance line-event consumer", () => {
     }
   });
 
-  it("leaves the Sundance wake disabled until its own settings are on", async () => {
+  it("keeps the Norman, Onyx, and Sundance wake branches after the migrations run in order", async () => {
     await seed(5, 51);
     const queued = await enqueue(51, 1, "sundance", orderPayload(5, 51, await hash(51)));
+    const norman = await enqueue(61, 1, "norman", { room: "Living" });
+    const onyx = await enqueue(62, 1, "onyx", { room: "Living" });
+    const lotus = await enqueue(63, 1, "lotus", { room: "Living" });
     expect(queued.wake).toMatchObject({ woken: false, reason: "wake_disabled", manufacturer: "sundance" });
+    expect(norman.wake).toMatchObject({ woken: false, reason: "wake_disabled", manufacturer: "norman" });
+    expect(onyx.wake).toMatchObject({ woken: false, reason: "wake_disabled", manufacturer: "onyx" });
+    expect(lotus.wake).toMatchObject({ woken: false, reason: "wake_disabled", manufacturer: "lotus" });
+    const definition = await db.query<{ def: string }>(
+      "select pg_get_functiondef('public.wake_line_event_worker(text, uuid)'::regprocedure) as def",
+    );
+    expect(definition.rows[0].def).toContain("line_event.wake_http");
+    expect(definition.rows[0].def).toContain("line_event.onyx_wake_http");
+    expect(definition.rows[0].def).toContain("line_event.sundance_wake_http");
     await db.exec(`
       create schema if not exists net;
       create table if not exists net.http_calls(id bigint generated always as identity primary key, url text, body jsonb, headers jsonb);
@@ -465,35 +478,59 @@ describe("sundance line-event consumer", () => {
       end
       $http$;
     `);
+    const wake = (manufacturer: string, eventId: unknown) => call<Json>(
+      "select public.wake_line_event_worker($1, $2::uuid) as result",
+      [manufacturer, eventId],
+    );
+    const normanOnly = await wake("norman", norman.event_id);
+    expect(normanOnly).toMatchObject({ woken: false, reason: "wake_disabled", manufacturer: "norman" });
     await db.query("select set_config('line_event.wake_http', 'on', false)");
     await db.query("select set_config('line_event.worker_url', 'https://www.805shutters.com/api/crm/norman-line-event-worker', false)");
     await db.query("select set_config('line_event.worker_secret', $1, false)", [workerSecret]);
-    const stillOff = await call<Json>(
-      "select public.wake_line_event_worker('sundance', $1::uuid) as result",
-      [queued.event_id],
-    );
-    expect(stillOff).toMatchObject({ woken: false, reason: "wake_disabled", manufacturer: "sundance" });
-    const calls = await db.query<{ n: number }>("select count(*)::int as n from net.http_calls");
-    expect(calls.rows[0].n).toBe(0);
+    expect(await wake("onyx", onyx.event_id)).toMatchObject({ woken: false, reason: "wake_disabled", manufacturer: "onyx" });
+    expect(await wake("sundance", queued.event_id)).toMatchObject({ woken: false, reason: "wake_disabled", manufacturer: "sundance" });
+    expect(await wake("lotus", lotus.event_id)).toMatchObject({ woken: false, reason: "wake_disabled", manufacturer: "lotus" });
+    const normanWoken = await wake("norman", norman.event_id);
+    expect(normanWoken).toMatchObject({ woken: true, reason: "http", manufacturer: "norman", event_id: norman.event_id });
+    expect(JSON.stringify(normanWoken)).not.toContain(workerSecret);
+
+    await db.query("select set_config('line_event.wake_http', '', false)");
+    await db.query("select set_config('line_event.onyx_wake_http', 'on', false)");
+    await db.query("select set_config('line_event.onyx_worker_url', 'https://www.805shutters.com/api/crm/onyx-line-event-worker', false)");
+    await db.query("select set_config('line_event.onyx_worker_secret', $1, false)", [workerSecret]);
+    expect(await wake("norman", norman.event_id)).toMatchObject({ woken: false, reason: "wake_disabled", manufacturer: "norman" });
+    expect(await wake("sundance", queued.event_id)).toMatchObject({ woken: false, reason: "wake_disabled", manufacturer: "sundance" });
+    const onyxWoken = await wake("onyx", onyx.event_id);
+    expect(onyxWoken).toMatchObject({ woken: true, reason: "http", manufacturer: "onyx", event_id: onyx.event_id });
+    expect(JSON.stringify(onyxWoken)).not.toContain(workerSecret);
+
+    await db.query("select set_config('line_event.onyx_wake_http', '', false)");
     await db.query("select set_config('line_event.sundance_wake_http', 'on', false)");
     await db.query("select set_config('line_event.sundance_worker_url', 'https://www.805shutters.com/api/crm/sundance-line-event-worker', false)");
     await db.query("select set_config('line_event.sundance_worker_secret', $1, false)", [workerSecret]);
-    const woken = await call<Json>(
-      "select public.wake_line_event_worker('sundance', $1::uuid) as result",
-      [queued.event_id],
-    );
-    expect(woken).toMatchObject({
+    expect(await wake("norman", norman.event_id)).toMatchObject({ woken: false, reason: "wake_disabled", manufacturer: "norman" });
+    expect(await wake("onyx", onyx.event_id)).toMatchObject({ woken: false, reason: "wake_disabled", manufacturer: "onyx" });
+    expect(await wake("lotus", lotus.event_id)).toMatchObject({ woken: false, reason: "wake_disabled", manufacturer: "lotus" });
+    const sundanceWoken = await wake("sundance", queued.event_id);
+    expect(sundanceWoken).toMatchObject({
       woken: true,
       reason: "http",
       manufacturer: "sundance",
       event_id: queued.event_id,
     });
-    const posted = await db.query<{ url: string; body: Json }>("select url, body from net.http_calls");
-    expect(posted.rows).toHaveLength(1);
-    expect(posted.rows[0].url).toBe("https://www.805shutters.com/api/crm/sundance-line-event-worker");
-    expect(posted.rows[0].body).toMatchObject({ manufacturer: "sundance", idempotency_key: `${id(51)}:1` });
-    expect(JSON.stringify(woken)).not.toContain(workerSecret);
+    expect(JSON.stringify(sundanceWoken)).not.toContain(workerSecret);
+    const posted = await db.query<{ url: string }>("select url from net.http_calls order by id");
+    expect(posted.rows.map((row) => row.url)).toEqual([
+      "https://www.805shutters.com/api/crm/norman-line-event-worker",
+      "https://www.805shutters.com/api/crm/onyx-line-event-worker",
+      "https://www.805shutters.com/api/crm/sundance-line-event-worker",
+    ]);
     await db.query("select set_config('line_event.sundance_wake_http', '', false)");
-    await db.query("select set_config('line_event.wake_http', '', false)");
+    await db.query("select set_config('line_event.worker_url', '', false)");
+    await db.query("select set_config('line_event.worker_secret', '', false)");
+    await db.query("select set_config('line_event.onyx_worker_url', '', false)");
+    await db.query("select set_config('line_event.onyx_worker_secret', '', false)");
+    await db.query("select set_config('line_event.sundance_worker_url', '', false)");
+    await db.query("select set_config('line_event.sundance_worker_secret', '', false)");
   });
 });
