@@ -1,5 +1,6 @@
 import Script from "next/script";
 import { getGa4Ids, getGoogleAdsId } from "@/lib/tracking-config";
+import { googleTagLoader } from "@/lib/google-tag-loader";
 
 export function TrackingScripts() {
   const ga4Ids = getGa4Ids();
@@ -10,10 +11,9 @@ export function TrackingScripts() {
     <>
       {gtagIds.length > 0 ? (
         <>
-          <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${gtagIds[0]}`}
-            strategy="lazyOnload"
-          />
+          <Script id="google-tag-library" strategy="lazyOnload">
+            {googleTagLoader(gtagIds[0])}
+          </Script>
           <Script id="google-tags" strategy="afterInteractive">
             {`
               window.dataLayer = window.dataLayer || [];
