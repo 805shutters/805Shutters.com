@@ -2,8 +2,9 @@
 -- That check is already on the production table. This migration does not create,
 -- alter, or drop it. It only replaces the functions that insert and update rows.
 -- Recorded and manual rows stay unallocated, with merchandise, installation and
--- shipping null. price_line_from_receipt sets those three amounts and mode
--- supplier_cost in the same update.
+-- shipping null, and a non-negative line_total. price_line_from_receipt sets
+-- mode supplier_cost in the same update as the three amounts. Merchandise is
+-- the extended sell amount, so line_total equals merchandise + installation + shipping.
 
 create or replace function public.record_vendor_price_receipt(
   p_quote_id uuid, p_expected_revision bigint, p_receipt jsonb, p_actor text
@@ -213,7 +214,7 @@ begin
   where recorded.quote_id = q.id and recorded.line_id = l.id and recorded.id <> price.id;
   update public.crm_supplier_workflow_line_prices as recorded
   set margin = q.live_margin,
-      merchandise = v_unit,
+      merchandise = round(v_unit * l.quantity, 2),
       installation = v_install,
       shipping = v_ship,
       line_total = round(v_unit * l.quantity, 2) + v_install + v_ship,
