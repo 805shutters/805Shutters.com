@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { customerEmailStatus, type CustomerEmailRecord } from "@/lib/crm/customer-email-status";
+import { customerEmailNeedsAttention, customerEmailStatus, type CustomerEmailRecord } from "@/lib/crm/customer-email-status";
 import { Mail, RefreshCw } from "lucide-react";
 import styles from "./CustomerEmailStatus.module.css";
 type Result = { messages?: CustomerEmailRecord[]; activation?: string | null; activated?: boolean; ok?: boolean; attention?: number; stale?: boolean; missing?: number; workerFailed?: boolean; providerConfigured?: boolean; providerReady?: boolean; providerReason?: string | null };
@@ -21,6 +21,19 @@ export function CustomerEmailStatus({ jobId, compact = false }: { jobId?: string
       if (!signal?.aborted) { setResult(body); setError(""); }
     } catch (error) { if (!signal?.aborted) setError(error instanceof Error ? error.message : "Customer email status unavailable."); }
   }, [jobId]);
+  const markHandled = useCallback(async (id: string, note: string) => {
+    const client = getSupabaseBrowserClient();
+    const session = client ? (await client.auth.getSession()).data.session : null;
+    if (!session) throw new Error("Sign in to view customer email delivery.");
+    const response = await fetch("/api/crm/customer-email-status/resolve", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ id, note }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.message || "Could not mark this email handled.");
+    await refresh();
+  }, [refresh]);
   useEffect(() => { setResult(null); const controller = new AbortController(); void refresh(controller.signal);
     const timer = setInterval(() => void refresh(controller.signal), 60000);
     return () => { controller.abort(); clearInterval(timer); }; }, [refresh]);
@@ -32,6 +45,7 @@ export function CustomerEmailStatus({ jobId, compact = false }: { jobId?: string
         <small>Queued {new Date(message.created_at).toLocaleString()}{message.provider_accepted_at && ` · Accepted ${new Date(message.provider_accepted_at).toLocaleString()}`}{message.delivery_checked_at && ` · Delivery checked ${new Date(message.delivery_checked_at).toLocaleString()}`}</small>
         {(message.last_error || message.delivery_error) && <p role="alert">{message.last_error || message.delivery_error}</p>}
         {result.activation && Date.parse(message.created_at) < Date.parse(result.activation) && <p>Historical record · excluded from automatic retries.</p>}
+        <AttentionResolution message={message} onResolve={markHandled} />
       </div>)}
     </> : <p role={result.ok ? "status" : "alert"}>{!result.activated ? "Customer email automation is awaiting activation." : result.ok ? "Signing and paid-in-full email checks are current." : `${result.attention || 0} customer email(s) need attention. ${result.missing ? `${result.missing} new event(s) are missing an email request. ` : ""}${result.providerConfigured === false ? "The email provider is not configured. " : ""}${result.providerReady === false ? `${result.providerReason || "Delivery tracking is unavailable."} ` : ""}${result.workerFailed ? "The latest email worker run failed. " : ""}${result.stale ? "The email worker has not checked in within 15 minutes." : "Open the customer’s job to review delivery details."}`}</p>}
     <button type="button" onClick={() => void refresh()}><RefreshCw size={14} aria-hidden="true" />Refresh email status</button>
@@ -41,4 +55,27 @@ export function CustomerEmailStatus({ jobId, compact = false }: { jobId?: string
     <h3>Customer emails</h3>
     {content}
   </section>;
+}
+
+function AttentionResolution({ message, onResolve }: { message: CustomerEmailRecord; onResolve: (id: string, note: string) => Promise<void> }) {
+  const [note, setNote] = useState("");
+  const [pending, setPending] = useState(false);
+  const [actionError, setActionError] = useState("");
+  if (message.attention_resolved_at) {
+    const when = new Date(message.attention_resolved_at).toLocaleString();
+    return <p className={styles.handled}>Handled {when}{message.attention_resolved_by ? ` by ${message.attention_resolved_by}` : ""}{message.attention_resolved_note ? ` · ${message.attention_resolved_note}` : ""}</p>;
+  }
+  if (!customerEmailNeedsAttention(message)) return null;
+  return <div className={styles.action}>
+    <input className={styles.note} aria-label="Optional handling note" maxLength={500} value={note} placeholder="Optional note" autoComplete="off" onChange={event => setNote(event.target.value)} />
+    <button type="button" disabled={pending} onClick={() => {
+      setPending(true);
+      setActionError("");
+      void onResolve(message.id, note).catch(error => {
+        setActionError(error instanceof Error ? error.message : "Could not mark this email handled.");
+        setPending(false);
+      });
+    }}>Mark handled</button>
+    {actionError ? <p role="alert">{actionError}</p> : null}
+  </div>;
 }
