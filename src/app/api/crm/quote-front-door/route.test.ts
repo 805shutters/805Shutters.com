@@ -5,7 +5,7 @@ import { CrmAuthError, isKenCrmRequestAllowed } from "@/lib/crm/auth";
 const mocks = vi.hoisted(() => ({ auth: vi.fn() }));
 vi.mock("@/lib/crm/auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/crm/auth")>()),
-  requireCrmUser: mocks.auth,
+  requireQuoteFrontDoorActor: mocks.auth,
 }));
 
 import { GET as lookupCustomers } from "./customers/route";
@@ -98,7 +98,8 @@ describe("quote front door routes", () => {
     mocks.auth.mockResolvedValue({
       supabase: db.client,
       email: "805shutters@gmail.com",
-      user: { id: "11111111-1111-4111-8111-111111111111" },
+      userId: "11111111-1111-4111-8111-111111111111",
+      kind: "staff",
     });
     const lookup = await lookupCustomers(new NextRequest("http://localhost/api/crm/quote-front-door/customers?name=Jane%20Smith"));
     expect(lookup.status).toBe(200);

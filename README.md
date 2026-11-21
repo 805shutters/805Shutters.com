@@ -35,6 +35,44 @@ npm run supabase:reset
 Production deploys for this repo go to the Vercel project `805`. The stable
 verification URL is `https://805-one.vercel.app`.
 
+## Quoter service
+
+The Quoter is a server-to-server caller. It is not a `crm_profiles` user and it
+does not sign in through Supabase. Staff CRM sessions stay on `requireCrmUser`.
+The bot sends `Authorization: Bearer <token>`. The server reads
+`QUOTER_SERVICE_TOKEN`, hashes that value and the presented token, and compares
+the digests with a timing-safe compare. If the variable is missing or blank,
+the check fails closed and the bearer is not a Quoter token.
+
+The token is accepted only on these routes:
+
+- `GET /api/crm/quote-front-door/customers`
+- `POST /api/crm/quote-front-door/next-field`
+- `POST /api/crm/quote-front-door/validate`
+- `POST /api/crm/quote-front-door/read-back`
+- `POST /api/crm/quote-front-door/draft`
+
+The only write is an insert into `crm_quote_front_door_drafts` with status
+`draft`. The bot cannot send a quote, a payment link, an email, or a text, and
+it cannot write `quote_category_field_sequence` or `quote_sequence_field_alias`.
+
+### Client contract
+
+Before any write, make one read call to check the token. Use
+`GET /api/crm/quote-front-door/customers` with no search params. That call does
+not create a customer and does not save a draft. If the read returns 401 or
+403, retry that same read once. If it fails again, stop and report the status.
+Do not send the write. The helper is `runQuoterFrontDoorCall` in
+`src/lib/crm/quoter-service-client.ts`. A later write that returns 401 or 403
+is retried once and then stopped the same way.
+
+### Where the secret goes
+
+Do not put the token in the repo, in a migration, or in a client bundle. Set
+`QUOTER_SERVICE_TOKEN` in the Vercel project environment for the `805`
+deployment, or in the Grok vault. This repository does not create a live secret.
+Leave the value blank in `.env.example`.
+
 ## Deploy to Vercel
 
 The deploy command validates the app, pushes `main`, waits for the GitHub-backed

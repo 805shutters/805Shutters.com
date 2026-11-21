@@ -16,6 +16,7 @@ import { CrmAuthError } from "@/lib/crm/auth";
 
 /**
  * Staff CRM calls reach this store through the service client after requireCrmUser.
+ * The Quoter service token reaches it through a restricted client that can insert drafts only.
  * The store reads customers, jobs, calendar events, and appointments.
  * The only write is create_quote_v2_draft for the signed-in staff actor, which stays a draft.
  */

@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, User } from "@supabase/supabase-js";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { allowedCrmEmails, isAllowedCrmEmail, isKenCrmEmail, normalizeCrmEmail } from "@/lib/crm/allowed-users";
+import {
+  QUOTER_SERVICE_DENIED_MESSAGE,
+  QUOTER_SERVICE_EMAIL,
+  QuoterServiceAuthError,
+  isQuoterFrontDoorRoute,
+  quoterFrontDoorDb,
+  quoterServiceTokenMatches,
+  type QuoterDb,
+} from "@/lib/crm/quoter-service-auth";
 
 export class CrmAuthError extends Error {
   status: number;
@@ -64,6 +73,10 @@ export async function requireCrmUser(request: NextRequest) {
     throw new CrmAuthError(401, "CRM session is required.");
   }
 
+  if (quoterServiceTokenMatches(token)) {
+    throw new CrmAuthError(403, QUOTER_SERVICE_DENIED_MESSAGE);
+  }
+
   const user = await getUserFromToken(token);
   const email = user.email ? normalizeCrmEmail(user.email) : "";
 
@@ -109,8 +122,44 @@ export async function requireCrmUser(request: NextRequest) {
   };
 }
 
+/**
+ * Staff sessions use requireCrmUser. A matching Quoter service token is accepted
+ * only on the five front-door routes and never upserts crm_profiles.
+ */
+export async function requireQuoteFrontDoorActor(request: NextRequest): Promise<{
+  supabase: QuoterDb;
+  email: string;
+  userId: string | null;
+  kind: "quoter-service" | "staff";
+}> {
+  const token = getBearerToken(request);
+  if (token && quoterServiceTokenMatches(token)) {
+    if (!isQuoterFrontDoorRoute(request.nextUrl.pathname)) {
+      throw new CrmAuthError(403, QUOTER_SERVICE_DENIED_MESSAGE);
+    }
+    const supabase = getSupabaseServiceClient();
+    if (!supabase) {
+      throw new CrmAuthError(503, "Dedicated Supabase database is not configured.");
+    }
+    return {
+      supabase: quoterFrontDoorDb(supabase as unknown as QuoterDb),
+      email: QUOTER_SERVICE_EMAIL,
+      userId: null,
+      kind: "quoter-service",
+    };
+  }
+
+  const staff = await requireCrmUser(request);
+  return {
+    supabase: staff.supabase as unknown as QuoterDb,
+    email: staff.email,
+    userId: staff.user.id,
+    kind: "staff",
+  };
+}
+
 export function crmAuthErrorResponse(error: unknown) {
-  if (error instanceof CrmAuthError) {
+  if (error instanceof CrmAuthError || error instanceof QuoterServiceAuthError) {
     return NextResponse.json({ message: error.message }, { status: error.status });
   }
 
