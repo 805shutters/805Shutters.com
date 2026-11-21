@@ -2,7 +2,7 @@ import registryJson from "./manufacturer-order-form-registry.json";
 
 export type OrderEntryCapabilityState = "portal_draft_verified" | "portal_draft_conditional" | "document_packet_verified" | "portal_auth_required" | "portal_schema_required" | "portal_mapping_required";
 export type OrderEntryRouteCapability = {
-  manufacturer: "Norman" | "Onyx" | "Lotus" | "Polar";
+  manufacturer: "Norman" | "Onyx" | "Lotus" | "Polar" | "Sundance";
   routingKey: string;
   productName: string;
   state: OrderEntryCapabilityState;
@@ -37,6 +37,12 @@ function routeCapability(manufacturerKey: string, entry: RegistryEntry): OrderEn
       evidence: storefrontUnavailable
         ? "Official Lotus custom collection currently exposes zero products; use the exact order-document workflow."
         : "Official Lotus storefront exposes stock-size commerce, not a verified arbitrary-measure custom-order form; use the exact order-document workflow." };
+  }
+  if (manufacturerKey === "sundance") {
+    return { manufacturer: "Sundance", routingKey: entry.routing_key, productName: entry.product_name,
+      state: "portal_schema_required", enterOrderMode: "blocked",
+      exactBoundary: "Sundance order form is review only. Live Blindata confirmation is still open, and no vendor account is seeded.",
+      evidence: "data/order-entry/805-sundance-order-fields.json. Fields that need a live form check stay incomplete." };
   }
   return { manufacturer: "Polar", routingKey: entry.routing_key, productName: entry.product_name,
     state: "portal_auth_required", enterOrderMode: "blocked",
