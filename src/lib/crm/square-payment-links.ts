@@ -72,13 +72,22 @@ export class SquarePaymentDeliveryError extends CrmAuthError {
   }
 }
 
-export function squarePaymentRecipient(savedEmail: string | null | undefined, alternateEmail?: string | null) {
+/** Same address the card-link email uses. A preview can read `email: null` without sending. */
+export function paymentRecipientAddress(savedEmail: string | null | undefined, alternateEmail?: string | null) {
   const recipient = String(alternateEmail || "").trim() || String(savedEmail || "").trim();
-  if (!recipient) throw new CrmAuthError(400, "Add a customer email or enter a different email before sending a card payment link.");
-  if (recipient.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
-    throw new CrmAuthError(400, "Enter a valid email address before sending the card payment link.");
+  if (!recipient) {
+    return { email: null, rejection: "Add a customer email or enter a different email before sending a card payment link." };
   }
-  return recipient;
+  if (recipient.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+    return { email: null, rejection: "Enter a valid email address before sending the card payment link." };
+  }
+  return { email: recipient, rejection: null };
+}
+
+export function squarePaymentRecipient(savedEmail: string | null | undefined, alternateEmail?: string | null) {
+  const resolved = paymentRecipientAddress(savedEmail, alternateEmail);
+  if (!resolved.email) throw new CrmAuthError(400, resolved.rejection || "Enter a valid email address before sending the card payment link.");
+  return resolved.email;
 }
 
 export function squareOrderPaymentAmounts(input: {
@@ -93,6 +102,33 @@ export function squareOrderPaymentAmounts(input: {
   const balance = state.dueType === "balance" ? state.amountDue : Math.max(state.outstanding - deposit, 0);
   const { outstanding } = state;
   return { deposit, balance, outstanding };
+}
+
+/** Amount a deposit or balance link collects before a full, partial, or custom confirmation. */
+export function collectiblePaymentAmount(
+  amounts: { deposit: number; balance: number },
+  paymentType: SquareOrderPaymentType,
+) {
+  return squarePaymentRequestAmount(amounts[paymentType]);
+}
+
+export async function loadOrderPaymentLedger(supabase: CrmSupabaseClient, quoteId: string) {
+  const [paymentsResult, creditsInResult, creditsOutResult] = await Promise.all([
+    collectCrmPages<QuoteLedgerPayment>((from, to) => supabase.from("crm_quote_bookkeeping_payments")
+      .select("amount,payment_label").eq("quote_id", quoteId).order("id", { ascending: true }).range(from, to)),
+    collectCrmPages<QuoteLedgerCredit>((from, to) => supabase.from("crm_quote_bookkeeping_credits")
+      .select("amount").eq("to_quote_id", quoteId).order("id", { ascending: true }).range(from, to)),
+    collectCrmPages<QuoteLedgerCredit>((from, to) => supabase.from("crm_quote_bookkeeping_credits")
+      .select("amount").eq("from_quote_id", quoteId).order("id", { ascending: true }).range(from, to)),
+  ]);
+  if (paymentsResult.error || creditsInResult.error || creditsOutResult.error) {
+    throw new CrmAuthError(502, "The current payment balance could not be verified.");
+  }
+  return {
+    payments: (paymentsResult.data || []) as QuoteLedgerPayment[],
+    creditsIn: (creditsInResult.data || []) as QuoteLedgerCredit[],
+    creditsOut: (creditsOutResult.data || []) as QuoteLedgerCredit[],
+  };
 }
 
 export async function sendSquareOrderPaymentLink(
@@ -111,24 +147,12 @@ export async function sendSquareOrderPaymentLink(
   if (!publicQuote) throw new CrmAuthError(404, "Quote was not found.");
 
   if(cardProvider() === "stripe" && !publicQuote.signed)throw new CrmAuthError(409,"The selected contract must be signed before requesting a card payment.");
-  const [paymentsResult, creditsInResult, creditsOutResult] = await Promise.all([
-    collectCrmPages<QuoteLedgerPayment>((from, to) => supabase.from("crm_quote_bookkeeping_payments")
-      .select("amount,payment_label").eq("quote_id", quoteId).order("id", { ascending: true }).range(from, to)),
-    collectCrmPages<QuoteLedgerCredit>((from, to) => supabase.from("crm_quote_bookkeeping_credits")
-      .select("amount").eq("to_quote_id", quoteId).order("id", { ascending: true }).range(from, to)),
-    collectCrmPages<QuoteLedgerCredit>((from, to) => supabase.from("crm_quote_bookkeeping_credits")
-      .select("amount").eq("from_quote_id", quoteId).order("id", { ascending: true }).range(from, to)),
-  ]);
-  if (paymentsResult.error || creditsInResult.error || creditsOutResult.error) {
-    throw new CrmAuthError(502, "The current payment balance could not be verified.");
-  }
+  const ledger = await loadOrderPaymentLedger(supabase, quoteId);
 
   const amounts = squareOrderPaymentAmounts({
     total: publicQuote.total,
     depositRequired: publicQuote.depositDue,
-    payments: (paymentsResult.data || []) as QuoteLedgerPayment[],
-    creditsIn: (creditsInResult.data || []) as QuoteLedgerCredit[],
-    creditsOut: (creditsOutResult.data || []) as QuoteLedgerCredit[],
+    ...ledger,
   });
   const kind = confirmation?.requestKind;
   if (kind && !["deposit", "balance", "full", "custom"].includes(kind)) throw new CrmAuthError(400, "Choose a valid payment amount.");
@@ -151,7 +175,8 @@ export async function sendSquareOrderPaymentLink(
     throw new CrmAuthError(400, "Enter the partial payment amount.");
   }
   if(publicQuote.paymentSchedule === "in_house_three_month_v1")throw new CrmAuthError(409,"Use the exact installment checkout or reviewed reminder in In-house payment tracking.");
-  const amount = squarePaymentRequestAmount(collectionMode || kind === "full" || kind === "custom" ? amounts.outstanding : amounts[paymentType], confirmation?.customAmount);
+  const catalogAmount = collectiblePaymentAmount(amounts, paymentType);
+  const amount = squarePaymentRequestAmount(collectionMode || kind === "full" || kind === "custom" ? amounts.outstanding : catalogAmount, confirmation?.customAmount);
   if (collectionMode === "partial" && dollarsToCents(amount) >= dollarsToCents(amounts.outstanding)) {
     throw new CrmAuthError(400, "Use full balance to collect the entire remaining amount.");
   }
