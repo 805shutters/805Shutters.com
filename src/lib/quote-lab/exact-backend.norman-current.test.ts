@@ -66,7 +66,7 @@ describe("Current Norman production configurations",()=>{
   q.designs[0].mount_type="Outside Mount";q.designs[0].lift_system="Cordless";q.designs[0].valance="3-inch Linear";
   const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in p)||p.backend!=="v2")throw new Error("Expected V2");
   const d=p.designs[0];expect(d.result.ok,JSON.stringify(d.result)).toBe(true);if(!d.result.ok)throw new Error("Expected price");
-  expect(d.result.total).toBe(324.65);expect(d.selection.configuration.norman_assembly_v1).toMatchObject({keystones:{count:1,locations:[18]},cutouts:[{side:"left",width:1,top:20},{side:"right",width:2,top:30,bottom:40}]});
+  expect(d.result.total).toBe(306.5);expect(d.selection.configuration.norman_assembly_v1).toMatchObject({keystones:{count:1,locations:[18]},cutouts:[{side:"left",width:1,top:20},{side:"right",width:2,top:30,bottom:40}]});
   const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(p);
   const customer=JSON.stringify(v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection)));expect(customer).toContain("Left Cut-out Width in Inches");expect(customer).toContain("Keystone 1 from Left in Inches");expect(customer).not.toContain("dealerFactor");
  });

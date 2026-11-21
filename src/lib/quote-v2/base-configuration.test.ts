@@ -21,7 +21,7 @@ function fixture(id:string,programId?:string){
  return {line,design};
 }
 function price(f:ReturnType<typeof fixture>){return repriceExactQuoteBuilderForServerDate({lines:[f.line],designs:[f.design],selectedVariantByLine:{[f.line.id]:'A'}},'2026-09-28').designs[0].result;}
-const amounts:Record<string,number>={roller:346,roman:861,honeycomb:415,perfectsheer:927,citylights_aluminum:303,smartprivacy_faux:206.18,faux_wood:228.62,wood_blinds:535,synchrony_vertical:261,smartdrape:842,norman_shutters:525,onyx_shutters:465};
+const amounts:Record<string,number>={roller:346,roman:861,honeycomb:415,perfectsheer:927,citylights_aluminum:303,smartprivacy_faux:198.8,faux_wood:219.2,wood_blinds:535,synchrony_vertical:261,smartdrape:842,norman_shutters:525,onyx_shutters:465};
 describe('native V2 base pricing',()=>{
  it.each(Object.keys(BASE_CONFIGURATIONS))('%s prices from dimensions, preserves blanks and survives serialization',id=>{
   const f=fixture(id),original=structuredClone(f),r=price(f);

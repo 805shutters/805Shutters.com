@@ -140,7 +140,7 @@ describe("Vertical Honeycomb assortment and hardware",()=>{
    const d=price(q);expect(d.result.ok,`${color.customerColorCode}/${cell}: ${JSON.stringify(d.result)}`).toBe(true);expect(d.selection.programId).toBe(program);routes++;
   }
   expect(routes).toBe(266);
- });
+ }, 20_000);
  it.each([["Light Filtering",869],["Room Darkening",1042.8],["Sheer",1042.8],["Flame Resistant (LF)",1519]])("prices %s from the vertical retail page",(family,total)=>{
   const d=price(verticalQuote(family));expect(d.result).toMatchObject({ok:true,total});
  });

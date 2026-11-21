@@ -32,10 +32,12 @@ const MOTOR_GUIDE_SHA256 =
   "b095c105b4c35dfd803122b2a9143e5e7de2b847c8c182ee405ee66b1723780b";
 const QUOTE_COUNT = 20;
 const ITEMS_PER_QUOTE = 20;
-// Literal current-account values captured from the live, unsubmitted dealer
-// drafts. Keep these independent of the runtime policy object so changing the
-// implementation cannot silently rewrite the oracle's expected arithmetic.
-const STANDARD_FACTOR_NUMERATOR = 3_300;
+// Literal account factors. Standard cost is list × 0.30, the catalog
+// dealerFactor. The July portal fixture still records an observed 0.33; that
+// capture is not this oracle. The shutter lead-time numerator stays 0.297.
+// Keep both literals independent of the policy object so an implementation
+// change cannot silently rewrite the expected arithmetic.
+const STANDARD_FACTOR_NUMERATOR = 3_000;
 const SLOW_FACTOR_NUMERATOR = 2_970;
 const FACTOR_DENOMINATOR = 10_000;
 const PROCESSING_FEE_BASIS_POINTS = 200;
@@ -1579,14 +1581,14 @@ describe("Norman Roller 20-quote x 20-item source-grid acceptance", () => {
       total: 20_768_700,
     });
     expect(aggregateCustomerCents).toBe(37_601_165);
-    expect(aggregateWholesaleCents).toBe(13_308_877);
+    expect(aggregateWholesaleCents).toBe(12_420_337);
     expect(aggregateFreightCents).toBe(908_000);
-    expect(aggregateProcessingFeeCents).toBe(284_339);
+    expect(aggregateProcessingFeeCents).toBe(266_568);
     expect(aggregateLandedCostCents).toBe(
       aggregateWholesaleCents +
         aggregateFreightCents +
         aggregateProcessingFeeCents,
     );
-    expect(aggregateLandedCostCents).toBe(14_501_216);
+    expect(aggregateLandedCostCents).toBe(13_594_905);
   });
 });

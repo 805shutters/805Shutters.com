@@ -49,7 +49,8 @@ export type PriceErrorCode =
   | "CONFIGURATION_INCOMPLETE"
   | "MANUAL_PRICE_REQUIRED"
   | "CUSTOMER_RETAIL_UNDEFINED"
-  | "PRODUCT_UNAVAILABLE";
+  | "PRODUCT_UNAVAILABLE"
+  | "LIVE_LOOKUP_REQUIRED";
 
 export type SurchargeSelection = {
   id: string;

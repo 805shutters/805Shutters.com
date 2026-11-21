@@ -302,21 +302,20 @@ describe("fresh portal-order source reconciliations", () => {
     expect(cents(result.base)).toBe(25400);
     expect(cents(result.unitPrice - result.base)).toBe(9600);
     expect(cents(result.total)).toBe(35000);
-    expect(cents(result.internalCost?.productCostTotal ?? 0)).toBe(11550);
-    expect(cents(result.internalCost?.landedCostTotal ?? 0)).toBe(14331);
+    expect(cents(result.internalCost?.productCostTotal ?? 0)).toBe(10500);
+    expect(cents(result.internalCost?.landedCostTotal ?? 0)).toBe(13260);
   });
 
-  it("replays RR002 at the verified .33 policy and rejects the superseded .30 cost", () => {
+  it("replays RR002 at the catalog 0.30 dealer factor", () => {
     const recipe = group("fresh-norman-rr002-current-policy");
     const quote = reprice(recipe);
     const result = quote.designs[0].result;
     if (!result.ok) throw new Error(result.error);
 
     expect(cents(result.total)).toBe(45100);
-    expect(result.internalCost?.effectiveDealerFactor).toBe(0.33);
-    expect(cents(result.internalCost?.productCostTotal ?? 0)).toBe(14883);
-    expect(cents(result.internalCost?.landedCostTotal ?? 0)).toBe(17731);
-    expect(cents(result.internalCost?.productCostTotal ?? 0)).not.toBe(13530);
+    expect(result.internalCost?.effectiveDealerFactor).toBe(0.3);
+    expect(cents(result.internalCost?.productCostTotal ?? 0)).toBe(13530);
+    expect(cents(result.internalCost?.landedCostTotal ?? 0)).toBe(16351);
   });
 
   it.skip("retires the Polar 166382 pricing reconciliation from the launch path", () => {

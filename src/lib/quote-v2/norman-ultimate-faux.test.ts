@@ -39,8 +39,8 @@ describe("Ultimate Faux Wood September assortment and independent blind rules",(
  it("prices each independent blind valance and each bracket shim",()=>{
   const s=shade({faux_blind_count:3,faux_blind_widths_inches:[24,48,24],valance:"3-inch Linear",ultimate_shim_layers:2},96,48);
   expect(rules(s)).toEqual([]);const r=price(s);expect(r.ok,JSON.stringify(r)).toBe(true);if(!r.ok)return;
-  // September retail: base 206+319+206; valances 28+56+28; 16 shims ×7. Existing .33 factor and $125 margin.
-  expect(r.wholesaleTotal).toBe(315.15);expect(r.total).toBe(440.15);
+  // September retail: base 206+319+206; valances 28+56+28; 16 shims ×7 = 955. Catalog factor .30 and $125 margin.
+  expect(r.wholesaleTotal).toBe(286.5);expect(r.total).toBe(411.5);
  });
  it.each<SelectionContext["configuration"]>([{ultimate_shim_layers:3},{mount_type:"Inside Mount",mount_depth_inches:4,ultimate_shim_layers:1},{ultimate_side_mount:"Yes"},{ultimate_wand_drop:13},{motor_type:"AutoWand"},{ultimate_valance_width_inches:42,valance:"3-inch Linear"},{valance:"3-inch Linear",ultimate_return_inches:5.0625}])("rejects incompatible choice %j",c=>expect(rules(shade(c)).length).toBeGreaterThan(0));
  it("derives one-sided return hardware and preserves records after reopening",()=>{
@@ -62,8 +62,8 @@ describe("Ultimate Faux Wood September assortment and independent blind rules",(
  it("charges exactly the measured cut-out sides and one positioned keystone",()=>{
   const s=shade({valance:"3-inch Linear",ultimate_keystone_count:1,ultimate_keystone_layout:"Custom",ultimate_keystone_location_1:18,ultimate_cutout_left_type:"Corner (Bottom)",ultimate_cutout_left_width:1,ultimate_cutout_left_top:20,ultimate_cutout_right_type:"Side (Middle)",ultimate_cutout_right_width:2,ultimate_cutout_right_top:30,ultimate_cutout_right_bottom:40});
   expect(rules(s)).toEqual([]);const r=price(s);expect(r.ok,JSON.stringify(r)).toBe(true);if(!r.ok)return;
-  // Retail 314 base +40 valance +178 cut-outs +73 keystone =605; unchanged .33 factor, $125 margin.
-  expect(r.wholesaleTotal).toBe(199.65);expect(r.total).toBe(324.65);
+  // Retail 314 base +40 valance +178 cut-outs +73 keystone =605. Catalog factor .30 and $125 margin.
+  expect(r.wholesaleTotal).toBe(181.5);expect(r.total).toBe(306.5);
   expect(s.configuration.norman_assembly_v1).toMatchObject({keystones:{count:1,locations:[18]},cutouts:[{side:"left",width:1,top:20},{side:"right",width:2,top:30,bottom:40}]});
  });
  it("validates keystone placement and keeps the unresolved multi-keystone charge explicit",()=>{

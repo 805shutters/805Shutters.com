@@ -585,7 +585,7 @@ describe("portal parity AFTER live runtime outcomes", () => {
         roller.components.map((component) => cents(component.customerAmount)),
       ),
     ).toBe(35_000);
-    expect(cents(roller.internalCost?.productCostTotal ?? 0)).toBe(11_550);
+    expect(cents(roller.internalCost?.productCostTotal ?? 0)).toBe(10_500);
     expect(roller.validationStatus).toBe("valid");
     expect(
       afterCase("norman-roller-smartrelease-24x36").systemAfter.sendable,

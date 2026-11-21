@@ -129,8 +129,14 @@ export type QuoteV2PriceSuccess = PriceBreakdown &
     components: readonly AuthoritativePriceComponent[];
     componentTotals: AuthoritativePriceComponentTotals;
   };
-export type QuoteV2PriceFailure = PriceFailure & QuoteV2ResultMetadata;
+export type QuoteV2PriceFailure = PriceFailure & QuoteV2ResultMetadata & {
+  /** Set only when live lookup is on and this line has no recorded site or manual price. */
+  blocked?: "live_lookup_required";
+};
 export type QuoteV2PriceResult = QuoteV2PriceSuccess | QuoteV2PriceFailure;
+
+export const LIVE_LOOKUP_VENDORS = ["norman", "onyx", "sundance", "lotus"] as const;
+export type LiveLookupVendor = (typeof LIVE_LOOKUP_VENDORS)[number];
 
 export type QuoteV2PriceRequest = {
   selection: SelectionContext;
@@ -142,6 +148,14 @@ export type QuoteV2PriceRequest = {
   applyCustomerCharges?: boolean;
   /** Quote-wide rules already evaluated against exactly one selected design per line. */
   additionalValidationIssues?: readonly ValidationIssue[];
+  /**
+   * When a vendor switch is on, catalog pricing must not set that vendor's price.
+   * Omitted or all-false leaves the catalog result unchanged.
+   */
+  liveLookup?: {
+    switches?: Partial<Record<LiveLookupVendor, boolean>>;
+    priceSource?: "live_site" | "manual_no_source" | null;
+  };
 };
 
 const CUSTOMER_PRICING_FAILURE_MESSAGE =
@@ -927,11 +941,22 @@ function priceInputContractIssues(
   ];
 }
 
+function normanUsesListDealerFactor(product: CatalogProduct | undefined): boolean {
+  return (
+    !!product &&
+    product.manufacturer?.trim().toLowerCase() === "norman" &&
+    product.id !== "norman_shutters" &&
+    product.productType?.trim().toLowerCase() !== "shutter"
+  );
+}
+
 function selectedNormanDealerFactor(
   selection: SelectionContext,
   product: CatalogProduct,
 ): number | null {
-  if (product.manufacturer?.trim().toLowerCase() !== "norman") return null;
+  // Shutter programs keep their square-foot cost. List × 0.30 and the
+  // shutter lead-time factor 0.297 are not shutter product costs.
+  if (!normanUsesListDealerFactor(product)) return null;
   return (
     normanDealerScheduleForSelection(
       selection.options.schedule_discount_percent,
@@ -1793,11 +1818,49 @@ export function authoritativePriceInputForSelection(
   return priceInput;
 }
 
+function liveLookupVendorName(value: string | null | undefined): LiveLookupVendor | null {
+  const name = value?.trim().toLowerCase();
+  return LIVE_LOOKUP_VENDORS.find((vendor) => vendor === name) ?? null;
+}
+
+function liveLookupVendor(selection: SelectionContext): LiveLookupVendor | null {
+  return liveLookupVendorName(selection.manufacturerId)
+    ?? liveLookupVendorName(getProduct(selection.productId)?.manufacturer);
+}
+
+function liveLookupCatalogBlock(request: QuoteV2PriceRequest): QuoteV2PriceFailure | null {
+  const switches = request.liveLookup?.switches;
+  if (!switches || !LIVE_LOOKUP_VENDORS.some((vendor) => switches[vendor] === true)) return null;
+  const vendor = liveLookupVendor(request.selection);
+  if (!vendor || switches[vendor] !== true) return null;
+  const recorded = request.liveLookup?.priceSource;
+  const hasRecordedPrice = recorded === "live_site" || recorded === "manual_no_source";
+  const meta = metadata(request.selection, "manual_quote_required", [], false);
+  return {
+    ok: false,
+    code: "LIVE_LOOKUP_REQUIRED",
+    error: hasRecordedPrice
+      ? "Catalog pricing is not applied while a live or manual price is recorded."
+      : "Live site price or a manual price is required for this vendor.",
+    warnings: [],
+    ...(hasRecordedPrice ? {} : { blocked: "live_lookup_required" as const }),
+    ...meta,
+    validationStatus: "blocked",
+  };
+}
+
 /**
  * The single server-authoritative entry point for V2 validation and pricing.
  * Quote pricing checks grid and option inputs independently of order readiness.
+ * A live-lookup switch that is off does not change this result.
  */
 export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2PriceResult {
+  const held = liveLookupCatalogBlock(request);
+  if (held) return held;
+  return priceQuoteV2SelectionFromCatalog(request);
+}
+
+function priceQuoteV2SelectionFromCatalog(request: QuoteV2PriceRequest): QuoteV2PriceResult {
   const { selection, priceInput } = request;
   const validationIssues = [
     ...validateSelection(selection),
@@ -1912,8 +1975,7 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
   }
 
   const resultMetadata = metadata(selection, productStatus, issues, true);
-  const normanSchedule =
-    product?.manufacturer?.trim().toLowerCase() === "norman"
+  const normanSchedule = normanUsesListDealerFactor(product)
     ? normanDealerScheduleForSelection(
         selection.options.schedule_discount_percent,
       )
