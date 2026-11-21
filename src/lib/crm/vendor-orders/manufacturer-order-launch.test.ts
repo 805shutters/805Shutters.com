@@ -5,12 +5,13 @@ import {
 } from "./manufacturer-order-launch";
 
 describe("manufacturer order launch bridge", () => {
-  it("stores the four approved manufacturer queue URLs", () => {
+  it("stores the manufacturer queue URLs, with Sundance review-only", () => {
     expect(MANUFACTURER_ORDER_QUEUE_URLS).toEqual({
       onyx: "https://admin.onyxshutters.com/OrderList.aspx",
       norman: "https://www.normanwindowcoverings.com/Login/default.asp",
       lotus: "https://www.lotusblind.com/",
       polar: "https://polarshades.picbusiness.com/",
+      sundance: "https://sundance.blindata.app",
     });
   });
 
