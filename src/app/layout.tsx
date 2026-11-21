@@ -14,6 +14,7 @@ import { buildSitemapEntries } from "@/lib/sitemap-xml";
 import { localBusinessJsonLd } from "@/lib/structured-data";
 
 const bodoniModa = Bodoni_Moda({
+  preload: false,
   subsets: ["latin"],
   axes: ["opsz"],
   display: "swap",
@@ -31,6 +32,7 @@ const theanoDidot = localFont({
 // (commercial mode). Variable font — weights set in CSS. Residential
 // keeps the Theano Didot serif.
 const archivo = Archivo({
+  preload: false,
   subsets: ["latin"],
   display: "swap",
   variable: "--font-archivo"

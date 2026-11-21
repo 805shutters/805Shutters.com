@@ -12,7 +12,7 @@ export function TrackingScripts() {
         <>
           <Script
             src={`https://www.googletagmanager.com/gtag/js?id=${gtagIds[0]}`}
-            strategy="afterInteractive"
+            strategy="lazyOnload"
           />
           <Script id="google-tags" strategy="afterInteractive">
             {`
