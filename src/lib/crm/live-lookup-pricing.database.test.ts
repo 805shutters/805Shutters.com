@@ -30,6 +30,32 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/20260921120000_manual_customer_installation_policy.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/20260921121000_custom_mode_customer_installation_policy.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/20261120180000_live_lookup_pricing.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/20261121041500_live_lookup_price_row_constraint.sql", "utf8"));
+  // Production already has these checks. The migrations do not create the
+  // components check, line_total >= 0, or product_cost >= 0. Install the
+  // production expression when it is absent. Do not weaken it.
+  const productionComponentsCheck = "CHECK ((((jsonb_typeof(components) = 'object'::text) AND ((components ->> 'policy'::text) = '805-draft-opening-line-v1'::text) AND ((((components ->> 'mode'::text) = 'supplier_cost'::text) AND (merchandise >= (0)::numeric) AND (installation >= (0)::numeric) AND (shipping >= (0)::numeric) AND (line_total = ((merchandise + installation) + shipping))) OR (((components ->> 'mode'::text) = 'preserved_manual_unallocated'::text) AND (merchandise IS NULL) AND (installation IS NULL) AND (shipping IS NULL)))) IS TRUE))";
+  const checks = async () => (await db.query<{ name: string; def: string }>(
+    "select conname as name, pg_get_constraintdef(oid) as def from pg_constraint where conrelid = 'public.crm_supplier_workflow_line_prices'::regclass and contype = 'c'",
+  )).rows;
+  if (!(await checks()).some((row) => row.name === "crm_supplier_workflow_line_prices_check")) {
+    await db.exec(`alter table public.crm_supplier_workflow_line_prices
+      add constraint crm_supplier_workflow_line_prices_check check ((((jsonb_typeof(components) = 'object'::text) AND ((components ->> 'policy'::text) = '805-draft-opening-line-v1'::text) AND ((((components ->> 'mode'::text) = 'supplier_cost'::text) AND (merchandise >= (0)::numeric) AND (installation >= (0)::numeric) AND (shipping >= (0)::numeric) AND (line_total = ((merchandise + installation) + shipping))) OR (((components ->> 'mode'::text) = 'preserved_manual_unallocated'::text) AND (merchandise IS NULL) AND (installation IS NULL) AND (shipping IS NULL)))) IS TRUE))`);
+  }
+  const ensure = async (present: (def: string) => boolean, name: string, expression: string) => {
+    if ((await checks()).some((row) => present(row.def))) return;
+    await db.exec(`alter table public.crm_supplier_workflow_line_prices add constraint ${name} check (${expression})`);
+  };
+  await ensure((def) => /line_total\s*>=/.test(def), "crm_supplier_workflow_line_prices_line_total_nonnegative", "line_total >= 0");
+  await ensure((def) => /product_cost\s*>=/.test(def), "crm_supplier_workflow_line_prices_product_cost_nonnegative", "product_cost >= 0");
+  await ensure((def) => def.includes("price_source") && def.includes("live_site") && def.includes("manual_no_source"), "crm_supplier_workflow_line_prices_price_source_known", "price_source is null or price_source in ('live_site', 'manual_no_source')");
+  await ensure((def) => def.includes("manual_typed_by") && def.includes("'mike'") && def.includes("'jessica'"), "crm_supplier_workflow_line_prices_manual_typed_by_known", "manual_typed_by is null or manual_typed_by in ('mike', 'jessica')");
+  const installed = await checks();
+  expect(installed.find((row) => row.name === "crm_supplier_workflow_line_prices_check")?.def).toBe(productionComponentsCheck);
+  expect(installed.some((row) => /line_total\s*>=/.test(row.def))).toBe(true);
+  expect(installed.some((row) => /product_cost\s*>=/.test(row.def))).toBe(true);
+  expect(installed.some((row) => row.def.includes("price_source") && row.def.includes("live_site"))).toBe(true);
+  expect(installed.some((row) => row.def.includes("manual_typed_by") && row.def.includes("jessica"))).toBe(true);
 }, 30000);
 afterAll(() => db.close());
 
@@ -174,6 +200,127 @@ it("uses a changed charge setting for a new price and leaves the saved line alon
   await db.query("update crm_quote_charge_settings set amount = 25 where key = 'install_per_unit'");
   await db.query("update crm_quote_charge_settings set amount = 14 where key = 'ship_per_unit'");
   await db.query("update crm_live_lookup_switch set enabled = false where vendor = 'norman'");
+});
+
+it("prices a $115.20 Norman net at a 2.5 margin and keeps the line-price check", async () => {
+  await db.query("update crm_live_lookup_switch set enabled = true where vendor = 'norman'");
+  try {
+    await seed(9, 92, "Roller Shades");
+    const recordId = await record(9, 92, 115.2);
+    const recorded = await db.query<{
+      components: { policy: string; mode: string };
+      merchandise: string | null;
+      installation: string | null;
+      shipping: string | null;
+      line_total: string;
+      product_cost: string;
+      price_source: string;
+      manual_typed_by: string | null;
+    }>(
+      "select components, merchandise::text, installation::text, shipping::text, line_total::numeric(12,2)::text, product_cost::numeric(12,2)::text, price_source, manual_typed_by from crm_supplier_workflow_line_prices where id = $1",
+      [recordId],
+    );
+    expect(recorded.rows[0].components).toEqual({
+      policy: "805-draft-opening-line-v1",
+      mode: "preserved_manual_unallocated",
+    });
+    expect(recorded.rows[0].merchandise).toBeNull();
+    expect(recorded.rows[0].installation).toBeNull();
+    expect(recorded.rows[0].shipping).toBeNull();
+    expect(recorded.rows[0].line_total).toBe("115.20");
+    expect(recorded.rows[0].product_cost).toBe("115.20");
+    expect(recorded.rows[0].price_source).toBe("live_site");
+    expect(recorded.rows[0].manual_typed_by).toBeNull();
+    await db.query("select set_quote_live_margin($1, 2.5, 'mike', 1)", [id(9)]);
+    const priced = await db.query<{ result: { unitPrice: number; recordId: string } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4) as result",
+      [id(9), id(92), recordId, id(++request)],
+    );
+    expect(priced.rows[0].result.unitPrice).toBe(288);
+    const stored = await db.query<{
+      components: { policy: string; mode: string };
+      merchandise: string;
+      installation: string;
+      shipping: string;
+      line_total: string;
+      net_unit_price: string;
+    }>(
+      "select components, merchandise::text, installation::text, shipping::text, line_total::text, net_unit_price::text from crm_supplier_workflow_line_prices where id = $1",
+      [recordId],
+    );
+    expect(stored.rows[0]).toMatchObject({
+      components: { policy: "805-draft-opening-line-v1", mode: "supplier_cost" },
+      merchandise: "288.00",
+      installation: "25.00",
+      shipping: "14.00",
+      line_total: "327.00",
+      net_unit_price: "115.20",
+    });
+    expect(Number(stored.rows[0].merchandise) + Number(stored.rows[0].installation) + Number(stored.rows[0].shipping)).toBe(Number(stored.rows[0].line_total));
+    const revision = await db.query<{ quote_v2_revision: string }>(
+      "select quote_v2_revision::text from sales_quotes where id = $1",
+      [id(9)],
+    );
+    const manual = await db.query<{ result: { priceSource: string; recordId: string } }>(
+      "select set_manual_line_price($1, $2, 'A', 80, $3, $4, $5, 'jessica') as result",
+      [id(9), id(92), id(50), revision.rows[0].quote_v2_revision, id(++request)],
+    );
+    expect(manual.rows[0].result.priceSource).toBe("manual_no_source");
+    const manualRow = await db.query<{
+      components: { policy: string; mode: string };
+      merchandise: string | null;
+      installation: string | null;
+      shipping: string | null;
+      line_total: string;
+      product_cost: string;
+      price_source: string;
+      manual_typed_by: string;
+    }>(
+      "select components, merchandise::text, installation::text, shipping::text, line_total::numeric(12,2)::text, product_cost::numeric(12,2)::text, price_source, manual_typed_by from crm_supplier_workflow_line_prices where id = $1",
+      [manual.rows[0].result.recordId],
+    );
+    expect(manualRow.rows[0].components).toEqual({
+      policy: "805-draft-opening-line-v1",
+      mode: "preserved_manual_unallocated",
+    });
+    expect(manualRow.rows[0].merchandise).toBeNull();
+    expect(manualRow.rows[0].installation).toBeNull();
+    expect(manualRow.rows[0].shipping).toBeNull();
+    expect(manualRow.rows[0].line_total).toBe("80.00");
+    expect(manualRow.rows[0].product_cost).toBe("80.00");
+    expect(manualRow.rows[0].price_source).toBe("manual_no_source");
+    expect(manualRow.rows[0].manual_typed_by).toBe("jessica");
+    await expect(db.query(
+      `insert into crm_supplier_workflow_line_prices (
+        request_id, quote_id, line_id, design_id, source_line_id, product_cost, line_total, components, receipt, result
+      ) values (gen_random_uuid(), $1, $2, $2, $2, 115.20, 115.20, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb)`,
+      [id(9), id(92)],
+    )).rejects.toThrow(/crm_supplier_workflow_line_prices_check/);
+  } finally {
+    await db.query("update crm_live_lookup_switch set enabled = false where vendor = 'norman'");
+  }
+});
+
+it("keeps a quantity of two inside merchandise plus installation plus shipping", async () => {
+  await db.query("update crm_live_lookup_switch set enabled = true where vendor = 'norman'");
+  try {
+    await seed(10, 102, "Roller Shades");
+    await db.query("update sales_quote_line_items set quantity = 2 where id = $1", [id(102)]);
+    const recordId = await record(10, 102, 115.2);
+    await db.query("select set_quote_live_margin($1, 2.5, 'mike', 1)", [id(10)]);
+    const priced = await db.query<{ result: { unitPrice: number } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4) as result",
+      [id(10), id(102), recordId, id(++request)],
+    );
+    expect(priced.rows[0].result.unitPrice).toBe(288);
+    const stored = await db.query<{ merchandise: string; installation: string; shipping: string; line_total: string }>(
+      "select merchandise::text, installation::text, shipping::text, line_total::text from crm_supplier_workflow_line_prices where id = $1",
+      [recordId],
+    );
+    expect(stored.rows[0]).toEqual({ merchandise: "576.00", installation: "50.00", shipping: "28.00", line_total: "654.00" });
+  } finally {
+    await db.query("update crm_live_lookup_switch set enabled = false where vendor = 'norman'");
+  }
 });
 
 it("rejects a non-staff update of the switch, the charge settings and the margin", async () => {
