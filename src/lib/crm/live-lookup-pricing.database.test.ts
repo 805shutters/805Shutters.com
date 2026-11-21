@@ -1,8 +1,10 @@
 import { PGlite } from "@electric-sql/pglite";
+import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { buildNormanPriceRecord, quoteLineSpecHash } from "./price-record";
 
-const db = new PGlite();
+const db = new PGlite({ extensions: { pgcrypto } });
 const id = (n: number) => `20000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 let request = 800;
 
@@ -32,6 +34,12 @@ beforeAll(async () => {
   await db.exec(readFileSync("supabase/migrations/20261120180000_live_lookup_pricing.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/20261121041500_live_lookup_price_row_constraint.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/20261121150000_append_only_live_lookup_prices.sql", "utf8"));
+  await db.exec(`do $$ begin
+    if not exists (select 1 from pg_roles where rolname = 'crm_price_bot') then
+      create role crm_price_bot nologin;
+    end if;
+  end $$;`);
+  await db.exec(readFileSync("supabase/migrations/20261121180000_shared_price_record.sql", "utf8"));
   // Production already has these checks. The migrations do not create the
   // components check, line_total >= 0, or product_cost >= 0. Install the
   // production expression when it is absent. Do not weaken it.
@@ -81,19 +89,18 @@ beforeAll(async () => {
 }, 30000);
 afterAll(() => db.close());
 
-async function hash(quote: number, revision: number) {
-  const row = await db.query<{ h: string }>("select live_lookup_spec_hash($1::uuid, $2::bigint) as h", [id(quote), revision]);
+async function hash(line: number) {
+  const row = await db.query<{ h: string }>("select price_record_line_spec_hash($1::uuid) as h", [id(line)]);
   return row.rows[0].h;
 }
-function receipt(quote: number, revision: number, specHash: string, lines: { line: number; net: number }[], patch: Record<string, unknown> = {}) {
+function receipt(line: number, specHashValue: string, net: number, patch: Record<string, unknown> = {}) {
   return {
-    schema: "805-live-price-record/v1",
-    vendor: "norman",
-    vendor_account: "RA00743",
-    quote_ref: String(revision),
-    spec_hash: specHash,
-    observed_at: "2026-11-20T17:00:00Z",
-    lines: lines.map((line) => ({ line_ref: id(line.line), net_unit_price: line.net, net_line_total: line.net })),
+    ...buildNormanPriceRecord({
+      lineId: id(line),
+      specHash: specHashValue,
+      dealerNetBasePrice: net,
+      capturedAt: "2026-11-20T17:00:00Z",
+    }),
     ...patch,
   };
 }
@@ -102,8 +109,8 @@ async function seed(quote: number, line: number, product: string) {
   await db.query("insert into sales_quote_line_items(id, quote_id, product_type, quantity) values($1, $2, $3, 1)", [id(line), id(quote), product]);
 }
 async function record(quote: number, line: number, net: number, patch: Record<string, unknown> = {}) {
-  const specHash = await hash(quote, 1);
-  const body = receipt(quote, 1, specHash, [{ line, net }], patch);
+  const specHash = await hash(line);
+  const body = receipt(line, specHash, net, patch);
   const row = await db.query<{ result: { records: { record_id: string }[] } }>(
     "select record_vendor_price_receipt($1, 1, $2::jsonb, 'mike') as result",
     [id(quote), JSON.stringify(body)],
@@ -134,16 +141,17 @@ it("leaves the existing price RPC unchanged while every switch is off", async ()
   expect(cost.rows[0].manufacturer_cost).toBeNull();
 });
 
-it("reports no_margin, no_site_price and spec_mismatch when Norman is on", async () => {
+it("reports no_margin, no_site_price and spec_changed when Norman is on", async () => {
   await db.query("update crm_live_lookup_switch set enabled = true where vendor = 'norman'");
   await seed(2, 21, "Roller Shades");
   const recordId = await record(2, 21, 76.2);
   await expect(db.query("select price_line_from_receipt($1, $2, 'A', $3, 1, $4)", [id(2), id(21), recordId, id(++request)])).rejects.toThrow(/no_margin/);
   await db.query("select set_quote_live_margin($1, 2.5, 'mike', 1)", [id(2)]);
   await expect(db.query("select price_line_from_receipt($1, $2, 'A', $3, 1, $4)", [id(2), id(21), id(91), id(++request)])).rejects.toThrow(/no_site_price/);
-  await db.query("update crm_vendor_price_receipts set spec_hash = 'wrong' where id = $1", [recordId]);
-  await expect(db.query("select price_line_from_receipt($1, $2, 'A', $3, 1, $4)", [id(2), id(21), recordId, id(++request)])).rejects.toThrow(/spec_mismatch/);
-  await db.query("update crm_vendor_price_receipts set spec_hash = live_lookup_spec_hash($1, 1) where id = $2", [id(2), recordId]);
+  await db.query("update sales_quote_line_items set width_whole = 36, width_fraction = '1/8' where id = $1", [id(21)]);
+  await expect(db.query("select price_line_from_receipt($1, $2, 'A', $3, 1, $4)", [id(2), id(21), recordId, id(++request)])).rejects.toThrow(/spec_changed/);
+  const priced = await db.query<{ count: string }>("select count(*) from crm_supplier_workflow_line_prices where quote_id = $1", [id(2)]);
+  expect(Number(priced.rows[0].count)).toBe(0);
   await db.query("update crm_live_lookup_switch set enabled = false where vendor = 'norman'");
 });
 
@@ -171,14 +179,16 @@ it("prices a 2.5 margin on a $76.20 net and a 2.437 margin to the cent", async (
   await db.query("update crm_live_lookup_switch set enabled = false where vendor = 'norman'");
 });
 
-it("rejects a foreign account, a duplicate line and a missing observation", async () => {
+it("rejects a foreign account, an unknown line and a missing capture time", async () => {
   await seed(5, 51, "Roller Shades");
-  const specHash = await hash(5, 1);
-  await expect(db.query("select record_vendor_price_receipt($1, 1, $2::jsonb, 'mike')", [id(5), JSON.stringify(receipt(5, 1, specHash, [{ line: 51, net: 10 }], { vendor_account: "OTHER" }))])).rejects.toThrow(/805 account/);
-  await expect(db.query("select record_vendor_price_receipt($1, 1, $2::jsonb, 'mike')", [id(5), JSON.stringify(receipt(5, 1, specHash, [{ line: 51, net: 10 }, { line: 51, net: 10 }]))])).rejects.toThrow(/duplicated/);
-  await expect(db.query("select record_vendor_price_receipt($1, 1, $2::jsonb, 'mike')", [id(5), JSON.stringify(receipt(5, 1, specHash, [{ line: 51, net: 10 }], { observed_at: null }))])).rejects.toThrow(/observed_at/);
+  const specHash = await hash(51);
+  await expect(db.query("select record_vendor_price_receipt($1, 1, $2::jsonb, 'mike')", [id(5), JSON.stringify(receipt(51, specHash, 10, { account: "OTHER" }))])).rejects.toThrow(/805 account/);
+  await expect(db.query("select record_vendor_price_receipt($1, 1, $2::jsonb, 'mike')", [id(5), JSON.stringify(receipt(51, specHash, 10, { line_id: id(599) }))])).rejects.toThrow(/unknown/);
+  await expect(db.query("select record_vendor_price_receipt($1, 1, $2::jsonb, 'mike')", [id(5), JSON.stringify(receipt(51, specHash, 10, { captured_at: null }))])).rejects.toThrow(/captured_at/);
   const stored = await db.query<{ count: string }>("select count(*) from crm_supplier_workflow_line_prices where quote_id = $1", [id(5)]);
   expect(Number(stored.rows[0].count)).toBe(0);
+  const receipts = await db.query<{ count: string }>("select count(*) from crm_vendor_price_receipts where quote_id = $1", [id(5)]);
+  expect(Number(receipts.rows[0].count)).toBe(0);
 });
 
 it("skips install and shipping on a shutter and requires Mike or Jessica for a manual price", async () => {
@@ -420,4 +430,121 @@ it("rejects a non-staff update of the switch, the charge settings and the margin
   expect(enabled.rows[0].enabled).toBe(false);
   expect(amount.rows[0].amount).toBe("25.00");
   expect(margin.rows[0].live_margin).toBeNull();
+  const switches = await db.query<{ enabled: boolean }>("select enabled from crm_live_lookup_switch order by vendor");
+  expect(switches.rows.map((row) => row.enabled)).toEqual([false, false, false, false]);
+});
+
+it("attributes the Norman receipt to dealer RA00743 and matches the TypeScript spec hash", async () => {
+  await seed(12, 121, "Roller Shades");
+  await db.query(
+    "update sales_quote_line_items set width_whole = 36, width_fraction = '1/8', height_whole = 48, height_fraction = '0' where id = $1",
+    [id(121)],
+  );
+  const options = {
+    catalog_manufacturer: " Norman ",
+    catalog_product_id: "roller",
+    lift_system: " Cordless ",
+    mount_type: "Inside",
+    price_source: "live_site",
+  };
+  await db.query(
+    "insert into sales_quote_designs (line_item_id, variant, product_type, options_json) values ($1, 'A', 'Roller Shades', $2::jsonb)",
+    [id(121), JSON.stringify(options)],
+  );
+  const sqlHash = await hash(121);
+  expect(sqlHash).toBe(quoteLineSpecHash({
+    productType: "Roller Shades",
+    widthWhole: 36,
+    widthFraction: "1/8",
+    heightWhole: 48,
+    heightFraction: "0",
+    options,
+  }));
+  const recordId = await record(12, 121, 115.2);
+  const stored = await db.query<{
+    vendor: string;
+    account_number: string;
+    account_label: string;
+    site: string;
+    active: boolean;
+    captured_by: string;
+    currency: string;
+    schema: string;
+  }>(
+    `select r.vendor, a.account_number, a.account_label, a.site, a.active, r.captured_by, r.currency,
+            r.receipt->>'schema' as schema
+     from crm_vendor_price_receipts r
+     join crm_vendor_accounts a on a.id = r.vendor_account_id
+     where r.id = $1`,
+    [recordId],
+  );
+  expect(stored.rows[0]).toEqual({
+    vendor: "norman",
+    account_number: "RA00743",
+    account_label: "Norman dealer RA00743",
+    site: "https://www.normanwindowcoverings.com/Login/default.asp",
+    active: true,
+    captured_by: "norman",
+    currency: "USD",
+    schema: "805-price-record/v1",
+  });
+  const columns = await db.query<{ column_name: string }>(
+    "select column_name from information_schema.columns where table_schema = 'public' and table_name = 'crm_vendor_accounts'",
+  );
+  expect(columns.rows.map((row) => row.column_name).join(" ")).not.toMatch(/password|secret|token|credential/);
+});
+
+it("blocks an option change with spec_changed", async () => {
+  await db.query("update crm_live_lookup_switch set enabled = true where vendor = 'norman'");
+  try {
+    await seed(13, 131, "Roller Shades");
+    await db.query(
+      "insert into sales_quote_designs (line_item_id, variant, product_type, options_json) values ($1, 'A', 'Roller Shades', $2::jsonb)",
+      [id(131), JSON.stringify({ lift_system: "Cordless" })],
+    );
+    const recordId = await record(13, 131, 115.2);
+    await db.query("select set_quote_live_margin($1, 2.5, 'mike', 1)", [id(13)]);
+    await db.query(
+      "update sales_quote_designs set options_json = options_json || '{\"lift_system\":\"Motorized\"}'::jsonb where line_item_id = $1",
+      [id(131)],
+    );
+    await expect(db.query(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4)",
+      [id(13), id(131), recordId, id(++request)],
+    )).rejects.toThrow(/spec_changed/);
+    const priced = await db.query<{ count: string }>(
+      "select count(*) from crm_supplier_workflow_line_prices where quote_id = $1",
+      [id(13)],
+    );
+    expect(Number(priced.rows[0].count)).toBe(0);
+  } finally {
+    await db.query("update crm_live_lookup_switch set enabled = false where vendor = 'norman'");
+  }
+});
+
+it("lets the price bot record and read a receipt, and blocks update or delete", async () => {
+  await seed(14, 141, "Roller Shades");
+  await db.exec("set role crm_price_bot");
+  let recordId = "";
+  try {
+    recordId = await record(14, 141, 10);
+    const read = await db.query<{ vendor_account: string; captured_by: string }>(
+      "select vendor_account, captured_by from crm_vendor_price_receipts where id = $1",
+      [recordId],
+    );
+    expect(read.rows[0]).toEqual({ vendor_account: "RA00743", captured_by: "norman" });
+    await expect(db.query("update crm_vendor_price_receipts set captured_by = 'other' where id = $1", [recordId])).rejects.toThrow(/permission denied|append-only/);
+    await expect(db.query("delete from crm_vendor_price_receipts where id = $1", [recordId])).rejects.toThrow(/permission denied|append-only/);
+    await expect(db.query(
+      `insert into crm_vendor_price_receipts (
+        quote_id, line_id, quote_revision, spec_hash, vendor, vendor_account, observed_at,
+        net_unit_price, net_line_total, receipt, actor
+      ) values ($1, $2, 1, 'abc', 'norman', 'RA00743', now(), 1, 1, '{}'::jsonb, 'mike')`,
+      [id(14), id(141)],
+    )).rejects.toThrow(/permission denied/);
+  } finally {
+    await db.exec("reset role");
+  }
+  await expect(db.query("delete from crm_vendor_price_receipts where id = $1", [recordId])).rejects.toThrow(/append-only/);
+  await expect(db.query("update crm_vendor_price_receipts set captured_by = captured_by where id = $1", [recordId])).rejects.toThrow(/append-only/);
 });
