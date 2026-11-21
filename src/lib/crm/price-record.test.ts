@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   NORMAN_PRICE_BOT,
   NORMAN_VENDOR_ACCOUNT,
+  ONYX_PRICE_SITE,
   PRICE_RECORD_SCHEMA,
+  SUNDANCE_PRICE_SITE,
+  acceptOnyxPriceRecord,
+  acceptSundancePriceRecord,
   buildNormanPriceRecord,
   specHash,
 } from "./price-record";
@@ -80,5 +84,142 @@ describe("shared price record migration", () => {
     expect(sql).toContain("805-price-record/v1");
     expect(sql).toContain("spec_changed");
     expect(sql).toContain("RA00743");
+  });
+});
+
+const lineId = "20000000-0000-4000-8000-000000000701";
+
+describe("Onyx and Sundance price records", () => {
+  it("validates the portal, the bot, and an unconfirmed price basis", () => {
+    expect(acceptOnyxPriceRecord({
+      lineId,
+      product: "Painted Basswood",
+      widthInches: 36,
+      heightInches: 48,
+      options: { "Frame Type": "L Frame", color: "100_Pure White" },
+      dealerNetBasePrice: 210,
+      capturedAt: "2026-11-21T17:00:00Z",
+      sourceUrl: "https://example.com/price",
+    })).toEqual({ ok: false, reason: "invalid_record" });
+    expect(acceptSundancePriceRecord({
+      lineId,
+      product: "Sheerview",
+      widthInches: 24,
+      heightInches: 36,
+      dealerNetBasePrice: 180,
+      capturedAt: "2026-11-21T17:00:00Z",
+      sourceUrl: SUNDANCE_PRICE_SITE,
+      capturedBy: "norman",
+    })).toEqual({ ok: false, reason: "invalid_record" });
+    expect(acceptOnyxPriceRecord({
+      lineId,
+      product: "painted_basswood",
+      widthInches: 36,
+      heightInches: 48,
+      observedPrice: { label: "Grand Total", amount: 840 },
+      capturedAt: "2026-11-21T17:00:00Z",
+      sourceUrl: ONYX_PRICE_SITE,
+    })).toMatchObject({ ok: false, reason: "price_basis_unconfirmed" });
+    expect(acceptSundancePriceRecord({
+      lineId,
+      product: "sundance_sheerview",
+      widthInches: 24,
+      heightInches: 36,
+      options: { suggested_retail: 552 },
+      capturedAt: "2026-11-21T17:00:00Z",
+      evidence: "portal total was not labeled dealer net",
+    })).toMatchObject({ ok: false, reason: "price_basis_unconfirmed" });
+  });
+
+  it("fails closed with no_vendor_account and does not invent an account", () => {
+    const onyx = acceptOnyxPriceRecord({
+      lineId,
+      product: "Painted Basswood",
+      widthInches: 36.04,
+      heightInches: 48,
+      options: { "Frame Type": "L Frame", louver: " 2.5 " },
+      dealerNetBasePrice: 210.5,
+      capturedAt: "2026-11-21T17:00:00Z",
+      sourceUrl: ONYX_PRICE_SITE,
+    });
+    const sundance = acceptSundancePriceRecord({
+      lineId,
+      product: "Sheer View",
+      widthInches: 24,
+      heightInches: 36,
+      options: { "Motor Type": "GLYDEA" },
+      dealerNetBasePrice: 180,
+      capturedAt: "2026-11-21T17:00:00Z",
+      sourceUrl: `${SUNDANCE_PRICE_SITE}/quote`,
+    });
+    expect(onyx).toMatchObject({ ok: false, reason: "no_vendor_account" });
+    expect(sundance).toMatchObject({ ok: false, reason: "no_vendor_account" });
+    expect(onyx).not.toHaveProperty("record");
+    expect(sundance).not.toHaveProperty("record");
+    expect(JSON.stringify(onyx)).not.toMatch(/password|secret|token|RA00743/i);
+    expect(JSON.stringify(sundance)).not.toMatch(/password|secret|token|RA00743/i);
+    if (!onyx.ok) expect(onyx.spec_hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("keeps spec_hash parity with Norman", () => {
+    const canonical = specHash({
+      manufacturer: "onyx",
+      product: "painted_basswood",
+      widthInches: 36,
+      heightInches: 48,
+      options: { frame_type: "L Frame", louver: "2.5" },
+    });
+    expect(specHash({
+      manufacturer: " Onyx ",
+      product: " Painted Basswood ",
+      widthInches: 36.04,
+      heightInches: 48,
+      options: { louver: " 2.5 ", "Frame Type": "L Frame", grand_total: 999 },
+    })).toBe(canonical);
+    expect(canonical).toMatch(/^[0-9a-f]{64}$/);
+    expect(specHash({ manufacturer: "onyx", product: "Sycamore", widthInches: 36, heightInches: 48, options: {} }))
+      .toBe(specHash({ manufacturer: "onyx", product: "secamore", widthInches: 36, heightInches: 48, options: {} }));
+    expect(specHash({
+      manufacturer: "sundance",
+      product: "Sheerview",
+      widthInches: 24,
+      heightInches: 36,
+      options: { "Motor Type": "GLYDEA" },
+    })).toBe(specHash({
+      manufacturer: "sundance",
+      product: "sundance_sheerview",
+      widthInches: 24,
+      heightInches: 36,
+      options: { motor_type: "GLYDEA" },
+    }));
+    expect(specHash({ manufacturer: "norman", product: "roller", widthInches: 36, heightInches: 48, options: { "Frame Type": "L" } }))
+      .not.toBe(specHash({ manufacturer: "norman", product: "roller", widthInches: 36, heightInches: 48, options: { frame_type: "L" } }));
+    expect(specHash({ manufacturer: "onyx", product: "roller", widthInches: 36, heightInches: 48, options: {} }))
+      .not.toBe(specHash({ manufacturer: "norman", product: "roller", widthInches: 36, heightInches: 48, options: {} }));
+    const sixteenth = specHash({
+      manufacturer: "onyx",
+      product: "ash",
+      widthInches: null,
+      heightInches: 48,
+      options: { width_a: { whole: 36, fraction: "1/16" } },
+    });
+    expect(sixteenth).toBe(specHash({ manufacturer: "onyx", product: "ash", widthInches: 36.125, heightInches: 48, options: {} }));
+    expect(sixteenth).not.toBe(specHash({ manufacturer: "onyx", product: "ash", widthInches: 36, heightInches: 48, options: {} }));
+  });
+});
+
+describe("Onyx and Sundance price-record migration", () => {
+  const sql = readFileSync("supabase/migrations/20261121234500_onyx_sundance_price_records.sql", "utf8");
+
+  it("is additive, seeds no account, and does not turn a switch on", () => {
+    expect(sql).not.toMatch(/\bdrop\s+table\b/i);
+    expect(sql).not.toMatch(/\btruncate\s+(?:table|only)\b/i);
+    expect(sql).not.toMatch(/\bdelete\s+from\b/i);
+    expect(sql).not.toMatch(/enabled\s*=\s*true/i);
+    expect(sql).not.toMatch(/insert\s+into\s+public\.crm_vendor_accounts/i);
+    expect(sql).not.toMatch(/insert\s+into\s+public\.crm_live_lookup_switch/i);
+    expect(sql).toContain("no_vendor_account");
+    expect(sql).toContain("spec_changed");
+    expect(sql).not.toMatch(/password|api_key|client_secret/i);
   });
 });
