@@ -1,11 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  LOTUS_VENDOR_ACCOUNT,
   NORMAN_PRICE_BOT,
   NORMAN_VENDOR_ACCOUNT,
   ONYX_PRICE_SITE,
   PRICE_RECORD_SCHEMA,
   SUNDANCE_PRICE_SITE,
+  acceptLotusPriceRecord,
   acceptOnyxPriceRecord,
   acceptSundancePriceRecord,
   buildNormanPriceRecord,
@@ -221,5 +223,53 @@ describe("Onyx and Sundance price-record migration", () => {
     expect(sql).toContain("no_vendor_account");
     expect(sql).toContain("spec_changed");
     expect(sql).not.toMatch(/password|api_key|client_secret/i);
+  });
+});
+
+describe("Lotus price record", () => {
+  it("keeps an unconfirmed cost unconfirmed and does not invent an account", () => {
+    expect(LOTUS_VENDOR_ACCOUNT).toBeNull();
+    const unconfirmed = acceptLotusPriceRecord({
+      lineId,
+      product: "Lotus Roller",
+      widthInches: 30,
+      heightInches: 48,
+      observedPrice: { label: "Grand Total", amount: 640 },
+      capturedAt: "2026-11-21T17:00:00Z",
+      evidence: "emailed confirmation total",
+    });
+    expect(unconfirmed).toMatchObject({ ok: false, reason: "price_basis_unconfirmed" });
+    expect(unconfirmed).not.toHaveProperty("record");
+    const closed = acceptLotusPriceRecord({
+      lineId,
+      product: "Lotus Vertical",
+      widthInches: 36,
+      heightInches: 72,
+      dealerNetBasePrice: 88,
+      capturedAt: "2026-11-21T17:00:00Z",
+      evidence: "emailed confirmation dealer net",
+    });
+    expect(closed).toMatchObject({ ok: false, reason: "no_vendor_account" });
+    expect(closed).not.toHaveProperty("record");
+    expect(JSON.stringify(closed)).not.toMatch(/password|secret|token|RA00743/i);
+    if (!closed.ok) expect(closed.spec_hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(acceptOnyxPriceRecord({
+      lineId,
+      product: "Painted Basswood",
+      widthInches: 36,
+      heightInches: 48,
+      observedPrice: { label: "Grand Total", amount: 840 },
+      capturedAt: "2026-11-21T17:00:00Z",
+      sourceUrl: ONYX_PRICE_SITE,
+    })).toMatchObject({ ok: false, reason: "price_basis_unconfirmed" });
+    expect(acceptSundancePriceRecord({
+      lineId,
+      product: "Sheer View",
+      widthInches: 24,
+      heightInches: 36,
+      dealerNetBasePrice: 180,
+      capturedAt: "2026-11-21T17:00:00Z",
+      sourceUrl: SUNDANCE_PRICE_SITE,
+    })).toMatchObject({ ok: false, reason: "no_vendor_account" });
   });
 });

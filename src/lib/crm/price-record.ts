@@ -5,10 +5,11 @@ import { createHash } from "node:crypto";
  *
  * Every manufacturer worker (norman, onyx, sundance, lotus) submits this one
  * shape. Norman is wired to dealer RA00743. Onyx and Sundance normalize into
- * the same shape and the same spec hash. Their account numbers are not in the
- * repo, so acceptance fails closed with reason `no_vendor_account` and no
- * account row is invented. The live-lookup switches stay off until Mike turns
- * them on. The record holds no credentials.
+ * the same shape and the same spec hash. Lotus uses that shape for a cost
+ * taken from an order confirmation. Onyx, Sundance, and Lotus account numbers
+ * are not in the repo, so acceptance fails closed with reason `no_vendor_account`
+ * and no account row is invented. The live-lookup switches stay off until Mike
+ * turns them on. The record holds no credentials.
  *
  * ```json
  * {
@@ -60,6 +61,15 @@ export const SUNDANCE_PRICE_SITE = "https://sundance.blindata.app";
  */
 export const ONYX_VENDOR_ACCOUNT: string | null = null;
 export const SUNDANCE_VENDOR_ACCOUNT: string | null = null;
+
+export const LOTUS_PRICE_BOT = "lotus";
+/**
+ * Lotus dealer account number is not in this repo.
+ * Leave this null. Do not invent a number. `no_vendor_account` stays the result
+ * until Mike supplies the account and a later change seeds `crm_vendor_accounts`.
+ * Lotus Roller and Vertical are ordered by an emailed form. Nothing here sends it.
+ */
+export const LOTUS_VENDOR_ACCOUNT: string | null = null;
 
 export const NO_VENDOR_ACCOUNT = "no_vendor_account";
 export const PRICE_BASIS_UNCONFIRMED = "price_basis_unconfirmed";
@@ -573,4 +583,65 @@ export function acceptOnyxPriceRecord(capture: ManufacturerPriceCapture): Manufa
 
 export function acceptSundancePriceRecord(capture: ManufacturerPriceCapture): ManufacturerPriceAcceptance {
   return acceptManufacturerPriceRecord("sundance", capture);
+}
+
+/**
+ * Normalize a Lotus order-confirmation cost into `805-price-record/v1`.
+ * There is no portal. `source_url` or `evidence` records the confirmation the
+ * caller already has. A cost under any label other than dealer net is refused
+ * (`price_basis_unconfirmed`). With no seeded account, a valid capture is
+ * refused (`no_vendor_account`). This does not send the order form or an email.
+ */
+export function acceptLotusPriceRecord(capture: ManufacturerPriceCapture): ManufacturerPriceAcceptance {
+  const sourceUrl = capture.sourceUrl?.trim() ?? "";
+  const evidence = capture.evidence?.trim() ?? "";
+  const capturedBy = (capture.capturedBy ?? LOTUS_PRICE_BOT).trim();
+  if (!LINE_ID.test(capture.lineId)) return { ok: false, reason: "invalid_record" };
+  if (!trimEdges(capture.product)) return { ok: false, reason: "invalid_record" };
+  if (!capture.capturedAt || Number.isNaN(Date.parse(capture.capturedAt))) return { ok: false, reason: "invalid_record" };
+  if (!sourceUrl && !evidence) return { ok: false, reason: "invalid_record" };
+  if (sourceUrl && !sourceUrl.startsWith("https://")) return { ok: false, reason: "invalid_record" };
+  if (capturedBy !== LOTUS_PRICE_BOT) return { ok: false, reason: "invalid_record" };
+  const priced = priceAmount(capture);
+  if ("reason" in priced) return { ok: false, reason: priced.reason };
+  let hashed: string;
+  try {
+    const widthFromWhole = eighthsFromWholeFraction(capture.widthWhole ?? null, capture.widthFraction ?? null);
+    const heightFromWhole = eighthsFromWholeFraction(capture.heightWhole ?? null, capture.heightFraction ?? null);
+    const widthFromInches = capture.widthInches == null ? null : eighthsFromInches(capture.widthInches);
+    const heightFromInches = capture.heightInches == null ? null : eighthsFromInches(capture.heightInches);
+    if (widthFromWhole != null && widthFromInches != null && widthFromWhole !== widthFromInches) {
+      return { ok: false, reason: "invalid_record" };
+    }
+    if (heightFromWhole != null && heightFromInches != null && heightFromWhole !== heightFromInches) {
+      return { ok: false, reason: "invalid_record" };
+    }
+    hashed = hashCanonical(finalizeSpec({
+      manufacturer: "lotus",
+      product: capture.product,
+      widthEighths: widthFromInches ?? widthFromWhole,
+      heightEighths: heightFromInches ?? heightFromWhole,
+      options: capture.options ?? {},
+    }));
+  } catch {
+    return { ok: false, reason: "invalid_record" };
+  }
+  const account = LOTUS_VENDOR_ACCOUNT;
+  if (!account) return { ok: false, reason: NO_VENDOR_ACCOUNT, spec_hash: hashed };
+  try {
+    const record = buildPriceRecord({
+      vendor: "lotus",
+      account,
+      lineId: capture.lineId,
+      specHash: hashed,
+      dealerNetBasePrice: priced.amount,
+      capturedAt: capture.capturedAt,
+      capturedBy,
+      sourceUrl: sourceUrl || undefined,
+      evidence: evidence || undefined,
+    });
+    return { ok: true, record, spec_hash: hashed };
+  } catch {
+    return { ok: false, reason: "invalid_record", spec_hash: hashed };
+  }
 }
