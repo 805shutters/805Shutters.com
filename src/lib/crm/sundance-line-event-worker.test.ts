@@ -129,6 +129,7 @@ describe("sundance line-event worker route", () => {
     expect(migration).toContain("quote_category_field_sequence");
     expect([sources[0], sources[1], migration].join("\n")).not.toMatch(/twilio|sendgrid|telegram|nodemailer|square|quickbooks|resend/i);
     expect(sources[1]).not.toMatch(/\.(from|insert|update)\(/);
+    expect(sources[1]).toContain("quoterServiceGuard");
     expect(sources[1]).toContain("supabase.rpc(fn, args)");
   });
 });
