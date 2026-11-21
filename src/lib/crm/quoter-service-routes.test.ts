@@ -69,11 +69,12 @@ import { GET as readKenPayoff } from "@/app/api/crm/ken-payoff/route";
 import { POST as postSquare } from "@/app/api/crm/square/route";
 import { POST as postProcessEmails } from "@/app/api/crm/process-emails/route";
 import { POST as shareQuote } from "@/app/api/crm/quotes/[id]/share/route";
-import { GET as listFrontDoorDrafts } from "@/app/api/crm/quote-front-door/drafts/route";
 import { GET as readHealth } from "@/app/api/crm/health/route";
 import { GET as startGoogleOAuth } from "@/app/api/crm/oauth/google/route";
 import { GET as googleContactsCallback } from "@/app/api/crm/google-contacts/callback/route";
 import { POST as normanWorker } from "@/app/api/crm/norman-order-worker/route";
+import { POST as normanLineEventWorker } from "@/app/api/crm/norman-line-event-worker/route";
+import { POST as onyxLineEventWorker } from "@/app/api/crm/onyx-line-event-worker/route";
 import { POST as manufacturerWorker } from "@/app/api/crm/manufacturer-order-worker/route";
 
 // Route handlers each declare their own params. The refusal test only invokes them.
@@ -111,11 +112,12 @@ const otherCrmRoutes: Array<[string, string, string, Handler]> = [
   ["square", "POST", "/api/crm/square", postSquare],
   ["process emails", "POST", "/api/crm/process-emails", postProcessEmails],
   ["quote share", "POST", `/api/crm/quotes/${ID}/share`, shareQuote],
-  ["front-door draft list", "GET", "/api/crm/quote-front-door/drafts", listFrontDoorDrafts],
   ["health", "GET", "/api/crm/health", readHealth],
   ["google oauth", "GET", "/api/crm/oauth/google", startGoogleOAuth],
   ["google contacts callback", "GET", "/api/crm/google-contacts/callback", googleContactsCallback],
   ["norman order worker", "POST", "/api/crm/norman-order-worker", normanWorker],
+  ["norman line event worker", "POST", "/api/crm/norman-line-event-worker", normanLineEventWorker],
+  ["onyx line event worker", "POST", "/api/crm/onyx-line-event-worker", onyxLineEventWorker],
   ["manufacturer order worker", "POST", "/api/crm/manufacturer-order-worker", manufacturerWorker],
 ];
 

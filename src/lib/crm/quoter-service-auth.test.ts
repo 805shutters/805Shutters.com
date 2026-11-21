@@ -231,6 +231,7 @@ describe("Quoter front-door allowlist", () => {
     for (const route of [
       "/api/crm/quote-front-door",
       "/api/crm/quote-front-door/draft/send",
+      "/api/crm/quote-front-door/drafts",
       "/api/crm/quote-front-door/customers/extra",
       "/api/crm/quotes/example/send",
       "/api/crm/jobs",
@@ -277,6 +278,7 @@ describe("Quoter front-door allowlist", () => {
     }
     const blocked = proxy(request("/api/crm/quotes/example/send", "POST"));
     expect(blocked.status).toBe(403);
+    expect(quoterServiceGuard(request("/api/crm/quote-front-door/drafts", "GET"))?.status).toBe(403);
     expect(proxy(request("/api/crm/admin/mts-805-sync", "POST")).status).toBe(403);
     expect(proxy(request("/api/leads", "POST")).status).toBe(403);
 
