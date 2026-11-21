@@ -140,6 +140,20 @@ export type QuoteV2DraftCreate = {
   readBack: FrontDoorReadBackRecord;
 };
 
+export type SequenceDetailRow = {
+  field_key: string;
+  ask_order: number;
+  required: boolean;
+  input_kind: string;
+  depends_on: string[];
+};
+
+export type SequenceChoiceRow = {
+  field_key: string;
+  value: string;
+  label: string;
+};
+
 export type QuoteFrontDoorStore = {
   nextRequiredField(spec: Record<string, unknown>, manufacturer: string, category: string): Promise<SequenceNext>;
   validateTappedValue(
@@ -150,6 +164,8 @@ export type QuoteFrontDoorStore = {
     value: unknown,
   ): Promise<TapResult>;
   sequenceFields(catalogVersion: string): Promise<SequenceFieldOrder[]>;
+  sequenceRows(catalogVersion: string): Promise<SequenceDetailRow[]>;
+  choiceRows(catalogVersion: string): Promise<SequenceChoiceRow[]>;
   findCustomerRecords(query: CustomerLookupQuery): Promise<{ records: CustomerRecord[]; truncated: boolean }>;
   createQuoteV2Draft(input: QuoteV2DraftCreate): Promise<{ id: string; quoteNumber?: string | null }>;
 };

@@ -37,6 +37,41 @@ export function specField(value: unknown): QuoteFrontDoorSpec {
   };
 }
 
+export function picksField(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return { ...(value as Record<string, unknown>) };
+}
+
+export function lineListField(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const record = item as Record<string, unknown>;
+    const id = typeof record.id === "string" ? record.id.trim() : "";
+    if (!id) return [];
+    const answers = record.answers && typeof record.answers === "object" && !Array.isArray(record.answers)
+      ? record.answers as Record<string, unknown>
+      : {};
+    const options = record.options && typeof record.options === "object" && !Array.isArray(record.options)
+      ? record.options as Record<string, unknown>
+      : undefined;
+    const label = typeof record.label === "string" && record.label.trim() ? record.label.trim() : id;
+    return [{
+      id,
+      label,
+      answers,
+      designId: typeof record.designId === "string" ? record.designId : null,
+      variant: typeof record.variant === "string" ? record.variant : undefined,
+      options,
+    }];
+  });
+}
+
+export function idListField(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => typeof item === "string" && item.trim() ? [item.trim()] : []);
+}
+
 export function customerField(value: unknown): CustomerSelection {
   const record = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
   return {

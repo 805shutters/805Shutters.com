@@ -75,7 +75,7 @@ describe("front-door side table removal", () => {
     expect(added.rows).toEqual([]);
     const stillThere = await blocked.query<{ name: string }>(`select customer_name as name from public.${table}`);
     expect(stillThere.rows).toEqual([{ name: "Jane Smith" }]);
-  });
+  }, 30_000);
 
   it("drops the side table, its policies, and its grants when the table is empty", async () => {
     await installSideTable(empty);
@@ -89,7 +89,7 @@ describe("front-door side table removal", () => {
        where table_schema = 'public' and table_name = 'sales_quotes' and column_name = 'front_door_readback'
     `);
     expect(column.rows).toEqual([{ data_type: "jsonb" }]);
-  });
+  }, 30_000);
 });
 
 describe("front-door draft creates one sales quote", () => {

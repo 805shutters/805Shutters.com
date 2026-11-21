@@ -13,6 +13,8 @@ import { POST as nextField } from "./next-field/route";
 import { POST as validateTap } from "./validate/route";
 import { POST as readBack } from "./read-back/route";
 import { POST as saveDraft } from "./draft/route";
+import { POST as batchNext } from "./batch-next-field/route";
+import { POST as batchValidate } from "./batch-validate/route";
 
 const catalog = "order-form:norman:roller:v1";
 
@@ -33,7 +35,7 @@ function database() {
     return api;
   };
   const client = {
-    rpc: async (fn: string, args: Record<string, unknown>) => {
+    rpc: async (fn: string, args: Record<string, unknown> = {}) => {
       calls.push({ type: "rpc", fn, args });
       if (fn === "quote_next_required_field") {
         return {
@@ -49,6 +51,35 @@ function database() {
           data: {
             backend: "authoritative_v2", quoteId: "draft-route", quoteNumber: "805-0108", revision: 1,
             status: "draft", quoteV2Status: "draft", lineCount: 0,
+          },
+          error: null,
+        };
+      }
+      if (args?.manufacturer === "Sundance" || args?.p_field_key === "mount_type" && args?.p_value === "Ceiling") {
+        return {
+          data: {
+            ok: false,
+            status: args?.manufacturer === "Sundance" ? "blocked" : "needs_input",
+            reason: args?.manufacturer === "Sundance" ? "unknown manufacturer or category" : "value is not a catalog choice",
+            choices: [],
+          },
+          error: null,
+        };
+      }
+      if (fn === "quote_validate_tapped_value") return { data: { ok: true, status: "ok", reason: null, choices: [] }, error: null };
+      if (fn === "mutate_quote_v2_structure") {
+        const operations = Array.isArray(args?.p_operations) ? args.p_operations as Array<{ lineItemId?: string; type?: string }> : [];
+        const ids = [...new Set(operations.map((operation) => operation.lineItemId).filter((id): id is string => Boolean(id)))];
+        return {
+          data: {
+            backend: "authoritative_v2",
+            quoteId: args?.p_quote_id,
+            revision: Number(args?.p_expected_revision) + 1,
+            status: "draft",
+            quoteV2Status: "stale",
+            lineCount: ids.length,
+            selectedDesigns: Object.fromEntries(ids.map((id) => [id, "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"])),
+            operations: operations.map((operation, index) => ({ index, type: operation.type, lineItemId: operation.lineItemId })),
           },
           error: null,
         };
@@ -90,6 +121,10 @@ describe("quote front door routes", () => {
     expect((await nextField(post("/api/crm/quote-front-door/next-field", {}))).status).toBe(401);
     expect((await saveDraft(post("/api/crm/quote-front-door/draft", {}))).status).toBe(401);
     expect(isKenCrmRequestAllowed("khill31@msn.com", "POST", "/api/crm/quote-front-door/draft")).toBe(false);
+    expect(isKenCrmRequestAllowed("khill31@msn.com", "POST", "/api/crm/quote-front-door/batch-next-field")).toBe(false);
+    expect(isKenCrmRequestAllowed("khill31@msn.com", "POST", "/api/crm/quote-front-door/batch-validate")).toBe(false);
+    expect((await batchNext(post("/api/crm/quote-front-door/batch-next-field", {}))).status).toBe(401);
+    expect((await batchValidate(post("/api/crm/quote-front-door/batch-validate", {}))).status).toBe(401);
     expect(isKenCrmRequestAllowed("805shutters@gmail.com", "POST", "/api/crm/quote-front-door/draft")).toBe(true);
   });
 
@@ -152,5 +187,64 @@ describe("quote front door routes", () => {
     expect(db.calls.some((call) => call.type === "insert")).toBe(false);
     expect(db.calls.some((call) => call.table === "crm_customers" && call.type === "insert")).toBe(false);
     expect(db.calls.filter((call) => call.fn === "quote_validate_tapped_value")).toHaveLength(1);
+
+    const screen = await batchNext(post("/api/crm/quote-front-door/batch-next-field", {
+      manufacturer: "Norman", category: "roller", spec: { answers: { room_location: "Office" } },
+    }));
+    expect(screen.status).toBe(200);
+    const screenBody = await screen.json();
+    expect(screenBody.sent).toBe(false);
+    expect(screenBody.fields.map((field: { fieldKey: string }) => field.fieldKey)).not.toContain("room_location");
+
+    const lineA = "22222222-2222-4222-8222-222222222222";
+    const lineB = "33333333-3333-4333-8333-333333333333";
+    const quoteId = "44444444-4444-4444-8444-444444444444";
+    const batch = await batchValidate(post("/api/crm/quote-front-door/batch-validate", {
+      manufacturer: "Norman",
+      category: "roller",
+      spec: { answers: {} },
+      picks: { room_location: "Office", mount_type: "Inside Mount", quantity: 1 },
+      lines: [
+        { id: lineA, label: "Line A", answers: {} },
+        { id: lineB, label: "Line B", answers: {} },
+      ],
+      applyToLineIds: [lineA, lineB],
+      quoteId,
+      expectedRevision: 2,
+      idempotencyKey: "front-door-route-1",
+    }));
+    expect(batch.status).toBe(200);
+    expect(await batch.json()).toMatchObject({
+      saved: true,
+      sent: false,
+      reask: [],
+      quote: { id: quoteId, status: "draft", sent: false, quoteV2Status: "stale" },
+    });
+    const conflict = await batchValidate(post("/api/crm/quote-front-door/batch-validate", {
+      manufacturer: "Norman",
+      category: "roller",
+      spec: { answers: {} },
+      picks: { room_location: "Office", mount_type: "Ceiling" },
+      lines: [{ id: lineA, label: "Line A", answers: {} }],
+      applyToLineIds: [lineA],
+      quoteId,
+      expectedRevision: 2,
+      idempotencyKey: "front-door-route-2",
+    }));
+    const conflictBody = await conflict.json();
+    expect(conflictBody.sent).toBe(false);
+    expect(conflictBody.reask.map((item: { fieldKey: string }) => item.fieldKey)).toEqual(["mount_type"]);
+    const structure = db.calls.filter((call) => call.fn === "mutate_quote_v2_structure");
+    expect(structure).toHaveLength(2);
+    expect(structure[0]?.args).toMatchObject({
+      p_quote_id: quoteId,
+      p_actor_id: "11111111-1111-4111-8111-111111111111",
+      p_expected_revision: 2,
+      p_idempotency_key: "front-door-route-1",
+    });
+    expect(JSON.stringify(structure[0]?.args?.p_operations)).not.toContain("blocked");
+    expect(JSON.stringify(structure[1]?.args?.p_operations)).not.toContain("Ceiling");
+    expect(db.calls.some((call) => call.type === "insert")).toBe(false);
+    expect(db.calls.some((call) => call.table === "crm_quote_front_door_drafts" || call.table === "crm_quote_front_door_line_drafts")).toBe(false);
   });
 });

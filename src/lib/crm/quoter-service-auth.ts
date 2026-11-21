@@ -31,6 +31,8 @@ export const QUOTER_FRONT_DOOR_ROUTES = [
   "/api/crm/quote-front-door/validate",
   "/api/crm/quote-front-door/read-back",
   "/api/crm/quote-front-door/draft",
+  "/api/crm/quote-front-door/batch-next-field",
+  "/api/crm/quote-front-door/batch-validate",
 ] as const;
 
 export type QuoterFrontDoorRoute = (typeof QUOTER_FRONT_DOOR_ROUTES)[number];
@@ -45,6 +47,7 @@ const QUOTER_READ_TABLES = new Set([
   "sales_805_appointments",
   "crm_calendar_events",
   "quote_category_field_sequence",
+  "quote_catalog_field_choice",
 ]);
 
 const QUOTER_QUOTE_UPDATE_TABLE = "sales_quotes";

@@ -94,6 +94,8 @@ function store(overrides: Partial<QuoteFrontDoorStore> = {}): QuoteFrontDoorStor
       { field_key: "room_location", ask_order: 1 },
     ],
     findCustomerRecords: async () => ({ records: [], truncated: false }),
+    sequenceRows: async () => [],
+    choiceRows: async () => [],
     createQuoteV2Draft: async (input) => {
       creates.push(input);
       return { id: "draft-1", quoteNumber: "805-0001" };

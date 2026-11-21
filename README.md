@@ -53,9 +53,12 @@ The token is accepted only on these routes:
 - `POST /api/crm/quote-front-door/validate`
 - `POST /api/crm/quote-front-door/read-back`
 - `POST /api/crm/quote-front-door/draft`
+- `POST /api/crm/quote-front-door/batch-next-field`
+- `POST /api/crm/quote-front-door/batch-validate`
 
 The draft write calls `create_quote_v2_draft` for that staff actor and stores
 the read-back on `sales_quotes.front_door_readback`. The quote stays a draft.
+Button saves call `mutate_quote_v2_structure` on that draft for the same actor.
 The bot cannot send a quote, a payment link, an email, or a text, and it
 cannot write `quote_category_field_sequence` or `quote_sequence_field_alias`.
 
