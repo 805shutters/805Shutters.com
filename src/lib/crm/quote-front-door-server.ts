@@ -4,35 +4,35 @@ import {
   usableLookup,
   type CustomerLookupQuery,
   type CustomerRecord,
-  type DraftInsert,
   type QuoteFrontDoorAppointment,
   type QuoteFrontDoorStore,
+  type QuoteV2DraftCreate,
   type SequenceChoice,
   type SequenceFieldOrder,
   type SequenceNext,
   type TapResult,
 } from "@/lib/crm/quote-front-door";
 import { CrmAuthError } from "@/lib/crm/auth";
-import { frontDoorDraftCard, type FrontDoorDraftCard } from "@/lib/crm/quote-front-door-draft-view";
 
 /**
  * Staff CRM calls reach this store through the service client after requireCrmUser.
  * The store reads customers, jobs, calendar events, and appointments.
- * The only write is an insert into crm_quote_front_door_drafts, and that insert is a draft.
+ * The only write is create_quote_v2_draft for the signed-in staff actor, which stays a draft.
  */
 
 const SEARCH_LIMIT = 50;
 
 export type QuoteFrontDoorDb = {
-  rpc(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: { message: string } | null }>;
+  rpc(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: { message: string; code?: string } | null }>;
   from(table: string): {
     select(columns: string): QuoteFrontDoorFilter;
-    insert(row: Record<string, unknown>): {
-      select(columns: string): {
-        single(): Promise<{ data: { id: string } | null; error: { message: string } | null }>;
-      };
-    };
+    update(values: Record<string, unknown>): QuoteFrontDoorUpdate;
   };
+};
+
+type QuoteFrontDoorUpdate = {
+  eq(column: string, value: string): QuoteFrontDoorUpdate;
+  is(column: string, value: null): Promise<{ error: { message: string; code?: string } | null }>;
 };
 
 type QuoteFrontDoorFilter = {
@@ -43,19 +43,6 @@ type QuoteFrontDoorFilter = {
   order(column: string, options: { ascending: boolean }): QuoteFrontDoorFilter;
   limit(count: number): Promise<{ data: unknown[] | null; error: { message: string } | null }>;
 };
-
-export async function listQuoteFrontDoorDrafts(db: QuoteFrontDoorDb): Promise<FrontDoorDraftCard[]> {
-  const { data, error } = await db
-    .from("crm_quote_front_door_drafts")
-    .select("id, created_at, customer_name, customer_phone, customer_address, manufacturer, category, multiplier, read_back, status")
-    .order("created_at", { ascending: false })
-    .limit(200);
-  if (error) throw new CrmAuthError(502, "Front-door drafts could not be loaded.");
-  return (data ?? []).flatMap((row) => {
-    const card = frontDoorDraftCard(row);
-    return card ? [card] : [];
-  });
-}
 
 export function quoteFrontDoorStore(db: QuoteFrontDoorDb): QuoteFrontDoorStore {
   return {
@@ -91,17 +78,49 @@ export function quoteFrontDoorStore(db: QuoteFrontDoorDb): QuoteFrontDoorStore {
     findCustomerRecords(query) {
       return findCustomerRecords(db, query);
     },
-    async insertDraft(row) {
-      assertDraftInsert(row);
-      const { data, error } = await db
-        .from("crm_quote_front_door_drafts")
-        .insert({ ...row, status: "draft" })
-        .select("id")
-        .single();
-      if (error || !data?.id) throw new CrmAuthError(502, "The draft quote could not be saved.");
-      return { id: data.id };
+    createQuoteV2Draft(input) {
+      return createQuoteV2Draft(db, input);
     },
   };
+}
+
+const STAFF_ACTOR_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+async function createQuoteV2Draft(db: QuoteFrontDoorDb, input: QuoteV2DraftCreate) {
+  const actorId = input.actorId.trim();
+  if (!STAFF_ACTOR_ID.test(actorId)) throw new CrmAuthError(401, "A signed-in staff actor is required.");
+  const { data, error } = await db.rpc("create_quote_v2_draft", {
+    p_idempotency_key: input.idempotencyKey,
+    p_actor_id: actorId,
+    p_quote_patch: input.quotePatch,
+  });
+  if (error) throw draftWriteError(error);
+  const result = asRecord(data);
+  const quoteId = text(result.quoteId);
+  if (!quoteId || result.status !== "draft" || result.quoteV2Status !== "draft") {
+    throw new CrmAuthError(502, "The draft quote could not be saved.");
+  }
+  const jobId = text(input.quotePatch.jobId);
+  if (jobId && STAFF_ACTOR_ID.test(jobId)) {
+    const linked = await db
+      .from("sales_quotes")
+      .update({ created_job_id: jobId })
+      .eq("id", quoteId)
+      .eq("created_by", actorId)
+      .is("created_job_id", null);
+    if (linked.error) throw new CrmAuthError(502, "The draft quote could not be saved.");
+  }
+  return { id: quoteId, quoteNumber: text(result.quoteNumber) };
+}
+
+function draftWriteError(error: { message: string; code?: string }) {
+  if (error.code === "23505" || /already used/i.test(error.message)) {
+    return new CrmAuthError(409, "That draft was already saved with different details.");
+  }
+  if (error.code === "42501" || /not authorized/i.test(error.message)) {
+    return new CrmAuthError(403, "This CRM account cannot create Quote V2 drafts.");
+  }
+  return new CrmAuthError(502, "The draft quote could not be saved.");
 }
 
 async function findCustomerRecords(db: QuoteFrontDoorDb, query: CustomerLookupQuery) {
@@ -361,7 +380,3 @@ function text(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-export function assertDraftInsert(row: DraftInsert) {
-  if (row.status !== "draft") throw new CrmAuthError(409, "A front-door quote can only be saved as a draft.");
-  return row;
-}

@@ -3,7 +3,6 @@ import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { QuoteTableRow } from "@mts/components/crm/quote-builder/QuotesTable";
-import type { FrontDoorDraftCard } from "@/lib/crm/quote-front-door-draft-view";
 import { StaffQuoteDesk } from "./StaffQuoteDesk";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -87,29 +86,21 @@ describe("staff customer quote UI", () => {
     expect(container.querySelectorAll("article")).toHaveLength(1);
     expect(container.textContent).toContain("Customer 25");
   });
-  it("shows a front-door draft as read only with no send, open, or delete action", async () => {
-    const draft: FrontDoorDraftCard = {
-      id: "draft-1", customerName: "Jane Smith", customerPhone: "+18055550100", customerAddress: "1 Main St",
-      manufacturer: "Norman", category: "roller", multiplier: "2.5",
-      readBack: "Norman roller\nRoom: Office\nMultiplier: 2.5", createdAt: "2026-11-21T16:00:00Z",
-      status: "draft", label: "Front-door draft", readOnly: true, sent: false,
+  it("shows a front-door quote as a real draft and has no side card", async () => {
+    const jane: QuoteTableRow = {
+      id: "jane-quote", source: "sales", quote_number: "805-0108", customer_name: "Jane Smith",
+      customer_address: "1 Main St", status: "draft", total_amount: 0,
     };
     const handlers = props();
-    await act(() => root.render(React.createElement(StaffQuoteDesk, { quotes: rows, frontDoorDrafts: [draft], ...handlers })));
-    const section = container.querySelector('section[aria-label="Front-door drafts"]')!;
-    expect(section).not.toBeNull();
-    expect(section.textContent).toContain("Front-door draft");
-    expect(section.textContent).toContain("Read only");
-    expect(section.textContent).toContain("Jane Smith");
-    expect(section.textContent).toContain("Room: Office");
-    expect(section.textContent).toContain("Multiplier 2.5");
-    expect(section.querySelectorAll("button, a")).toHaveLength(0);
-    expect(section.textContent?.toLowerCase()).not.toContain("send");
-    expect(container.querySelectorAll('button[aria-label^="Open quote"]')).toHaveLength(3);
-    const sent = [...container.querySelectorAll("button")].find(button => button.textContent?.startsWith("Sent"))!;
-    await act(() => sent.click());
+    await act(() => root.render(React.createElement(StaffQuoteDesk, { quotes: [...rows, jane], ...handlers })));
     expect(container.querySelector('section[aria-label="Front-door drafts"]')).toBeNull();
-    expect(handlers.onOpen).not.toHaveBeenCalled();
-    expect(handlers.onDelete).not.toHaveBeenCalled();
+    expect(container.textContent).not.toContain("Front-door draft");
+    expect(container.textContent).not.toContain("Read only");
+    const customer = container.querySelector('article[aria-label="Quotes for Jane Smith"]')!;
+    expect(customer).not.toBeNull();
+    expect(customer.textContent).toContain("805-0108");
+    expect(customer.textContent).toContain("Draft");
+    await click("Open quote A 805-0108");
+    expect(handlers.onOpen).toHaveBeenCalledWith(jane);
   });
 });

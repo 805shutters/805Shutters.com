@@ -45,7 +45,6 @@ import type { QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
 
 import type { MobileQuoteRelationship } from "@/lib/crm/mobile-quotes";
 import { staffQuoteCustomerId } from "@/components/crm/quotes/staff-quote-groups";
-import { frontDoorDraftCards } from "@/lib/crm/quote-front-door-draft-view";
 
 interface QuoteDashboardProps {
   followUps?: boolean;
@@ -913,22 +912,6 @@ export function QuoteDashboard({
     },
   });
   const followUpQuotes = hubEligibility.isError ? [] : filteredQuotes.filter(quote => hubEligibility.data?.eligibleQuoteIds?.includes(quote.id));
-  const frontDoorDrafts = useQuery({
-    queryKey: ["quote-front-door-drafts", activeAccountId],
-    enabled: Boolean(staffOverview) && activeAccountId === ACCOUNT_IDS.SHUTTERS_805,
-    staleTime: 15_000,
-    retry: false,
-    queryFn: async () => {
-      const { data } = await supabase.auth.getSession();
-      const response = await fetch("/api/crm/quote-front-door/drafts", {
-        headers: { Authorization: `Bearer ${data.session?.access_token || ""}` },
-        cache: "no-store",
-      });
-      if (!response.ok) throw new Error("Front-door drafts could not be loaded.");
-      const body = await response.json() as { drafts?: unknown };
-      return frontDoorDraftCards(body.drafts);
-    },
-  });
 
   const statsBar = (
     <QuoteStatsBar
@@ -958,8 +941,6 @@ export function QuoteDashboard({
         onNewQuote={() => { setNewNormanQuote(false); setShowNewQuoteDialog(true); }}
         onNewNormanQuote={() => { setNewNormanQuote(true); normanDraftRequest.current = null; setShowNewQuoteDialog(true); }}
         onOpenTools={() => onOpenQuoteTools?.()}
-        frontDoorDrafts={frontDoorDraftCards(frontDoorDrafts.data)}
-        frontDoorDraftsError={frontDoorDrafts.isError ? "Front-door drafts could not be loaded." : null}
       /> : <>
 
       {/* Stats Bar — status filter tabs */}
