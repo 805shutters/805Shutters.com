@@ -782,6 +782,8 @@ it("raises spec_changed for Onyx and appends a Sundance re-price revision", asyn
     "select count(*) from crm_vendor_accounts where vendor in ('onyx', 'sundance') and active",
   );
   expect(Number(active.rows[0].count)).toBe(0);
+});
+
 const supplierCost = '{"policy":"805-draft-opening-line-v1","mode":"supplier_cost"}';
 
 async function insertLivePrice(quote: number, line: number, specHashValue: string, receipt: Record<string, unknown>) {

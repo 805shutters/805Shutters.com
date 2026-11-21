@@ -113,10 +113,24 @@ create or replace function public.protect_supplier_workflow_price()
 returns trigger
 language plpgsql
 set search_path = public, pg_temp
-as $live$
+as $wf$
 begin
   if tg_op = 'DELETE' then
-    raise exception 'Supplier workflow prcreate or replace function public.record_vendor_price_receipt(
+    raise exception 'Supplier workflow price evidence is append-only.' using errcode = 'PT409';
+  end if;
+  if tg_op = 'UPDATE'
+     and old.portal_draft_id is null
+     and new.portal_draft_id is not null
+     and new.portal_draft_id = public.price_record_portal_draft_id(old.receipt)
+     and (to_jsonb(new) - 'portal_draft_id') = (to_jsonb(old) - 'portal_draft_id')
+  then
+    return new;
+  end if;
+  raise exception 'Supplier workflow price evidence is append-only.' using errcode = 'PT409';
+end
+$wf$;
+
+create or replace function public.record_vendor_price_receipt(
   p_quote_id uuid, p_expected_revision bigint, p_receipt jsonb, p_actor text
 ) returns jsonb
 language plpgsql
@@ -465,16 +479,6 @@ begin
   outcome := jsonb_build_object(
     'designId', d.id, 'unitPrice', v_unit, 'installation', v_install, 'shipping', v_ship,
     'margin', q.live_margin, 'recordId', workflow_id, 'priceSource', 'live_site',
-    'manufacturerCost', round(manufacturer, 2), 'productCost', product, 'total', round(total, 2),
-    'revision', v_revision, 'quoteStatus', next_status
-  );
-  insert into public.sales_quote_line_price_events (
-    request_id, quote_id, line_item_id, variant, unit_price, previous_price, actor_id, result
-  ) values (p_request_id, q.id, l.id, p_variant, v_unit, d.unit_price, actor, outcome);
-  return outcome;
-end $live$;
-
-', workflow_id, 'priceSource', 'live_site',
     'manufacturerCost', round(manufacturer, 2), 'productCost', product, 'total', round(total, 2),
     'revision', v_revision, 'quoteStatus', next_status
   );
