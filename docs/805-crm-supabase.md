@@ -13,6 +13,8 @@ SUPABASE_SERVICE_ROLE_KEY=<805-service-role-key>
 # Quoter bot bearer secret. Compared as a SHA-256 digest. Empty fails closed.
 # Set the real value in Vercel or the Grok vault. Do not commit a live token.
 QUOTER_SERVICE_TOKEN=
+# Active crm_profiles email for Quoter drafts. Blank uses jessica@805shutters.com.
+QUOTER_SERVICE_ACTOR_EMAIL=
 BOOKING_ALERT_WEBHOOK_URL=<optional-alert-webhook>
 BOOKING_EMAIL_FROM="805 Shutters <805@805shutters.com>"
 BOOKING_EMAIL_REPLY_TO=805@805shutters.com
@@ -88,14 +90,19 @@ CRM access is intentionally limited in code to exactly these three users:
 - `jessica@805shutters.com`
 - `khill31@msn.com`
 
-The Quoter bot is not one of those users and does not get a `crm_profiles` row.
+The Quoter bot is not a fourth login. `requireCrmUser` refuses its bearer.
 It presents `QUOTER_SERVICE_TOKEN` and can call only the five
 `/api/crm/quote-front-door/*` routes. The server hashes the environment value
 and the bearer token before comparing them. A missing or blank value fails
 closed. Put the secret in the Vercel project environment or the Grok vault, not
-in the repo. Before a write, the bot reads
-`GET /api/crm/quote-front-door/customers` once to check the token, retries that
-read once on 401 or 403, and stops without writing if the check still fails.
+in the repo. On those five routes the draft is attributed to the active
+`crm_profiles` row named by `QUOTER_SERVICE_ACTOR_EMAIL`, which defaults to
+`jessica@805shutters.com`. A missing or inactive profile fails closed and does
+not write. The draft calls `create_quote_v2_draft` with that profile id and
+stores the read-back on `sales_quotes.front_door_readback`. Before a write, the
+bot reads `GET /api/crm/quote-front-door/customers` once to check the token,
+retries that read once on 401 or 403, and stops without writing if the check
+still fails.
 
 Use this local readiness check after adding environment values and migrations:
 

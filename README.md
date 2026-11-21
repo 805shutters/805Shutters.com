@@ -37,12 +37,18 @@ verification URL is `https://805-one.vercel.app`.
 
 ## Quoter service
 
-The Quoter is a server-to-server caller. It is not a `crm_profiles` user and it
-does not sign in through Supabase. Staff CRM sessions stay on `requireCrmUser`.
-The bot sends `Authorization: Bearer <token>`. The server reads
-`QUOTER_SERVICE_TOKEN`, hashes that value and the presented token, and compares
-the digests with a timing-safe compare. If the variable is missing or blank,
-the check fails closed and the bearer is not a Quoter token.
+The Quoter is a server-to-server caller. It does not sign in through Supabase.
+Staff CRM sessions stay on `requireCrmUser`, which refuses this bearer. The bot
+sends `Authorization: Bearer <token>`. The server reads `QUOTER_SERVICE_TOKEN`,
+hashes that value and the presented token, and compares the digests with a
+timing-safe compare. If the variable is missing or blank, the check fails
+closed and the bearer is not a Quoter token.
+
+On the five front-door routes, a matching token is attributed to one active
+`crm_profiles` row. The email comes from `QUOTER_SERVICE_ACTOR_EMAIL` and
+defaults to `jessica@805shutters.com`. The server reads that profile at request
+time and passes its id as `p_actor_id`. A missing or inactive profile fails
+closed and does not write.
 
 The token is accepted only on these routes:
 
@@ -52,9 +58,10 @@ The token is accepted only on these routes:
 - `POST /api/crm/quote-front-door/read-back`
 - `POST /api/crm/quote-front-door/draft`
 
-The only write is an insert into `crm_quote_front_door_drafts` with status
-`draft`. The bot cannot send a quote, a payment link, an email, or a text, and
-it cannot write `quote_category_field_sequence` or `quote_sequence_field_alias`.
+The draft write calls `create_quote_v2_draft` for that staff actor and stores
+the read-back on `sales_quotes.front_door_readback`. The quote stays a draft.
+The bot cannot send a quote, a payment link, an email, or a text, and it
+cannot write `quote_category_field_sequence` or `quote_sequence_field_alias`.
 
 ### Client contract
 
@@ -71,7 +78,8 @@ is retried once and then stopped the same way.
 Do not put the token in the repo, in a migration, or in a client bundle. Set
 `QUOTER_SERVICE_TOKEN` in the Vercel project environment for the `805`
 deployment, or in the Grok vault. This repository does not create a live secret.
-Leave the value blank in `.env.example`.
+Leave the value blank in `.env.example`. `QUOTER_SERVICE_ACTOR_EMAIL` is not a
+secret. Leave it blank to use `jessica@805shutters.com`.
 
 ## Deploy to Vercel
 
