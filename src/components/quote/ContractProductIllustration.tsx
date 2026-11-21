@@ -12,7 +12,7 @@ import { anatomyShadeStudy, OPTION_ART_ROOT } from '@/lib/quote/anatomy-shade-st
 import { anatomyControlAnchor } from '@/lib/quote/anatomy-control-anchor';
 import { shutterFrameProfile, type ShutterFrameProfile } from '@/lib/quote/shutter-frame-profiles';
 import { ValanceDetail } from './ValanceDetail';
-import { contractProductFamily, contractProductType } from '@/lib/quote/contract-product-family';
+import { contractProductFamily, contractProductType, contractReferenceProduct } from '@/lib/quote/contract-product-family';
 import { ShutterAssembly } from './ShutterAssembly';
 import type { CSSProperties } from 'react';
 
@@ -39,10 +39,11 @@ export function ContractProductIllustration({ productType, options = [], framePr
   const productSrc = coveredRoller && !integratedValance ? art!.src.replace("roller-open-roll", "roller") : art?.src;
   const controlAnchor = size === 'anatomy' ? anatomyControlAnchor(productType, options, art) : null;
   const temporary = showTemporaryShade && temporaryShadeSelected(options);
-  const pencilReference = !specialty && !art ? anatomyReferenceArtwork(productType, options) : null;
+  const referenceProduct = contractReferenceProduct(productType, options);
+  const pencilReference = !specialty && !art ? anatomyReferenceArtwork(referenceProduct, options) : null;
   return (
     <div className={temporary ? styles.companions : undefined}>
-    <figure className={`${styles.figure} ${size === "anatomy" ? styles.anatomy : ""}`} data-contract-illustration="c-v1" data-official-sketch-family={contractProductFamily(productType)}>
+    <figure className={`${styles.figure} ${size === "anatomy" ? styles.anatomy : ""}`} data-contract-illustration="c-v1" data-official-sketch-family={contractProductFamily(referenceProduct)}>
       {!specialty && !art ? <ValanceDetail id={valance?.id ?? null}><div className={styles.shadeStudy} style={valanceStyle} data-valance-body={valance ? true : undefined}>
         {pencilReference ? <><img src={pencilReference.src} alt={customerQuoteText(pencilReference.alt)} width={320} height={320} className={styles.product} data-family-reference="true" /><p className={styles.reference}>Official 805 category sketch · selected configuration is specified in the labels.</p></> : <p role="status" data-official-sketch-required="true">Official 805 sketch required for this product.</p>}
         {valance ? <img src={valance.src} alt={`${valance.label} — pencil illustration`} className={rollerProfile ? styles.rollerValance : styles.blindValance} data-valance-artwork={valance.id} /> : null}

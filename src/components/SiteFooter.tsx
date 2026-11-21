@@ -5,6 +5,7 @@ import Link from "next/link";
 import { commercialBrand } from "@/lib/commercial-mode-data";
 import { site } from "@/lib/site-data";
 import { useCommercialMode } from "./CommercialModeProvider";
+import { GalleryContactLinks } from "./GalleryContactLinks";
 import { MobileActionBar } from "./MobileActionBar";
 import { TrackedPhoneLink } from "./TrackedPhoneLink";
 
@@ -150,6 +151,7 @@ export function SiteFooter() {
         <Link href="/terms/">{"Terms & Conditions"}</Link>
         <TrackedPhoneLink location="footer">{site.phone}</TrackedPhoneLink>
       </div>
+      {!isCommercialMode && <GalleryContactLinks />}
       <MobileActionBar />
     </footer>
   );

@@ -23,6 +23,32 @@ export type OrderCogsCronDependencies = {
   processPeerPayments: typeof processPeerPaymentEmails;
 };
 
+type OrderCogsRunSummary = {
+  matched?: number;
+  needsReview?: number;
+  unmatched?: number;
+  skipped?: number;
+  applied?: number;
+  errors?: number;
+  recordErrors?: number;
+};
+
+/** Review, unmatched, and time-budget deferrals are normal intake. Fail only for row or audit errors. */
+export function orderCogsRunSucceeded(result: OrderCogsRunSummary) {
+  return (result.errors ?? 0) === 0 && (result.recordErrors ?? 0) === 0;
+}
+
+export function orderCogsRunCounts(result: OrderCogsRunSummary) {
+  return {
+    matched: result.matched ?? 0,
+    needs_review: result.needsReview ?? 0,
+    unmatched: result.unmatched ?? 0,
+    skipped: result.skipped ?? 0,
+    applied: result.applied ?? 0,
+    errors: result.errors ?? 0,
+  };
+}
+
 const defaultDependencies: OrderCogsCronDependencies = {
   env: {
     ORDER_COGS_CRON_SECRET: process.env.ORDER_COGS_CRON_SECRET,
@@ -85,8 +111,8 @@ export async function runOrderCogsCron(
           productAutoApply: true,
           archive: false,
           maxRunMs: 230_000,
-        }), result => !(result.errors || result.recordErrors || result.deferred || result.needsReview || result.unmatched)),
-        result => !(result.errors || result.recordErrors || result.deferred || result.needsReview || result.unmatched),
+        }), orderCogsRunSucceeded, orderCogsRunCounts),
+        orderCogsRunSucceeded,
       ),
       runPayments ? runAuxiliaryProcessor(
         "Square payment reconciliation",
@@ -100,8 +126,10 @@ export async function runOrderCogsCron(
         result => result.errors === 0,
       ) : Promise.resolve({ result: null, state: { status: "skipped" as const } }),
     ]);
+    const counts = orders.result ? orderCogsRunCounts(orders.result) : undefined;
     return NextResponse.json({
       orderCogs: orders.result,
+      ...(counts ? { counts } : {}),
       squarePayments: squarePayments.result,
       peerPayments: peerPayments.result,
       processorStates: {

@@ -101,10 +101,10 @@
         "sendable": true,
         "costSummary": {
           "status": "complete",
-          "productCostCents": 11550,
+          "productCostCents": 10500,
           "freightCents": 2500,
-          "processingCents": 281,
-          "dealerCostTotalCents": 14331
+          "processingCents": 260,
+          "dealerCostTotalCents": 13260
         },
         "lineResults": [
           {
@@ -112,7 +112,7 @@
             "ok": true,
             "resultCode": null,
             "customerTotalCents": 35000,
-            "wholesaleTotalCents": 11550,
+            "wholesaleTotalCents": 10500,
             "requiredValidationRuleIds": [],
             "requiredSendabilityReasonCodes": []
           }
@@ -199,13 +199,13 @@
         "catalogAsOf": "2026-08-01",
         "customerTotalCents": 45100,
         "sendable": true,
-        "policyNote": "The fresh build must preserve $451 source retail while replacing the superseded .30 dealer capture with the current .33 account factor.",
+        "policyNote": "The fresh build preserves $451 source retail and prices dealer cost at list x the catalog factor 0.30.",
         "costSummary": {
           "status": "complete",
-          "productCostCents": 14883,
+          "productCostCents": 13530,
           "freightCents": 2500,
-          "processingCents": 348,
-          "dealerCostTotalCents": 17731
+          "processingCents": 321,
+          "dealerCostTotalCents": 16351
         },
         "lineResults": [
           {
@@ -213,7 +213,7 @@
             "ok": true,
             "resultCode": null,
             "customerTotalCents": 45100,
-            "wholesaleTotalCents": 14883,
+            "wholesaleTotalCents": 13530,
             "requiredValidationRuleIds": [],
             "requiredSendabilityReasonCodes": []
           }

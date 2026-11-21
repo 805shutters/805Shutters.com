@@ -5,7 +5,6 @@ import { businessDate } from "./business-date";
 import { buildJobTrackingView } from "./job-tracking-view";
 import type { JobProgress } from "./job-progress";
 import { effectiveBookkeepingStatus, isPaidInFullBookkeepingRow } from "@/lib/crm/bookkeeping";
-import { getMeasureNeededMeta } from "@/lib/crm/measure-needed-state";
 import {
   CrmBookkeepingRow,
   CrmBookkeepingStatus,
@@ -93,18 +92,6 @@ export function openBalanceRows(rows: CrmBookkeepingRow[]) {
   return rows.filter((row) => !isPaidInFullBookkeepingRow(row) && row.balance > 0);
 }
 
-export function measureNeededJobs(jobs: CrmJob[]) {
-  return jobs.filter((job) => getMeasureNeededMeta(job.meta).status === "needed");
-}
-
-export function measureScheduledJobs(jobs: CrmJob[]) {
-  return measureNeededJobs(jobs).filter((job) => getMeasureNeededMeta(job.meta).schedule_status === "scheduled");
-}
-
-export function measureUnscheduledJobs(jobs: CrmJob[]) {
-  return measureNeededJobs(jobs).filter((job) => getMeasureNeededMeta(job.meta).schedule_status !== "scheduled");
-}
-
 /** Sold jobs (sold/approved) where the required deposit hasn't been collected. */
 export function depositNeededRows(rows: CrmBookkeepingRow[]) {
   const progress = progressForRows(rows);
@@ -160,8 +147,6 @@ export function buildDashboardSummaryMetrics({
   const openBalances = openBalanceRows(rows);
   const depositNeeded = depositNeededRows(rows);
   const balanceDueCompleted = balanceDueCompletedRows(rows, jobs, quotes);
-  const measureNeeded = measureUnscheduledJobs(jobs);
-  const measureScheduled = measureScheduledJobs(jobs);
 
   return {
     openJobs: distinctRowsByJob(openRows).length,
@@ -178,9 +163,7 @@ export function buildDashboardSummaryMetrics({
     balanceDueCompleted: balanceDueCompleted.length,
     balanceDueCompletedAmount: balanceDueCompleted.reduce((total, row) => total + Math.max(Number(row.balance) || 0, 0), 0),
     missingCogs: missingCogs.length,
-    awaitingProduct: awaitingProduct.length,
-    measureNeeded: measureNeeded.length,
-    measureScheduled: measureScheduled.length
+    awaitingProduct: awaitingProduct.length
   };
 }
 

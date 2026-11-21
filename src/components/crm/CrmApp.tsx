@@ -1,4 +1,5 @@
 "use client";
+import {StripeFinanceWorkspace} from "./StripeFinanceWorkspace";
 import {InHousePayments} from "./InHousePayments";
 
 import { readCrmResponse } from "@/lib/crm/client-response";
@@ -84,7 +85,6 @@ import {
   balanceDueCompletedRows,
   depositNeededRows,
   distinctRowsByJob,
-  measureNeededJobs,
   missingCogsRows,
   needToOrderRows,
   openBalanceRows,
@@ -93,7 +93,6 @@ import {
   soldLifecycleJobs,
   trackingRowNeedsDeposit
 } from "@/lib/crm/dashboard-metrics";
-import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/lib/crm/measure-needed-state";
 import { withInstallationConfirmation } from "@/lib/crm/installation-confirmation";
 import { buildCommandPerformanceMetrics, formatCloseRate } from "@/lib/crm/command-performance";
 import { calendarTimelineRowRange } from "@/lib/crm/calendar-grid";
@@ -141,7 +140,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "phone" | "square" | "contracts" | "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "followups" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "calendar" | "payoff";
+type CrmTab = "stripe" | "phone" | "square" | "contracts" | "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "followups" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "calendar" | "payoff";
 type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
@@ -2025,50 +2024,6 @@ export function CrmApp({
     }
   }
 
-  async function updateMeasureNeededForJob(jobId: string, customerName: string, action: MeasureNeededAction) {
-    if (!session) return;
-
-    setBusy(true);
-    setMessage(null);
-
-    try {
-      const result = await crmFetch<MeasureNeededApiResult>(session, `/api/crm/jobs/${jobId}/measure-needed`, {
-        method: "POST",
-        body: JSON.stringify({ action })
-      });
-      const dashboardResult = await refresh();
-      if (dashboardResult && drill) {
-        setDrill(
-          rebuildDrillPayload(
-            drill,
-            dashboardResult.jobs,
-            dashboardResult.quotes,
-            dashboardResult.bookkeepingRows,
-            dashboardResult.customerFiles,
-            dashboardResult.installationInvoiceEmails,
-            dashboardResult.orderCogsEmails
-          )
-        );
-      }
-      setMessage(measureNeededStatusMessage(action, customerName, result.mts));
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Measure-needed status could not be updated.");
-      await refresh();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function updateMeasureNeededEntry(entry: DrillEntry, action: MeasureNeededAction) {
-    const jobId = entry.job?.id || entry.jobId || entry.row?.jobId || null;
-    if (!jobId) {
-      setMessage("This card is not linked to a CRM job.");
-      return;
-    }
-
-    await updateMeasureNeededForJob(jobId, entry.customerName || entry.name, action);
-  }
-
   async function markOrderedFromDrill(entry: DrillEntry) {
     if (!session) return false;
 
@@ -3279,8 +3234,6 @@ export function CrmApp({
   const depositNeededCount = summary?.depositNeeded || 0;
   const balanceDueCompletedCount = summary?.balanceDueCompleted || 0;
   const missingCogsCount = summary?.missingCogs || 0;
-  const measureNeededCount = summary?.measureNeeded || 0;
-  const measureScheduledCount = summary?.measureScheduled || 0;
   const readyToOrderCount = vendorOrderTasks.length;
 
   const financialViewBlocked=financialUnavailable&&["tools","command","bookkeeping","payments","payoff","customers","jobs"].includes(activeTab);
@@ -3315,6 +3268,7 @@ export function CrmApp({
           />
         )
       ) : null}
+      {activeTab === "stripe" && session ? <StripeFinanceWorkspace session={session} /> : null}
       {activeTab === "square" && session ? <SquareFinanceWorkspace session={session} /> : null}
       {dashboardRefreshError && <p role="alert" className="crm-feedback-banner">{dashboardRefreshError}</p>}
       {data?.loadWarnings?.map((warning) => <p role="status" className="crm-feedback-banner" key={warning}>{warning}</p>)}
@@ -3363,11 +3317,6 @@ export function CrmApp({
           <Metric label="Completed / Balance Open" value={balanceDueCompletedCount} tone={balanceDueCompletedCount > 0 ? "danger" : undefined} onClick={() => openSummaryDrill("balanceDueCompleted")} />
           <Metric label="Missing COGS" value={financialUnavailable ? "Unavailable" : missingCogsCount} tone={missingCogsCount > 0 ? "warning" : undefined} onClick={() => openSummaryDrill("missingCogs")} />
           <Metric label="Awaiting Product" value={data?.summary.awaitingProduct || 0} onClick={() => openSummaryDrill("awaitingProduct")} />
-          <MeasureMetric
-            needed={measureNeededCount}
-            scheduled={measureScheduledCount}
-            onClick={() => openSummaryDrill("measureNeeded")}
-          />
         </section>
       </header> : null}
 
@@ -3426,7 +3375,6 @@ export function CrmApp({
             onOpenPage={openCustomerSearchPage}
             onOpenCustomer={openCustomerFile}
             onReassignSale={reassignSale}
-            onMeasureNeededAction={updateMeasureNeededEntry}
             onMarkOrdered={markOrderedFromDrill}
             onFindCogs={findCogsFromDrill}
             onSaveField={saveDrillField}
@@ -3537,7 +3485,6 @@ export function CrmApp({
             onCloseDrill={() => setDrill(null)}
             onOpenCustomer={openCustomerFile}
             onReassignSale={reassignSale}
-            onMeasureNeededAction={updateMeasureNeededEntry}
             onMarkOrdered={markOrderedFromDrill}
             onFindCogs={findCogsFromDrill}
             onSaveField={saveDrillField}
@@ -3687,7 +3634,6 @@ export function CrmApp({
                   job={job}
                   key={job.id}
                   onStatusChange={updateJobStatus}
-                  onMeasureNeededAction={(targetJob, action) => updateMeasureNeededForJob(targetJob.id, targetJob.customer_name, action)}
                   onSave={updateJob}
                   onDelete={deleteJob}
                   busy={busy}
@@ -3860,43 +3806,6 @@ function Metric({
       <strong>{value}</strong>
       {detailControl}
     </div>
-  );
-}
-
-function MeasureMetric({
-  needed,
-  scheduled,
-  onClick
-}: {
-  needed: number;
-  scheduled: number;
-  onClick: () => void;
-}) {
-  const hasOutstandingMeasures = needed + scheduled > 0;
-  const className = [
-    "crm-metric",
-    "crm-metric-button",
-    "crm-measure-metric",
-    hasOutstandingMeasures ? "crm-metric--warning" : ""
-  ].filter(Boolean).join(" ");
-
-  return (
-    <button
-      type="button"
-      className={className}
-      onClick={onClick}
-      aria-label={`Measures: ${needed} needed, ${scheduled} scheduled`}
-    >
-      <span className="crm-measure-metric-title">Measure</span>
-      <span className="crm-measure-metric-value">
-        <small>Needed</small>
-        <strong>{needed}</strong>
-      </span>
-      <span className="crm-measure-metric-value">
-        <small>Scheduled</small>
-        <strong>{scheduled}</strong>
-      </span>
-    </button>
   );
 }
 
@@ -4078,7 +3987,6 @@ type CustomerSearchResult = {
   pages: CustomerSearchPage[];
   score: number;
 };
-type MeasureNeededAction = "request" | "measured";
 type SquareOrderPaymentType = "deposit" | "balance";
 type SquarePaymentRequestConfirmation = { expectedAmount: number; expectedRecipient: string; customAmount?: number };
 type SquarePaymentLinkResult = {
@@ -4089,14 +3997,6 @@ type SquarePaymentLinkResult = {
   url: string;
   email: { sent: boolean; skipped?: string; error?: string };
 };
-type MeasureNeededApiResult = {
-  job: CrmJob;
-  mts?: {
-    status: "created" | "existing" | "skipped" | "error";
-    jobNumber?: string | null;
-    message?: string | null;
-  };
-};
 type DrillEntryContext = {
   jobs?: CrmJob[];
   files?: CrmCustomerFile[];
@@ -4104,22 +4004,6 @@ type DrillEntryContext = {
 
 function titleCase(value: string) {
   return value.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function measureNeededStatusMessage(action: MeasureNeededAction, customerName: string, mts?: MeasureNeededApiResult["mts"]) {
-  if (action === "measured") return `${customerName} marked measured.`;
-  if (mts?.status === "created" || mts?.status === "existing") {
-    return mts.jobNumber
-      ? `${customerName} added to Measure Needed and synced to MTS job ${mts.jobNumber}.`
-      : `${customerName} added to Measure Needed and synced to MTS.`;
-  }
-  if (mts?.status === "skipped") {
-    return `${customerName} added to Measure Needed. MTS sync skipped: ${mts.message || "credentials missing"}.`;
-  }
-  if (mts?.status === "error") {
-    return `${customerName} added to Measure Needed. MTS sync error: ${mts.message || "check MTS CRM"}.`;
-  }
-  return `${customerName} added to Measure Needed.`;
 }
 
 function productMixKey(value: string) {
@@ -5402,14 +5286,6 @@ function buildSummaryDrill(
         placement: "summary",
         entries: rowsToEntries(awaitingProductRows(rows), (row) => row.total, { jobs, files })
       };
-    case "measureNeeded":
-      return {
-        title: "Measure Needed",
-        subtitle: "Sold jobs waiting on a technical measure",
-        metric,
-        placement: "summary",
-        entries: jobsToEntries(measureNeededJobs(jobs), rows, { files })
-      };
     case "jessicaNet":
       const finalRows = rows.filter(isFinalJessicaNetRow);
       const reviewRows = rows.filter((row) => hasJessicaNet(row) && !isFinalJessicaNetRow(row));
@@ -5477,7 +5353,6 @@ type JobTrackingStageId =
   | "scheduled"
   | "need_follow_up"
   | "sold_need_deposit"
-  | "need_measure"
   | "need_to_order"
   | "ordered"
   | "shipped"
@@ -5513,12 +5388,11 @@ const JOB_TRACKING_STAGES: JobTrackingStage[] = [
   { id: "scheduled", label: "Scheduled", detail: "Booked consultations", color: "#256f78", angle: -90 },
   { id: "need_follow_up", label: "Need Follow Up (not sold)", detail: "Open leads and unsold quotes", color: "#8a6f28", angle: -130 },
   { id: "sold_need_deposit", label: "Sold/Need deposit(customer signed email)", detail: "Signed and waiting on deposit", color: "#ad4f2f", angle: -170 },
-  { id: "need_measure", label: "Need Measure (after deposit)", detail: "Deposit in, measure pending", color: "#6f4fa1", angle: -210 },
-  { id: "need_to_order", label: "Need to order", detail: "Ready for vendor order", color: "#2e7d45", angle: -250 },
-  { id: "ordered", label: "Ordered", detail: "Order email or ordered status", color: "#1f5f9a", angle: -290 },
-  { id: "shipped", label: "Shipped", detail: "Shipping/received signal", color: "#008178", angle: -330 },
-  { id: "balance_needed", label: "Balance Needed", detail: "Installed or invoiced with balance", color: "#9a3d57", angle: -370 },
-  { id: "complete", label: "Complete", detail: "Paid or closed", color: "#2b2b28", angle: -410 }
+  { id: "need_to_order", label: "Need to order", detail: "Ready for vendor order", color: "#2e7d45", angle: -210 },
+  { id: "ordered", label: "Ordered", detail: "Order email or ordered status", color: "#1f5f9a", angle: -250 },
+  { id: "shipped", label: "Shipped", detail: "Shipping/received signal", color: "#008178", angle: -290 },
+  { id: "balance_needed", label: "Balance Needed", detail: "Installed or invoiced with balance", color: "#9a3d57", angle: -330 },
+  { id: "complete", label: "Complete", detail: "Paid or closed", color: "#2b2b28", angle: -370 }
 ];
 
 const JOB_TRACKING_COMPLETE_STAGE: JobTrackingStage = JOB_TRACKING_STAGES.find((stage) => stage.id === "complete") || {
@@ -5526,7 +5400,7 @@ const JOB_TRACKING_COMPLETE_STAGE: JobTrackingStage = JOB_TRACKING_STAGES.find((
   label: "Complete",
   detail: "Paid or closed",
   color: "#2b2b28",
-  angle: -410
+  angle: -370
 };
 const JOB_TRACKING_ORBIT_STAGES = JOB_TRACKING_STAGES.filter((stage) => stage.id !== "complete");
 
@@ -5645,7 +5519,6 @@ function classifyTrackingRow(
 
   const depositNeeded = trackingRowNeedsDeposit(row);
   if (depositNeeded) return "sold_need_deposit";
-  if (job && isMeasureNeededJob(job) && !depositNeeded) return "need_measure";
   if (status === "sold" || status === "approved" || status === "legacy" || status === "manual") return "need_to_order";
   if (status === "draft" || status === "sent") return "need_follow_up";
   return null;
@@ -5667,7 +5540,6 @@ function classifyTrackingJob(job: CrmJob, quote: CrmQuote | undefined, orderEmai
 
   if (job.status === "sold") {
     if ((Number(job.deposit_paid) || 0) <= 0) return "sold_need_deposit";
-    if (isMeasureNeededJob(job)) return "need_measure";
     return "need_to_order";
   }
 
@@ -6040,7 +5912,6 @@ function CommandDashboard({
   onCloseDrill,
   onOpenCustomer,
   onReassignSale,
-  onMeasureNeededAction,
   onMarkOrdered,
   onFindCogs,
   onSaveField,
@@ -6068,7 +5939,6 @@ function CommandDashboard({
   onCloseDrill: () => void;
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
-  onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
   onMarkOrdered?: (entry: DrillEntry) => Promise<boolean>;
   onFindCogs?: (entry: DrillEntry) => Promise<boolean>;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
@@ -6176,7 +6046,6 @@ function CommandDashboard({
         onClose={onCloseDrill}
         onOpenCustomer={onOpenCustomer}
         onReassignSale={onReassignSale}
-        onMeasureNeededAction={onMeasureNeededAction}
         onMarkOrdered={onMarkOrdered}
         onFindCogs={onFindCogs}
         onSaveField={onSaveField}
@@ -6204,7 +6073,6 @@ function CommandDashboard({
           onOpenPage={onOpenPage}
           onOpenCustomer={onOpenCustomer}
           onReassignSale={onReassignSale}
-          onMeasureNeededAction={onMeasureNeededAction}
           onMarkOrdered={onMarkOrdered}
           onFindCogs={onFindCogs}
           onSaveField={onSaveField}
@@ -6547,7 +6415,6 @@ type DrillPanelProps = {
   onClose: () => void;
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
-  onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
   onMarkOrdered?: (entry: DrillEntry) => Promise<boolean>;
   onFindCogs?: (entry: DrillEntry) => Promise<boolean>;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
@@ -6570,7 +6437,6 @@ function DrillSearchResultsPanel({
   onOpenPage,
   onOpenCustomer,
   onReassignSale,
-  onMeasureNeededAction,
   onMarkOrdered,
   onFindCogs,
   onSaveField,
@@ -6681,7 +6547,6 @@ function DrillSearchResultsPanel({
                 busy={busy}
                 onOpenCustomer={onOpenCustomer}
                 onReassignSale={onReassignSale}
-                onMeasureNeededAction={onMeasureNeededAction}
                 onMarkOrdered={onMarkOrdered}
                 onFindCogs={onFindCogs}
                 onSaveField={onSaveField}
@@ -7090,9 +6955,9 @@ function SquarePaymentLinkPanel({
   }
 
   return (
-    <div className="crm-square-payment-panel" aria-label="Square customer payment links">
+    <div className="crm-square-payment-panel" aria-label="Customer card payment links">
       <div>
-        <strong>Send a Square payment link</strong>
+        <strong>Send a card payment link</strong>
         <span>The customer receives an automated email with a secure, order-specific checkout link.</span>
       </div>
       <div className="crm-square-payment-actions">
@@ -7185,7 +7050,6 @@ function GlobalCustomerSearchPanel({
   onOpenPage,
   onOpenCustomer,
   onReassignSale,
-  onMeasureNeededAction,
   onMarkOrdered,
   onFindCogs,
   onSaveField,
@@ -7203,7 +7067,6 @@ function GlobalCustomerSearchPanel({
   onOpenPage: (page: CustomerSearchPage, entry: DrillEntry) => void;
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
-  onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
   onMarkOrdered?: (entry: DrillEntry) => Promise<boolean>;
   onFindCogs?: (entry: DrillEntry) => Promise<boolean>;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
@@ -7391,7 +7254,6 @@ function GlobalCustomerSearchPanel({
                 busy={busy}
                 onOpenCustomer={onOpenCustomer}
                 onReassignSale={onReassignSale}
-                onMeasureNeededAction={onMeasureNeededAction}
                 onMarkOrdered={onMarkOrdered}
                 onFindCogs={onFindCogs}
                 onSaveField={onSaveField}
@@ -7443,7 +7305,6 @@ function DrillDetailPanel({
   onClose,
   onOpenCustomer,
   onReassignSale,
-  onMeasureNeededAction,
   onMarkOrdered,
   onFindCogs,
   onSaveField,
@@ -7478,7 +7339,6 @@ function DrillDetailPanel({
             key={entry.id}
             onOpenCustomer={onOpenCustomer}
             onReassignSale={onReassignSale}
-            onMeasureNeededAction={onMeasureNeededAction}
             onMarkOrdered={onMarkOrdered}
             onFindCogs={onFindCogs}
             onSaveField={onSaveField}
@@ -7501,7 +7361,6 @@ function DrillDetailCard({
   busy,
   onOpenCustomer,
   onReassignSale,
-  onMeasureNeededAction,
   onMarkOrdered,
   onFindCogs,
   onSaveField,
@@ -7516,7 +7375,6 @@ function DrillDetailCard({
   busy: boolean;
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
-  onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
   onMarkOrdered?: (entry: DrillEntry) => Promise<boolean>;
   onFindCogs?: (entry: DrillEntry) => Promise<boolean>;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
@@ -7660,17 +7518,9 @@ function DrillDetailCard({
         onSave: saveSaleOwner
       }
     : undefined;
-  const measureNeededActive = Boolean(job && isMeasureNeededJob(job));
-  const measureWorkflow = job ? (getMeasureNeededMeta(job.meta) as Record<string, unknown>) : null;
-  const measureFormId = typeof measureWorkflow?.form_id === "string" ? measureWorkflow.form_id : null;
-  const measureFormComplete = measureWorkflow?.form_status === "submitted";
-  const canRequestMeasure =
-    Boolean(onMeasureNeededAction && job && !measureNeededActive) &&
-    (liveRowStatus === "sold" || liveRowStatus === "approved" || job?.status === "sold");
   const canMarkOrdered =
     (liveRowStatus === "sold" || liveRowStatus === "approved" || (!row && job?.status === "sold")) &&
-    (canEditQuoteRow || canEditJob) &&
-    (!measureNeededActive || measureFormComplete);
+    (canEditQuoteRow || canEditJob);
   const isAlreadyOrdered = liveRowStatus === "ordered" || job?.status === "ordered";
   const canFindOrderEmail =
     !canMarkOrdered &&
@@ -8035,32 +7885,6 @@ function DrillDetailCard({
           onClick: () => onVendorOrderAction(entry.vendorOrderTask as CrmVendorOrderTask, "bypass")
         }
       : null,
-    measureFormId
-      ? {
-          key: "technical-measure-form",
-          label: measureFormComplete ? "View Measure" : "Open Measure",
-          detail: measureFormComplete ? "Submitted measure sheet" : "Required before ordering",
-          disabled: busy,
-          onClick: () => window.open(`/crm/measure/${measureFormId}`, "_blank", "noopener,noreferrer")
-        }
-      : null,
-    measureNeededActive
-      ? {
-          key: "measured",
-          label: "Measured",
-          detail: "Measure complete",
-          disabled: busy,
-          onClick: () => void onMeasureNeededAction?.(entry, "measured")
-        }
-      : canRequestMeasure
-        ? {
-            key: "measure-needed",
-            label: "Measure Needed",
-            detail: "Create measure task",
-            disabled: busy,
-            onClick: () => void onMeasureNeededAction?.(entry, "request")
-          }
-        : null,
     canMarkOrdered
       ? {
           key: "check-order-confirmations",
@@ -8506,7 +8330,6 @@ function DrillDetailCard({
             <h4>Status + Product</h4>
             <div className="crm-drill-fact-column-list">
               <DrillFact label="Status" value={titleCase(String(liveRowStatus || job?.status || file?.latestStatus || "open"))} tone={needsOrderHighlight ? "warn" : undefined} editor={statusEditor} />
-              {job ? <DrillFact label="Measure" value={measureNeededLabel(job)} tone={measureNeededActive ? "warn" : undefined} /> : null}
               <DrillFact label="Manufacturer" value={row?.manufacturerName || "Needs order details"} tone={manufacturerMissingHighlight ? "warn" : undefined} editor={manufacturerEditor} />
               <DrillFact label="Order #" value={row?.manufacturerOrderRef || "No order number"} tone={orderRefMissingHighlight ? "warn" : undefined} editor={orderRefEditor} />
               <DrillFact
@@ -10545,22 +10368,6 @@ function CustomerFilesView({
                 <td className="crm-customer-action-cell" colSpan={canViewMikeFinancials ? 18 : 17}>
                   <div className="crm-customer-action-strip">
                     {sortedJobs.map((job) => {
-                      const measure = getMeasureNeededMeta(job.meta) as Record<string, unknown>;
-                      const savedForms = Array.isArray(measure.forms)
-                        ? measure.forms.flatMap((value) => value && typeof value === "object" && !Array.isArray(value) ? [value as Record<string, unknown>] : [])
-                        : [];
-                      const forms = savedForms.length ? savedForms : (typeof measure.form_id === "string" ? [{ id: measure.form_id, status: measure.form_status }] : []);
-                      return forms.map((savedForm, index) => typeof savedForm.id === "string" ? (
-                        <a
-                          className="crm-customer-status-button"
-                          href={`/crm/measure/${savedForm.id}`}
-                          key={`measure-link-${job.id}-${savedForm.id}`}
-                        >
-                          {savedForm.status === "submitted" ? "View Technical Measure" : `Technical Measure${forms.length > 1 ? ` ${index + 1}` : ""}`}
-                        </a>
-                      ) : null);
-                    })}
-                    {sortedJobs.map((job) => {
                       const nextStatus = nextJobStatus(job.status);
                       return (
                         <div className="crm-cf-track" key={`job-track-${job.id}`}>
@@ -10891,22 +10698,17 @@ function SnapshotColumn({
 function JobCard({
   job,
   onStatusChange,
-  onMeasureNeededAction,
   onSave,
   onDelete,
   busy
 }: {
   job: CrmJob;
   onStatusChange: (job: CrmJob, status: CrmJobStatus) => void;
-  onMeasureNeededAction: (job: CrmJob, action: MeasureNeededAction) => void;
   onSave: (event: FormEvent<HTMLFormElement>, job: CrmJob) => void;
   onDelete: (job: CrmJob) => void;
   busy: boolean;
 }) {
   const [editing, setEditing] = useState(false);
-  const measure = getMeasureNeededMeta(job.meta);
-  const measureActive = isMeasureNeededJob(job);
-  const canRequestMeasure = job.status === "sold" && !measureActive;
 
   if (editing) {
     return (
@@ -11030,10 +10832,6 @@ function JobCard({
           <dt>Due</dt>
           <dd>{job.next_action_due || "Open"}</dd>
         </div>
-        <div>
-          <dt>Measure</dt>
-          <dd>{measure.status ? measureNeededLabel(job) : "Not flagged"}</dd>
-        </div>
       </dl>
       <div className="crm-card-footer">
         <strong>{toCurrency(job.quote_total || job.estimated_total)}</strong>
@@ -11046,15 +10844,6 @@ function JobCard({
         </select>
       </div>
       <div className="crm-card-actions">
-        {measureActive ? (
-          <button type="button" className="crm-ghost-button crm-card-edit" disabled={busy} onClick={() => onMeasureNeededAction(job, "measured")}>
-            Measured
-          </button>
-        ) : canRequestMeasure ? (
-          <button type="button" className="crm-ghost-button crm-card-edit" disabled={busy} onClick={() => onMeasureNeededAction(job, "request")}>
-            Measure Needed
-          </button>
-        ) : null}
         <button type="button" className="crm-ghost-button crm-card-edit" onClick={() => setEditing(true)}>
           Edit details
         </button>

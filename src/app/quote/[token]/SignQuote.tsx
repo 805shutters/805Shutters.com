@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { DrawnSignature } from "./DrawnSignature";
 import { SignatureSubmissionError, submitSignature } from "./submit-signature";
 
-export function SignQuote({ token, customerName, total, selectedLineIds, done: doneFromParent, onSigned, onBusyChange, onConflict, placement = "bottom", compact = false, disabled = false }: {
+export function SignQuote({ token, customerName, total, selectedLineIds, done: doneFromParent, onSigned, onBusyChange, onConflict, formId, onConsentChange, placement = "bottom", compact = false, disabled = false }: {
   token: string; customerName: string; total: number; selectedLineIds?: string[];
+  formId?: string; onConsentChange?: (agreed: boolean) => void;
   disabled?: boolean; done?: boolean; onSigned?: () => void; onBusyChange?: (busy: boolean) => void; onConflict?: (message: string) => void; placement?: "top" | "bottom"; compact?: boolean;
 }) {
   const submitting = useRef(false);
+  const errorNotice = useRef<HTMLParagraphElement>(null);
   const consentKey = JSON.stringify([token, total, selectedLineIds?.slice().sort()]);
   const [name, setName] = useState(customerName && customerName !== "Valued customer" ? customerName : "");
   const [signatureMode, setSignatureMode] = useState<"type" | "draw">("type");
@@ -19,6 +21,15 @@ export function SignQuote({ token, customerName, total, selectedLineIds, done: d
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { setAgree(false); setDrawnSignature(null); }, [consentKey]);
+
+  useEffect(() => {
+    if (error) errorNotice.current?.scrollIntoView({ block: "nearest" });
+  }, [error]);
+
+  useEffect(() => {
+    onConsentChange?.(agree);
+    return () => onConsentChange?.(false);
+  }, [agree, onConsentChange]);
 
   async function submit() {
     if (submitting.current || disabled) return;
@@ -31,7 +42,7 @@ export function SignQuote({ token, customerName, total, selectedLineIds, done: d
       return;
     }
     if (!agree) {
-      setError("Please check the authorization box to continue.");
+      setError("Check the “I have reviewed my contract” authorization box, then tap Sign & approve.");
       return;
     }
     submitting.current = true;
@@ -67,7 +78,7 @@ export function SignQuote({ token, customerName, total, selectedLineIds, done: d
   }
 
   return (
-    <div style={compact ? { margin: 0 } : { border: "1px solid #d8d8d2", borderRadius: 10, padding: 20, marginTop: 20 }}>
+    <form id={formId} onSubmit={event => { event.preventDefault(); void submit(); }} style={compact ? { margin: 0 } : { border: "1px solid #d8d8d2", borderRadius: 10, padding: 20, marginTop: 20 }}>
       {!compact ? (
         <>
           <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 800, letterSpacing: 0.7, textTransform: "uppercase", opacity: 0.65 }}>
@@ -79,7 +90,6 @@ export function SignQuote({ token, customerName, total, selectedLineIds, done: d
       <p style={{ margin: compact ? "0 0 10px" : undefined, fontSize: compact ? 13 : 14, lineHeight: 1.45, opacity: 0.8 }}>
         Enter your full legal name, then type or draw your signature to approve the total shown on this contract.
       </p>
-      {error ? <p role="alert" style={{ color: "#4d4d49" }}>{error}</p> : null}
       <label style={{ display: "block", marginBottom: compact ? 9 : 12 }}>
         <span style={{ display: "block", fontSize: 13, marginBottom: 4 }}>Full legal name</span>
         <input
@@ -96,23 +106,23 @@ export function SignQuote({ token, customerName, total, selectedLineIds, done: d
         {(["type", "draw"] as const).map(mode => <label key={mode} style={{ display: "inline-flex", alignItems: "center", gap: 8, marginRight: 20, padding: "8px 0", minHeight: 44, whiteSpace: "nowrap" }}>
           <input type="radio" name={`signature-method-${placement}`} checked={signatureMode === mode}
             style={{ flex: "0 0 20px", width: 20, height: 20, padding: 0, margin: 0 }}
-            onChange={() => { setSignatureMode(mode); setDrawnSignature(null); setAgree(false); }} />
+            onChange={() => { setSignatureMode(mode); setDrawnSignature(null); setAgree(false); setError(null); }} />
           {mode === "type" ? "Type signature" : "Draw signature"}
         </label>)}
       </fieldset>
       {signatureMode === "draw" && <DrawnSignature key={consentKey} disabled={busy || disabled} onChange={setDrawnSignature} />}
       <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: compact ? 12 : 14, lineHeight: 1.4, marginBottom: compact ? 12 : 16 }}>
-        <input type="checkbox" disabled={busy || disabled} checked={agree} onChange={(e) => setAgree(e.target.checked)} style={{ flex: "0 0 18px", width: 18, height: 18, marginTop: 2 }} />
+        <input type="checkbox" disabled={busy || disabled} checked={agree} onChange={(e) => { setAgree(e.target.checked); setError(null); }} style={{ flex: "0 0 18px", width: 18, height: 18, marginTop: 2 }} />
         <span>I have reviewed my contract and agreed to the details and terms.</span>
       </label>
+      {error && <p ref={errorNotice} role="alert" style={{ color: "#781c17", background: "#fff1ee", padding: 10, borderRadius: 6, fontWeight: 600, scrollMarginBlock: 80 }}>{error}</p>}
       <button
-        type="button"
-        onClick={submit}
+        type="submit"
         disabled={busy || disabled}
         style={{ width: compact ? "100%" : undefined, background: "#0b0b0b", color: "#ffffff", border: "none", borderRadius: 8, padding: "12px 22px", fontSize: 16, cursor: "pointer", opacity: busy || disabled ? 0.6 : 1 }}
       >
         {busy ? "Submitting…" : "Sign & approve"}
       </button>
-    </div>
+    </form>
   );
 }

@@ -1303,7 +1303,7 @@ const supportPages: SitePage[] = [
           "0% interest",
           "No credit application",
           "3 monthly payments for the remaining balance",
-          "Automatic card payments through Square",
+          "Secure card payments on your approved schedule",
           "Monthly card payments include a 3% card processing fee"
         ]
       },
@@ -1316,7 +1316,7 @@ const supportPages: SitePage[] = [
       {
         heading: "Payment Plan Terms",
         body:
-          "In-house plans must be approved by 805 Shutters in writing. Approved plans use automatic card payments through Square, with the first monthly payment due on installation day. Monthly amounts include a 3% card processing fee. Your written agreement confirms your payment schedule."
+          "In-house plans must be approved by 805 Shutters in writing. Your written agreement specifies the card payment method, with the first monthly payment due on installation day. Monthly amounts include a 3% card processing fee. Your written agreement confirms your payment schedule."
       }
     ],
     faqs: [

@@ -643,7 +643,7 @@ export async function processBookingOutbox(
           const receipt = await sendMetaScheduleEvent(effect.payload);
           const { error: receiptError } = await supabase.from("booking_outbox")
             .update({ status: "sent", completed_at: receipt.acceptedAt, last_error: null,
-              payload: { ...effect.payload, metaReceipt: receipt } })
+              payload: { eventId: receipt.eventId, eventTime: effect.payload.eventTime, metaReceipt: receipt } })
             .eq("id", item.id).eq("status", "processing");
           if (receiptError) throw new Error("META_RECEIPT_SAVE_FAILED");
           console.info("Booking Schedule CAPI accepted", { eventId: receipt.eventId });

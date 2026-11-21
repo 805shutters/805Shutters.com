@@ -1,10 +1,12 @@
+import {deliverStripeRequest} from './stripe-delivery';
+import {createCardPaymentLink,isCardConfigured} from '@/lib/crm/card-payment-links';
 import { trackSquarePaymentRequest } from "@/lib/crm/square-payment-requests";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
 import { collectCrmPages } from "@/lib/crm/pagination";
 import { squareOrderPaymentAmounts, verifySquarePaymentConfirmation, type SquareOrderPaymentType, type SquarePaymentConfirmation } from "@/lib/crm/square-payment-links";
-import { createSquarePaymentLink, dollarsToCents, isSquareConfigured } from "@/lib/finance/square";
+import { dollarsToCents } from "@/lib/finance/square";
 import { buildSquareOrderPaymentEmail, sendEmail } from "@/lib/notify/email";
 import { brandIdentity } from "@/lib/brand-identity";
 
@@ -31,7 +33,7 @@ export async function sendSquareEntryPaymentLink(
     throw new CrmAuthError(400, "Confirm the payment amount and recipient before sending.");
   }
   if (paymentType !== "deposit" && paymentType !== "balance") throw new CrmAuthError(400, "Choose either a deposit or balance payment link.");
-  if (!isSquareConfigured()) throw new CrmAuthError(503, "Square card payments are not configured.");
+  if (!isCardConfigured()) throw new CrmAuthError(503, "Card payments are not configured.");
   const result = await supabase.from("crm_quote_bookkeeping_entries")
     .select("id,source,customer_name,total_amount,job_id,quote_id,meta").eq("id", entryId).maybeSingle();
   if (result.error) throw new CrmAuthError(502, "The job ledger could not be verified.");
@@ -60,7 +62,7 @@ export async function sendSquareEntryPaymentLink(
   }
   const recipient = optionalText(entry.meta?.customer_email) || optionalText(quote?.customer_email) || optionalText(job?.email);
   if (!recipient || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
-    throw new CrmAuthError(400, "Add a valid customer email to this exact job before sending a Square payment link.");
+    throw new CrmAuthError(400, "Add a valid customer email to this exact job before sending a card payment link.");
   }
   const loadLedger = (table: string, key: string) => collectCrmPages<LedgerItem>(async (from, to) => {
     const result = await supabase.from(table).select(table.endsWith("payments") ? "amount,payment_label" : "amount")
@@ -82,23 +84,27 @@ export async function sendSquareEntryPaymentLink(
     payments: payments.data || [], creditsIn: creditsIn.data || [], creditsOut: creditsOut.data || [] })[paymentType];
   if (!(amount > 0)) throw new CrmAuthError(400, paymentType === "deposit" ? "No deposit is currently due." : "No remaining balance is currently due.");
   verifySquarePaymentConfirmation(amount, recipient, confirmation);
-  const link = await createSquarePaymentLink({
-    bookkeepingEntryId: entry.id, amountCents: dollarsToCents(amount), paymentType,
+  const link = await createCardPaymentLink(supabase, {
+    bookkeepingEntryId: entry.id, jobId: jobId || undefined, amountCents: dollarsToCents(amount), paymentType,
     title: `${paymentType === "deposit" ? "Deposit" : "Order balance"} — 805 Shutters`, buyerEmail: recipient,
   });
   await trackSquarePaymentRequest(supabase, link, {
-    bookkeepingEntryId: entry.id, amountCents: dollarsToCents(amount), paymentType,
+    bookkeepingEntryId: entry.id, jobId: jobId || undefined, amountCents: dollarsToCents(amount), paymentType,
     title: `${paymentType === "deposit" ? "Deposit" : "Order balance"} — 805 Shutters`, buyerEmail: recipient,
   });
   const mail = buildSquareOrderPaymentEmail(entry.customer_name, link.url, {
     paymentType, amount, logoUrl: `${brandIdentity.website}/brand/805-shutters-logo-header.png`,
   });
-  const email = await sendEmail({ to: recipient, from: "805 Shutters <805@805shutters.com>", ...mail });
+  const send=()=>sendEmail({ to: recipient, from: "805 Shutters <805@805shutters.com>", ...mail, ...(link.provider === "stripe" ? {idempotencyKey:`stripe-request-${link.requestId}`} : {}) });
+  const email=link.provider === "stripe" ? await deliverStripeRequest(supabase,link.requestId!,"email",recipient,undefined,mail,send) : await send();
   let auditRecorded = false;
   try {
     const audit = await recordCrmActivity(supabase, actor, {
-      entityType: "bookkeeping_entry", entityId: entry.id, action: `square_${paymentType}_link.send`,
-      metadata: { amount, recipient, squarePaymentLinkId: link.id, squarePaymentLinkUrl: link.url,
+      entityType: "bookkeeping_entry", entityId: entry.id, action: `${link.provider || "square"}_${paymentType}_link.send`,
+      metadata: { amount, recipient, cardProvider: link.provider || "square",
+      cardPaymentLinkId: link.id,
+      squarePaymentLinkId: link.provider === "stripe" ? null : link.id, cardPaymentLinkUrl: link.url,
+      squarePaymentLinkUrl: link.provider === "stripe" ? null : link.url,
         emailSent: email.sent, emailError: email.error || email.skipped || null },
     });
     auditRecorded = audit.recorded;

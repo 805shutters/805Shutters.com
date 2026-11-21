@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "routing_key": "sundance:sundance_wood_shutters",
+  "manufacturer": "Sundance",
+  "product_key": "sundance_wood_shutters",
+  "product_name": "Sundance custom wood shutters",
+  "product_kind": "Shutters",
+  "portal_ordering_type": "NONE (web form only)",
+  "catalog_version": "sundance-assortment-2026-09-26-r15",
+  "status": "blocked",
+  "source_url": "https://sundance.blindata.app",
+  "ordered_fields": [
+    "customer_name",
+    "quote_number",
+    "order_draft_name",
+    "account_number",
+    "po_number",
+    "sidemark",
+    "delivery_method",
+    "ship_to_name",
+    "ship_to_address",
+    "ship_to_zip",
+    "bill_to",
+    "contact_phone_email",
+    "special_instructions",
+    "order_date",
+    "room_name",
+    "quantity",
+    "width",
+    "height",
+    "mount_type",
+    "shutter_options",
+    "line_note"
+  ],
+  "fields": [
+    {
+      "key": "customer_name",
+      "label": "customer_name",
+      "ask_order": 1,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "quote_number",
+      "label": "quote_number",
+      "ask_order": 2,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "order_draft_name",
+      "label": "order_draft_name",
+      "ask_order": 3,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "account_number",
+      "label": "account_number",
+      "ask_order": 4,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "po_number",
+      "label": "po_number",
+      "ask_order": 5,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "sidemark",
+      "label": "sidemark",
+      "ask_order": 6,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "delivery_method",
+      "label": "delivery_method",
+      "ask_order": 7,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "ship_to_name",
+      "label": "ship_to_name",
+      "ask_order": 8,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "805 SHUTTERS (default, used on every past order)",
+          "label": "805 SHUTTERS (default, used on every past order)"
+        },
+        {
+          "value": "customer",
+          "label": "customer"
+        }
+      ]
+    },
+    {
+      "key": "ship_to_address",
+      "label": "ship_to_address",
+      "ask_order": 9,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "ship_to_zip",
+      "label": "ship_to_zip",
+      "ask_order": 10,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "bill_to",
+      "label": "bill_to",
+      "ask_order": 11,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "contact_phone_email",
+      "label": "contact_phone_email",
+      "ask_order": 12,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "special_instructions",
+      "label": "special_instructions",
+      "ask_order": 13,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "order_date",
+      "label": "order_date",
+      "ask_order": 14,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "room_name",
+      "label": "Room",
+      "ask_order": 15,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "quantity",
+      "label": "Qty",
+      "ask_order": 16,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "width",
+      "label": "Width",
+      "ask_order": 17,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "height",
+      "label": "Height / Drop",
+      "ask_order": 18,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "mount_type",
+      "label": "Mount",
+      "ask_order": 19,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Inside",
+          "label": "Inside"
+        },
+        {
+          "value": "Outside",
+          "label": "Outside"
+        }
+      ]
+    },
+    {
+      "key": "shutter_options",
+      "label": "shutter_options",
+      "ask_order": 20,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "line_note",
+      "label": "Note / Instructions (per line)",
+      "ask_order": 21,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    }
+  ]
+}

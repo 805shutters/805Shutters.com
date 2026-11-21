@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllowedCrmEmails } from "@/lib/crm/auth";
+import { quoterServiceGuard } from "@/lib/crm/quoter-service-auth";
 import { getCrmGoogleOAuthStatus } from "@/lib/crm/oauth";
 import { isGoogleCalendarSyncConfigured } from "@/lib/google/calendar";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
@@ -51,6 +52,9 @@ function getCanonicalSiteOrigin(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const quoterDenied = quoterServiceGuard(request);
+  if (quoterDenied) return quoterDenied;
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";

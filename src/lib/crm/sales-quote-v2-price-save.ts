@@ -463,6 +463,7 @@ export function prepareSalesQuoteV2PricingBatch(input: Readonly<{
   selectedDesigns: readonly SalesQuoteDesign[];
   serverDate: string;
   missingPersistedSelection?: ReadonlySet<string>;
+  liveLookupSwitches?: Partial<Record<"norman" | "onyx" | "sundance" | "lotus", boolean>>;
 }>): PreparedSalesQuoteV2PricingBatch {
   const selectedVariantByLine = Object.fromEntries(
     input.selectedDesigns.map((design) => [design.line_item_id, design.variant]),
@@ -475,6 +476,7 @@ export function prepareSalesQuoteV2PricingBatch(input: Readonly<{
         designs: [...input.selectedDesigns],
         selectedVariantByLine,
         applyCustomerCharges: true,
+        ...(input.liveLookupSwitches ? { liveLookupSwitches: input.liveLookupSwitches } : {}),
       },
       input.serverDate,
     );
@@ -592,6 +594,24 @@ export function prepareSalesQuoteV2PricingBatch(input: Readonly<{
   };
 }
 
+async function readEnabledLiveLookupSwitches(supabase: SupabaseClient) {
+  try {
+    const { data, error } = await supabase.from("crm_live_lookup_switch").select("vendor,enabled");
+    if (error || !Array.isArray(data)) return undefined;
+    const switches: Partial<Record<"norman" | "onyx" | "sundance" | "lotus", boolean>> = {};
+    for (const row of data) {
+      if (!row || typeof row !== "object") continue;
+      const vendor = (row as { vendor?: unknown }).vendor;
+      if (vendor === "norman" || vendor === "onyx" || vendor === "sundance" || vendor === "lotus") {
+        switches[vendor] = (row as { enabled?: unknown }).enabled === true;
+      }
+    }
+    return Object.values(switches).some(Boolean) ? switches : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Server-only quote-wide authoritative pricing + atomic batch persistence.
  * Every price-affecting value is loaded from the database; the client cannot
@@ -688,11 +708,13 @@ export async function saveSalesQuoteV2AuthoritativePrice(
     };
   });
   const serverDate = input.serverDate ?? quoteV2ServerCatalogDate();
+  const liveLookupSwitches = await readEnabledLiveLookupSwitches(supabase);
   const { prepared } = prepareSalesQuoteV2PricingBatch({
     lines,
     selectedDesigns,
     serverDate,
     missingPersistedSelection,
+    ...(liveLookupSwitches ? { liveLookupSwitches } : {}),
   });
 
   const { data, error } = await supabase.rpc("save_quote_v2_pricing_batch", {

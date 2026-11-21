@@ -169,10 +169,9 @@ describe("manual job tracking stages", () => {
     expect(db.writes).toHaveLength(0);
   });
 
-  it.each([{ status: "needed" }, { status: "needed", form_status: "awaiting_signature" }, { status: "measured", form_status: "draft" }])("preserves the technical measure ordering gate: %j", async (measure) => {
+  it.each([{ status: "needed" }, { status: "needed", form_status: "awaiting_signature" }, { status: "measured", form_status: "draft" }])("records Ordered with old measure meta: %j", async (measure) => {
     const db = database({ job: { meta: { measure_needed: measure } } });
-    await expect(updateJobTrackingStage(db.client, { quoteId: QUOTE_ID, stage: "ordered" }, actor)).rejects.toMatchObject({ status: 409 });
-    expect(db.writes).toHaveLength(0);
+    await expect(updateJobTrackingStage(db.client, { quoteId: QUOTE_ID, stage: "ordered" }, actor)).resolves.toMatchObject({ jobTracking: { stage: "ordered" } });
   });
 
   it.each([{ status: "not_needed" }, { status: "measured", form_status: "submitted" }])("accepts cleared measure gate: %j", async (measure) => {

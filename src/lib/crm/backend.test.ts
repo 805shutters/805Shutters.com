@@ -3000,12 +3000,20 @@ describe("job expense CRUD", () => {
       .toMatchObject({ cogs_amount: 0 });
   });
 
-  it("requires the technical measure before recording an order date", async () => {
+  it("marks a job ordered when its meta still says a measure is needed", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      job: job({ status: "sold", meta: { measure_needed: { status: "needed", form_status: "draft" } } }),
+    });
+    await updateCrmJob(supabase, "job-1", { status: "ordered" }, actor);
+    expect(calls.find((call) => call.table === "crm_jobs" && call.action === "update")?.payload).toMatchObject({ status: "ordered" });
+  });
+
+  it("records an order date when the job still has an old needed measure", async () => {
     const { calls, supabase } = createSupabaseRecorder({
       job: job({ meta: { measure_needed: { status: "needed", form_status: "draft" } } }),
     });
-    await expect(updateCrmQuote(supabase, "quote-1", { ordered_at: "2026-09-01T12:00:00Z" }, actor)).rejects.toMatchObject({ status: 409 });
-    expect(calls).toHaveLength(0);
+    await updateCrmQuote(supabase, "quote-1", { ordered_at: "2026-09-01T12:00:00Z" }, actor);
+    expect(calls.some((call) => call.table === "crm_quotes" && call.action === "update")).toBe(true);
   });
 
   it("records a bare job sold date in metadata without changing its stage", async () => {
@@ -3025,14 +3033,15 @@ describe("job expense CRUD", () => {
     expect(calls.some((call) => call.table === "crm_quote_bookkeeping_payments")).toBe(false);
   });
 
-  it("checks the linked quote's required measure before dating an imported order without a job ID", async () => {
+  it("records an imported order date when the linked job still needs an old measure", async () => {
     const { calls, supabase } = createSupabaseRecorder({
-      job: job({ meta: { measure_needed: { status: "needed", form_status: "draft" } } }),
+      job: job({ meta: { measure_needed: { status: "needed", form_status: "awaiting_signature" } } }),
       existingQuote: quote({ job_id: "job-1" }),
-      existingEntry: bookkeepingEntry({ quote_id: "quote-1", job_id: null, source: "legacy_sheet" })
+      existingEntry: bookkeepingEntry({ quote_id: "quote-1", job_id: null, source: "legacy_sheet", meta: { unrelated: "keep" } })
     });
-    await expect(updateCrmBookkeepingEntry(supabase, "entry-1", { ordered_at: "2026-09-01T12:00:00Z" }, actor)).rejects.toMatchObject({ status: 409 });
-    expect(calls).toHaveLength(0);
+    await updateCrmBookkeepingEntry(supabase, "entry-1", { ordered_at: "2026-09-01T12:00:00Z" }, actor);
+    const patch = calls.find((call) => call.table === "crm_quote_bookkeeping_entries" && call.action === "update")?.payload;
+    expect(patch).toMatchObject({ meta: { unrelated: "keep", job_tracking_dates: { ordered_at: "2026-09-01T12:00:00Z" } } });
   });
 
   it("records an imported order with a submitted measure without manufacturing a job link", async () => {

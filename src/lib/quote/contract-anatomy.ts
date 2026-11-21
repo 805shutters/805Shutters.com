@@ -1,6 +1,6 @@
 import { shutterDetailTarget, type ShutterAnatomyTarget } from './shutter-anatomy-targets';
 import { quoteProductDetails, type QuoteProductDetail } from '@/lib/crm/customer-quote-details';
-import { contractProductFamily, type ContractProductFamily } from './contract-product-family';
+import { contractProductFamily, contractReferenceProduct, type ContractProductFamily } from './contract-product-family';
 import { contractIllustration } from './contract-illustrations';
 import { frenchDoorSketch, specialtyShutterSketch } from './specialty-shutter-illustrations';
 import { anatomyShutterStudy } from './anatomy-shutter-study';
@@ -52,7 +52,7 @@ export type ContractAnatomy = {
 /** Retain the same customer-safe selection values as the existing contract.
  * Unknown and nonvisual options always remain in the specification list. */
 export function contractAnatomy(productType: string, options: readonly string[], styleName = ''): ContractAnatomy {
-  const family = contractProductFamily(productType);
+  const family = contractProductFamily(contractReferenceProduct(productType, options));
   const specifications = quoteProductDetails(styleName, [...options]).filter(detail => !/^(no|none|false|not applicable|not selected)$/i.test(detail.value.trim()) && !(/count|quantity|qty/i.test(detail.label) && /^0(?:\.0+)?$/.test(detail.value.trim()))).filter(detail => !(family === 'roller' && /^(roll type|roll direction|fabric roll)$/i.test(detail.label) && /^(standard|standard roll)$/i.test(detail.value.replace(/\*/g, '').trim())));
   const shade = anatomyShadeStudy(productType, options);
   const art = shade || contractIllustration(productType, options);

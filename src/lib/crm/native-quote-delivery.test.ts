@@ -123,7 +123,7 @@ describe("in-person contract preparation",()=>{
  it('reserves a draft with an explicitly empty message request',async()=>{
   ready();const test=client(null);mocks.prepare.mockResolvedValue({backend:'authoritative_v2',total:100.01,lines:[]});
   await prepareNativeInPersonQuote(test.db,{id:'source',status:'draft',quote_v2_revision:1},actor,{expectedRevision:1,idempotencyKey:'in-person-review'});
-  expect(test.rpc).toHaveBeenCalledWith('reserve_native_quote_selection_delivery',expect.objectContaining({p_request:{email:[],sms:[],note:null,measureDecision:null,purpose:'in_person'}}));
+  expect(test.rpc).toHaveBeenCalledWith('reserve_native_quote_selection_delivery',expect.objectContaining({p_request:{email:[],sms:[],note:null,measureDecision:'not_needed',purpose:'in_person'}}));
   expect(mocks.email).not.toHaveBeenCalled();expect(mocks.sms).not.toHaveBeenCalled();
  });
  it('rejects a stale browser revision before opening the signing page',async()=>{

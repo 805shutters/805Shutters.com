@@ -1155,6 +1155,7 @@ async function finalizeTechnicalMeasure(
       || manufacturer === "Onyx"
       || manufacturer === "Lotus"
       || manufacturer === "Polar"
+      || manufacturer === "Sundance"
       ? manufacturer
       : "Norman";
     orderPreparations = [{

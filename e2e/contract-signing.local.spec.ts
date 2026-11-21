@@ -18,7 +18,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 820, height: 1180 
       await page.getByRole("checkbox", { name: /reviewed my contract/ }).check();
       await page.getByRole("button", { name: "Sign & approve" }).dblclick();
       await expect.poll(() => calls).toBe(1);
-      await expect(page.getByLabel("Full name (your signature)")).toBeDisabled();
+      await expect(page.getByLabel("Full legal name")).toBeDisabled();
       await expect(page.getByRole("radio", { name: "Some", exact: true })).toBeDisabled();
       release();
       await expect(page.getByRole("heading", { name: "Your contract is signed." })).toBeVisible();
@@ -36,7 +36,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 820, height: 1180 
       await page.getByRole("checkbox", { name: /reviewed my contract/ }).check();
       await page.getByRole("button", { name: "Sign & approve" }).click();
       await expect(page.getByRole("alert")).toContainText("couldn't confirm");
-      await expect(page.getByLabel("Full name (your signature)")).toHaveValue("Synthetic Customer");
+      await expect(page.getByLabel("Full legal name")).toHaveValue("Synthetic Customer");
       await expect(page.getByRole("checkbox", { name: /reviewed my contract/ })).toBeChecked();
       await page.getByRole("button", { name: "Sign & approve" }).click();
       await expect(page.getByRole("heading", { name: "Your contract is signed." })).toBeVisible();
@@ -82,3 +82,33 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 820, height: 1180 
     });
   });
 }
+
+
+test.describe("Drawn signature feedback on a short phone screen", () => {
+  test.use({ viewport: { width: 375, height: 667 }, hasTouch: true, isMobile: true });
+  test("keeps the missing consent message visible and accepts the same ink after consent", async ({ page }) => {
+    let submissions = 0;
+    await page.route("**/api/quote/*/accept", async route => {
+      submissions++;
+      expect(route.request().postDataJSON().signature).toMatch(/^data:image\/png;base64,/);
+      await route.fulfill({ json: { ok: true, alreadySigned: false } });
+    });
+    await page.goto(url);
+    const consent = page.getByRole("checkbox", { name: /reviewed my contract/ });
+    await consent.check();
+    await page.getByRole("radio", { name: "Draw signature" }).tap();
+    await expect(consent).not.toBeChecked();
+    await page.locator('canvas[aria-label="Draw your signature"]').tap();
+    const sign = page.getByRole("button", { name: "Sign & approve" });
+    await sign.evaluate(button => button.scrollIntoView({ block: "start" }));
+    await sign.tap();
+    const feedback = page.getByRole("alert");
+    await expect(feedback).toContainText("authorization box");
+    await expect(feedback).toBeInViewport({ ratio: 0.99 });
+    expect(submissions).toBe(0);
+    await consent.check();
+    await page.getByRole("navigation", { name: "Contract actions" }).getByRole("button", { name: "Approve contract" }).tap();
+    await expect(page.getByText("Your contract is signed.")).toBeVisible();
+    expect(submissions).toBe(1);
+  });
+});

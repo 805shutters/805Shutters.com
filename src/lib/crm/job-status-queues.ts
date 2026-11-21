@@ -1,4 +1,4 @@
-import { getMeasureNeededMeta, objectMeta } from './measure-needed-state';
+import { objectMeta } from './measure-needed-state';
 import { buildOperationsItems, type OperationsItem } from './operations-overview';
 import { quoteIsTrackingSale } from './job-tracking-view';
 import type { CrmCalendarEvent, CrmDashboardData, CrmQuote } from './types';
@@ -6,15 +6,13 @@ import type { CrmCalendarEvent, CrmDashboardData, CrmQuote } from './types';
 export const jobStatusQueues = [
   { id: 'upcoming_quotes', label: 'Upcoming quotes', context: 'Appointments scheduled' },
   { id: 'pending_quotes', label: 'Pending quotes', context: 'Last 7 days · Quote unsent' },
-  { id: 'measures_needed', label: 'Measures needed', context: 'Sold · Measure outstanding' },
-  { id: 'need_to_order', label: 'Need to order', context: 'Measure submitted · Unordered' },
+  { id: 'need_to_order', label: 'Need to order', context: 'Sold · Unordered' },
   { id: 'active_jobs', label: 'Active jobs', context: 'Sold · Not closed' },
 ] as const;
 export type JobStatusQueueId = typeof jobStatusQueues[number]['id'];
 export type JobStatusQueueSnapshot = {
   upcoming_quotes: CrmCalendarEvent[];
   pending_quotes: CrmCalendarEvent[];
-  measures_needed: string[];
   need_to_order: string[];
   active_jobs: string[];
 };
@@ -39,7 +37,7 @@ function sentQuote(quote: CrmQuote): boolean {
 }
 
 export function buildJobStatusQueues(data: CrmDashboardData, items = buildOperationsItems(data), now = new Date()): JobStatusQueueSnapshot {
-  const queues: JobStatusQueueSnapshot = { upcoming_quotes: [], pending_quotes: [], measures_needed: [], need_to_order: [], active_jobs: [] };
+  const queues: JobStatusQueueSnapshot = { upcoming_quotes: [], pending_quotes: [], need_to_order: [], active_jobs: [] };
   const groups = new Map<string, OperationsItem[]>();
   for (const item of items) groups.set(statusQueueJobKey(item), [...(groups.get(statusQueueJobKey(item)) || []), item]);
   for (const [key, group] of groups) {
@@ -48,13 +46,7 @@ export function buildJobStatusQueues(data: CrmDashboardData, items = buildOperat
     queues.active_jobs.push(key);
     const unordered = active.filter(item => !(item.products.length ? item.products : [item.wholeJob]).every(product => product.ordered || product.shipped || product.installed));
     if (!unordered.length) continue;
-    const measure = getMeasureNeededMeta(unordered[0].source.job?.meta);
-    const submitted = measure.form_status === 'submitted' || (measure.status === 'measured' && Boolean(measure.measured_at))
-      || (data.technicalMeasureSubmissions || []).some(form => form.jobId === key && (!form.quoteId || unordered.some(item => (item.source.quote?.id || item.source.row?.quoteId) === form.quoteId)));
-    // Draft and awaiting-signature forms stay in Measures needed. Legacy saved
-    // measured completion is also durable evidence that the measure is done.
-    if (submitted) queues.need_to_order.push(key);
-    else if (measure.status === 'needed') queues.measures_needed.push(key);
+    queues.need_to_order.push(key);
   }
 
   const quotes = [...new Map([...(data.quotes || []), ...(data.customerFiles || []).flatMap(file => file.quotes)].map(quote => [quote.id, quote])).values()]

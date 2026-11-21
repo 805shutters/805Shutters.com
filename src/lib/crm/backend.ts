@@ -6,6 +6,7 @@ import { buildOwnerPayablesLedger, resolveOwnerPaymentAmount, OWNER_PAYABLES_MOD
 import {emptyFulfillment,type FulfillmentData} from "./fulfillment";
 import {businessEventToActivity} from "./business-events";
 import { loadIntegrationHealth } from "./integration-health";
+import { attachMtsInstallLinks, jobMetaWithoutMtsInstallLink } from "./mts-install-link";
 import { buildJobTrackingView } from "./job-tracking-view";
 import type { InstallerOutcomeEvidence, ProgressSourceHealth } from "./job-progress";
 import { loadCompleteCrmTable } from "@/lib/crm/pagination";
@@ -31,7 +32,6 @@ import {
 } from "@/lib/crm/quote-id";
 import { buildCustomerFiles } from "@/lib/crm/customer-files";
 import { buildClosedSalesReport, buildDashboardSummaryMetrics } from "@/lib/crm/dashboard-metrics";
-import { getMeasureNeededMeta } from "@/lib/crm/measure-needed-state";
 import {
   buildPartnerPaymentLedger,
   buildUnpaidPartnerPaymentItemForRow,
@@ -1779,6 +1779,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     installerOutcomesResult,
     ownedActionsResult,
     fulfillmentScopesResult,fulfillmentLinesResult,productMovementsResult,serviceVisitsResult,
+    mtsInstallLinksResult,
     integrationHealth
   ] = await Promise.all([
     // Read complete ledgers so old jobs and payments cannot fall outside a row cap.
@@ -1811,6 +1812,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     loadCompleteCrmTable(supabase,"crm_fulfillment_lines","created_at"),
     loadCompleteCrmTable(supabase,"crm_product_movements","created_at"),
     loadCompleteCrmTable(supabase,"crm_service_visits","created_at"),
+    loadCompleteCrmTable(supabase, "crm_job_mts_install_links", "last_verified_at", "*", "job_id"),
     loadIntegrationHealth(supabase)
   ]);
 
@@ -1874,8 +1876,14 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   // the job list, the quote/order dropdowns, and the bookkeeping job-name
   // lookups all read from this array. The row stays in the table so a delete
   // is recoverable and never destroys a linked quote or sale.
-  const jobs = ((jobsResult.data || []) as CrmJob[]).map(hydrateLeadSource).filter(
-    (job) => !hasDeleteTombstone((job as { meta?: unknown }).meta)
+  if (mtsInstallLinksResult.error) {
+    console.warn("CRM MTS install links could not be loaded.", mtsInstallLinksResult.error.message);
+  }
+  const jobs = attachMtsInstallLinks(
+    ((jobsResult.data || []) as CrmJob[]).map(hydrateLeadSource).filter(
+      (job) => !hasDeleteTombstone((job as { meta?: unknown }).meta)
+    ),
+    mtsInstallLinksResult.error ? [] : mtsInstallLinksResult.data || []
   );
   const sourceQuotes = ((quotesResult.data || []) as CrmQuote[]).filter(
     (quote) => !hasDeleteTombstone(quote.meta)
@@ -2107,18 +2115,15 @@ export async function updateCrmJob(
   }
 
   const updatedAt = new Date().toISOString();
+  const incomingMeta = typeof payload.meta === "object" && payload.meta ? jobMetaWithoutMtsInstallLink(payload.meta) : {};
   patch.meta = {
-    ...(existing.meta || {}),
-    ...(typeof payload.meta === "object" && payload.meta ? payload.meta : {}),
+    ...jobMetaWithoutMtsInstallLink(existing.meta),
+    ...incomingMeta,
     ...(hasSoldDate ? { sold_at: payload.sold_at } : {}),
     ...(patch.status === "closed" && existing.status !== "closed" ? { closedAt: updatedAt } : {}),
     lastUpdatedBy: actor.email,
     lastUpdatedAt: updatedAt
   };
-  const measure = getMeasureNeededMeta(patch.meta);
-  if (Object.prototype.hasOwnProperty.call(patch, "status") && patch.status === "ordered" && measure.status === "needed") {
-    throw new CrmAuthError(409, "Complete the required technical measure before marking this job ordered.");
-  }
   if (Object.prototype.hasOwnProperty.call(patch, "lead_source")) {
     const leadSource = typeof patch.lead_source === "string" && patch.lead_source.trim() ? patch.lead_source.trim() : null;
     const meta = patch.meta && typeof patch.meta === "object" && !Array.isArray(patch.meta) ? patch.meta : {};
@@ -3378,16 +3383,6 @@ export async function updateCrmQuote(
     .eq("quote_id", id);
   const builderManaged = (lineItemCount ?? 0) > 0;
   const serverPricedFields = new Set(["quote_total", "discount", "tax", "balance_due"]);
-  // Recording an existing order date is another path into Ordered; preserve
-  // the same required-measure guard as the operational stage button.
-  if ((payload.status === "ordered" || optionalText(payload.ordered_at)) && existing.job_id) {
-    const { data: linkedJob, error } = await supabase.from("crm_jobs").select("meta").eq("id", existing.job_id).maybeSingle();
-    if (error || !linkedJob) throw new CrmAuthError(502, "The job's technical measure could not be verified.");
-    const measure = getMeasureNeededMeta(linkedJob.meta);
-    if (measure.status === "needed" || measure.form_status === "draft" || measure.form_status === "awaiting_signature") {
-      throw new CrmAuthError(409, "Submit the required technical measure before recording the order.");
-    }
-  }
 
   const hasBuilderTotalOverride =
     builderManaged && payload.manual_total_override === true && hasPayloadKey(payload, "quote_total");
@@ -3983,12 +3978,8 @@ export async function updateCrmBookkeepingEntry(
     }
     if (measureJobId) {
       const { data: linkedJob, error } = await supabase.from("crm_jobs").select("id,meta").eq("id", measureJobId).maybeSingle();
-      if (error) throw new CrmAuthError(502, "The job's technical measure could not be verified.");
+      if (error) throw new CrmAuthError(502, "The linked order job could not be verified.");
       if (!linkedJob || linkedJob.meta?.deleted_at) throw new CrmAuthError(404, "The linked order job was not found.");
-      const measure = getMeasureNeededMeta(linkedJob.meta);
-      if (measure.status === "needed" || measure.form_status === "draft" || measure.form_status === "awaiting_signature") {
-        throw new CrmAuthError(409, "Submit the required technical measure before recording the order.");
-      }
     }
   }
   const contractSignedAt = optionalText(payload.contract_signed_at);

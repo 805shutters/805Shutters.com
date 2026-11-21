@@ -15,11 +15,11 @@ describe("CityLights August source assortment and current components",()=>{
  it("prices the production UI selection with implicit cordless operation",()=>{
   const row=colors.find(r=>r.colorCode==="7031")!;
   const s=blind({lift_system:null,material:"CityLights Cordless Aluminum Blinds",supplier:"Norman",slat_size:'2"',light_control:"SmartPrivacy",fabric_color_id:row.id,fabric_color_code:"7031",fabric_color_type:row.fabricType,slat_finish:"matte",control_side:"Right",draw_direction:"Right",citylights_wand_drop:"47.25",citylights_shim_layers:"2",citylights_hold_down:"Yes",mount_depth_inches:null,side_mount_bracket:null,citylights_mount_fit:null,citylights_bracket_installation:null});
-  const p=price(s);expect(p.ok,JSON.stringify(p)).toBe(true);
+  const p=price(s);expect(p,JSON.stringify(p)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
  });
  for(const [slat,codes] of [[1,CITYLIGHTS_CURRENT_COLORS.oneInch],[2,CITYLIGHTS_CURRENT_COLORS.twoInch]] as const)for(const code of codes)it(`prices ${code} with ${slat}-inch slats`,()=>{
   const row=colors.find(r=>r.colorCode===code)!;expect(row?.available).toBe(true);
-  const s=blind({slat_size:`${slat}"`,light_control:slat===1?"Regular Route Holes":"SmartPrivacy",fabric_color_id:row.id,fabric_color_code:row.colorCode,fabric_color_type:row.fabricType,color:row.colorName});expect(rules(s)).toEqual([]);const p=price(s);expect(p.ok,JSON.stringify(p)).toBe(true);
+  const s=blind({slat_size:`${slat}"`,light_control:slat===1?"Regular Route Holes":"SmartPrivacy",fabric_color_id:row.id,fabric_color_code:row.colorCode,fabric_color_type:row.fabricType,color:row.colorName});expect(rules(s)).toEqual([]);const p=price(s);expect(p,JSON.stringify(p)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
  });
  it("rejects discontinued half-inch slats and unavailable color/slat pairs",()=>{expect(rules(blind({slat_size:'1/2"'}))).toContain("slat");expect(rules(blind({slat_size:'2"',fabric_color_code:"7027"}))).toContain("color_slat");expect(rules(blind({fabric_color_code:"7020"}))).toContain("color_slat");});
  it.each([[1,9,10],[1,75,96],[1,78,90],[2,10.5,16],[2,72,96],[2,96,72]])("accepts size limits %s %s %s",(size,w,h)=>expect(rules(blind({slat_size:`${size}"`,light_control:size===1?"Privacy":"SmartPrivacy"},w,h))).toEqual([]));

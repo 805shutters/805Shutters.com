@@ -6,6 +6,7 @@ export type SupplierBlocker = { code: 'missing_options' | 'login_required' | 'ad
 export type SupplierDraftReceipt = { account?:SupplierAccountIdentity; status: 'draft'; manufacturer: string; reference: string; specHash: string; currency: 'USD'; lines: { lineId: string; productCost: string; productCostOnly: true; quantity: number; physicalUnitsPerQuantity: number; automaticFeeProfile: 'blind_shade_v1' | 'excluded' }[] };
 export type SupplierStep = { expectedAccount?:SupplierAccountIdentity; manufacturer: string; lineIds: string[]; key: string; status: 'queued' | 'processing' | 'blocked' | 'draft_ready'; receipt: SupplierDraftReceipt | null; blockers: SupplierBlocker[]; attempt: number };
 export type DraftPrice = { lineId: string; productCost: string; merchandise: string; installation: string; shipping: string; total: string; merchandiseUnitInput: string | null; manualPreserved: boolean };
+export type QuoteChargeAmounts = { installationPerUnit: string; shippingPerUnit: string };
 export type CustomerDraftProgress = {key:string;quoteId:string|null;createRevision:number|null;structureRevision:number|null;revision:number|null;pricedLines:string[]};
 export type CustomerDraftJournal = {progress:CustomerDraftProgress|null;checkpoint:(progress:CustomerDraftProgress)=>Promise<void>};
 export type QuoteReadback = { customerContact?:{phone:string;email:string;address:string;appointmentDate:string|null}; photos?:{id:string;lineId:string}[]; id: string; revision: number; status: 'draft'; groupId: string; letter: string; customerJobId: string | null; customerName: string; deliveryRecord: false; finalized: false; lines: {id:string;manufacturer:string;productId:string;productType:string;room:string;position:string;widthWhole:number;widthFraction:string;heightWhole:number;heightFraction:string;quantity:number;total:string;configuration:Record<string,unknown>;notes:string;designNotes:string}[]; subtotal: string; tax: string; total: string };
@@ -49,17 +50,23 @@ export function validateDraftReceipt(receipt:SupplierDraftReceipt,step:SupplierS
     cents(cost.productCost);
   }
 }
-export function priceSupplierSpec(spec:SupplierQuoteSpec,receipts:SupplierDraftReceipt[]):{prices:DraftPrice[];subtotal:string;tax:string;total:string} {
+function chargeAmounts(charges:QuoteChargeAmounts|null|undefined):QuoteChargeAmounts {
+  if(!charges||!/^\d{1,10}\.\d{2}$/.test(charges.installationPerUnit)||!/^\d{1,10}\.\d{2}$/.test(charges.shippingPerUnit))throw new DraftStepBlocked({code:'pricing_decision',message:'Install/shipping setting not available.'});
+  return charges;
+}
+export function priceSupplierSpec(spec:SupplierQuoteSpec,receipts:SupplierDraftReceipt[],charges:QuoteChargeAmounts|null|undefined):{prices:DraftPrice[];subtotal:string;tax:string;total:string} {
+  const rates=chargeAmounts(charges);
+  const installationRate=cents(rates.installationPerUnit),shippingRate=cents(rates.shippingPerUnit),automaticPerUnit=installationRate+shippingRate;
   const factor=BigInt(Math.round(Number(spec.multiplier)*100));
   const prices=spec.lines.map(line=>{
     const receipt=receipts.find(r=>r.manufacturer===line.manufacturer); const cost=receipt?.lines.find(c=>c.lineId===line.id);
     if(!cost)throw new DraftStepBlocked({code:'cost_unverified',message:'Actual supplier draft cost is missing.',lineId:line.id});
     const product=cents(cost.productCost); const merchandise=(product*factor+50n)/100n;
     if(line.manualAllInPrice!==null)return {lineId:line.id,productCost:cost.productCost,merchandise:dollars(merchandise),installation:'0.00',shipping:'0.00',total:dollars(cents(line.manualAllInPrice)*BigInt(line.quantity)),merchandiseUnitInput:null,manualPreserved:true};
-    if(!line.shippingBasis)throw new DraftStepBlocked({code:'pricing_decision',message:'Choose the $14 shipping basis for this line.',lineId:line.id});
+    if(!line.shippingBasis)throw new DraftStepBlocked({code:'pricing_decision',message:`Choose the $${rates.shippingPerUnit} shipping basis for this line.`,lineId:line.id});
     const count:Record<ShippingBasis,number>={line:1,opening:line.openingCount,physical_unit:line.quantity*cost.physicalUnitsPerQuantity};
-    const installation=cents(line.feeOverride?.installationAmount??'25.00')*BigInt(line.openingCount),shipping=cents(line.feeOverride?.shippingAmount??'14.00')*BigInt(count[line.shippingBasis]),total=merchandise+installation+shipping;
-    const auto=cost.automaticFeeProfile==='blind_shade_v1'?3900n*BigInt(line.quantity*cost.physicalUnitsPerQuantity):0n;
+    const installation=cents(line.feeOverride?.installationAmount??rates.installationPerUnit)*BigInt(line.openingCount),shipping=cents(line.feeOverride?.shippingAmount??rates.shippingPerUnit)*BigInt(count[line.shippingBasis]),total=merchandise+installation+shipping;
+    const auto=cost.automaticFeeProfile==='blind_shade_v1'?automaticPerUnit*BigInt(line.quantity*cost.physicalUnitsPerQuantity):0n;
     const base=total-auto;
     if(base<0n || base%BigInt(line.quantity)!==0n || total>999999999999n)throw new DraftStepBlocked({code:'pricing_decision',message:'Target is not representable by the verified automatic-fee unit contract; resolve allocation without changing the specification.',lineId:line.id});
     return {lineId:line.id,productCost:cost.productCost,merchandise:dollars(merchandise),installation:dollars(installation),shipping:dollars(shipping),total:dollars(total),merchandiseUnitInput:dollars(base/BigInt(line.quantity)),manualPreserved:false};
@@ -80,7 +87,7 @@ export function verifyCustomerDraft(spec:SupplierQuoteSpec,pricing:ReturnType<ty
     for(const key of ['manufacturer','productId','productType','room','position','widthWhole','widthFraction','heightWhole','heightFraction'] as const)if(saved[key]!==line[key])throw new DraftStepBlocked({code:'readback_mismatch',message:'Supplier identity, room or exact dimensions differ in the complete customer readback.',lineId:line.id});}
 }
 /** Each external side effect gets a stable key and a durable processing checkpoint before it runs. */
-export async function runDraftJob(id:string,deps:{store:DraftJobStore;suppliers:Record<string,SupplierDraftAdapter|undefined>;customer:CustomerDraftAdapter|undefined}) {
+export async function runDraftJob(id:string,deps:{store:DraftJobStore;suppliers:Record<string,SupplierDraftAdapter|undefined>;customer:CustomerDraftAdapter|undefined;chargeSettings:QuoteChargeAmounts|null}) {
   const claim=await deps.store.claim(id);if(!claim)return {claimed:false};
   const job=structuredClone(claim.job);const token=claim.token;
   const save=async()=>{const old=job.state.revision;job.state.revision++;await deps.store.checkpoint(structuredClone(job),old,token);};
@@ -109,7 +116,7 @@ export async function runDraftJob(id:string,deps:{store:DraftJobStore;suppliers:
     }
     if(job.state.suppliers.some(step=>step.status!=='draft_ready')){job.state.phase='blocked';job.state.blockers=job.state.suppliers.flatMap(step=>step.blockers);await save();return {claimed:true,job};}
     try{
-      const pricing=priceSupplierSpec(job.spec,job.state.suppliers.map(step=>step.receipt!));job.state.prices=pricing.prices;
+      const pricing=priceSupplierSpec(job.spec,job.state.suppliers.map(step=>step.receipt!),deps.chargeSettings);job.state.prices=pricing.prices;
       if(!deps.customer)throw new DraftStepBlocked({code:'adapter_unavailable',message:'805 draft quote adapter is not connected; supplier drafts retained.'});
       job.state.phase='quote_draft';await save();
       // A crash after create but before checkpoint must be reconciled by this SAME key.

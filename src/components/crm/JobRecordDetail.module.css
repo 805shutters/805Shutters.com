@@ -33,6 +33,9 @@
 .panel p { color:#b8b6ae; font-size:13px; line-height:1.7; margin:8px 0 14px; overflow-wrap:anywhere; }
 .columns,.products { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
 .box { min-width:0; padding:22px; border:1px solid #3c3b38; border-radius:12px; background:#1e1e1c; }
+.mtsInstall { margin-top:16px; }
+.mtsInstall ul { margin:8px 0 0; padding-left:18px; color:#e4e3dd; }
+.ambiguous { color:#e7c27a; }
 .box .lead { color:#fbfbfa; font-size:17px; margin-bottom:18px; }
 .box h3:not(:first-child) { margin-top:25px; }
 .box button { font-size:12px; }

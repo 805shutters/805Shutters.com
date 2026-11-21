@@ -54,7 +54,7 @@ function database(){
 }
 function harness(spec:SupplierQuoteSpec,receipt:SupplierDraftReceipt,options:{evidence?:CrmDraftDeploymentEvidence|null}={}){
  const d=database();let saved:CustomerDraftProgress|null=null;let failCheckpoint:((p:CustomerDraftProgress)=>boolean)|null=null;
- const pricing=priceSupplierSpec(spec,[receipt]);const adapter=createCrmSupplierCustomerDraftAdapter(d.db,actor,options.evidence===null?undefined:options.evidence??evidence);
+ const pricing=priceSupplierSpec(spec,[receipt],{installationPerUnit:'25.00',shippingPerUnit:'14.00'});const adapter=createCrmSupplierCustomerDraftAdapter(d.db,actor,options.evidence===null?undefined:options.evidence??evidence);
  const run=()=>adapter.createOrResumeDraft({spec,prices:pricing.prices,idempotencyKey:key,draftOnly:true,journal:{progress:saved,async checkpoint(progress){if(failCheckpoint?.(progress)){failCheckpoint=null;throw new Error('SYNTHETIC CHECKPOINT FAILURE');}saved=structuredClone(progress);}}});
  return {...d,adapter,pricing,run,saved:()=>saved,failCheckpoint(fn:(p:CustomerDraftProgress)=>boolean){failCheckpoint=fn;}};
 }
@@ -96,7 +96,7 @@ describe('concrete CRM draft RPC adapter',()=>{
  it('persists customer stages in the orchestrator journal across a failed RPC reply',async()=>{
   const f=fixture(),h=harness(f.spec,f.receipt);let durable:DurableDraftJob={id:'44444444-4444-4444-8444-444444444444',ownerId:actor,spec:f.spec,state:initialDraftJobState('44444444-4444-4444-8444-444444444444',f.spec,'a'.repeat(64))};
   const store={async claim(){return {job:structuredClone(durable),token:'SYNTHETIC-LEASE'};},async checkpoint(job:DurableDraftJob,revision:number,token:string){expect(token).toBe('SYNTHETIC-LEASE');expect(revision).toBe(durable.state.revision);durable=structuredClone(job);},async release(){}};
-  const deps={store,suppliers:{Norman:{async readCurrentAccount(){return {dealerId:'RA00743',displayName:'MIKE S'};},async createOrResumeDraft(){return f.receipt;}}},customer:h.adapter};
+  const deps={store,suppliers:{Norman:{async readCurrentAccount(){return {dealerId:'RA00743',displayName:'MIKE S'};},async createOrResumeDraft(){return f.receipt;}}},customer:h.adapter,chargeSettings:{installationPerUnit:'25.00',shippingPerUnit:'14.00'}};
   h.loseReply('set_sales_quote_line_price');await runDraftJob(durable.id,deps);expect(durable.state.phase).toBe('blocked');expect(durable.state.customerProgress).toMatchObject({quoteId,structureRevision:2,pricedLines:[]});
   await runDraftJob(durable.id,deps);expect(durable.state.phase).toBe('complete');expect(durable.state.customerProgress!.pricedLines).toEqual([f.spec.lines[0].id]);expect(h.committed).toEqual({create_quote_v2_draft:1,mutate_quote_v2_structure:1,set_sales_quote_line_price:1});
  });

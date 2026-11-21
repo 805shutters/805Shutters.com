@@ -160,7 +160,7 @@ export function buildSquareOrderPaymentEmail(
     </div>
     <div style="border:2px solid #0b0b0b;padding:14px 16px;margin:0 0 20px 0"><div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#333333">${label} due</div><div style="font-size:28px;line-height:1.2;font-weight:700;color:#0b0b0b">${amount}</div></div>
     <div style="margin:26px 0 18px 0"><a href="${escapeAttr(url)}" style="display:inline-block;background:#0b0b0b;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:4px;font-size:15px;font-weight:700">${escapeHtml(action)}</a></div>
-    <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#555555">Or paste this secure Square link into your browser:<br><span style="word-break:break-all;color:#0b0b0b">${escapeHtml(url)}</span></p>
+    <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#555555">Or paste this secure card payment link into your browser:<br><span style="word-break:break-all;color:#0b0b0b">${escapeHtml(url)}</span></p>
     ${officialContactFooterHtml()}
   </div>
 </div>`;
@@ -317,7 +317,7 @@ export function buildPaymentLinkEmail(customerName: string, url: string, details
   const intro = hasDepositDue
     ? "Here is a payment link to pay the deposit for your new window coverings from 805 Shutters."
     : "Here is a payment link for your new window coverings from 805 Shutters.";
-  const squareLabel = hasDepositDue ? "Pay deposit by Square card" : "Pay by Square card";
+  const squareLabel = hasDepositDue ? "Pay deposit by card" : "Pay by card";
   const quoteLabel = details.quoteNumber ? `Quote ${details.quoteNumber}` : "805 Shutters";
   const personalNote = details.personalNote?.trim();
   const personalNoteText = personalNote ? `\n\n${personalNote}` : "";
@@ -330,7 +330,7 @@ export function buildPaymentLinkEmail(customerName: string, url: string, details
     balanceDue: details.balanceDue,
     logoUrl: details.logoUrl
   });
-  const text = `Hello ${name},${personalNoteText}\n\n${intro}${dueText}\n\nPayment options:\n- Square card payment: ${url}\n- Zelle: ${ZELLE_DESTINATION}\n\nPlease reference your name when paying by Zelle.${financing.text}\n\nThank you,\n805 Shutters\n\n${officialContactLine}`;
+  const text = `Hello ${name},${personalNoteText}\n\n${intro}${dueText}\n\nPayment options:\n- Card payment: ${url}\n- Zelle: ${ZELLE_DESTINATION}\n\nPlease reference your name when paying by Zelle.${financing.text}\n\nThank you,\n805 Shutters\n\n${officialContactLine}`;
   const html = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="border-collapse:collapse;margin:0;padding:0;background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important;font-family:Arial,Helvetica,sans-serif">
   <tr>
     <td bgcolor="#ffffff" style="background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important">
@@ -346,7 +346,7 @@ export function buildPaymentLinkEmail(customerName: string, url: string, details
     ${amountLabel ? `<div style="border:2px solid #0b0b0b;padding:14px 16px;margin:0 0 20px 0"><div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#0b0b0b">${escapeHtml(dueLabel)}</div><div style="font-size:28px;line-height:1.2;font-weight:700;color:#0b0b0b">${amountLabel}</div></div>` : ""}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 22px 0">
       <tr>
-        <td style="padding:12px 0;border-bottom:1px solid #d8d8d2;font-size:14px;color:#0b0b0b"><strong>Square card payment</strong><br><a href="${escapeAttr(url)}" style="color:#0b0b0b;font-weight:700">${escapeHtml(squareLabel)}</a><br><span style="color:#0b0b0b">Pay by credit or debit card through Square.</span></td>
+        <td style="padding:12px 0;border-bottom:1px solid #d8d8d2;font-size:14px;color:#0b0b0b"><strong>Card payment</strong><br><a href="${escapeAttr(url)}" style="color:#0b0b0b;font-weight:700">${escapeHtml(squareLabel)}</a><br><span style="color:#0b0b0b">Pay by credit or debit card securely.</span></td>
       </tr>
       <tr>
         <td style="padding:12px 0;border-bottom:1px solid #d8d8d2;font-size:14px;color:#0b0b0b"><strong>Zelle</strong><br><span style="color:#0b0b0b">${escapeHtml(ZELLE_DESTINATION)}</span></td>

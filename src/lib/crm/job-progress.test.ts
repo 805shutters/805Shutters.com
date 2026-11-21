@@ -16,8 +16,12 @@ describe("shared evidence-derived progress", () => {
   it("an exact sibling quote and ambiguous job-only report cannot complete this order", () => { expect(deriveJobProgress({ ...base, unambiguousJob: false, installerOutcomes: [report("completed", { quote_id: "q2" }), report("completed", { quote_id: null })] }).installation).toBe("unverified"); });
   it("newer revision controls the outcome independently of array order", () => { expect(deriveJobProgress({ ...base, installerOutcomes: [report("completed", { id: "older", updated_at: "2026-09-01", meta: {} }), report("incomplete")] }).installation).toBe("partial"); });
   it("missing sources prevent clean closure and stay visible", () => { expect(deriveJobProgress({ ...base, installerOutcomes: [report("completed")], sourceHealth: [{ source: "installer outcomes", state: "unavailable", loadedAt: "2026-09-04" }] })).toMatchObject({ active: true, stage: "attention", confidence: "needs_verification" }); });
-  it("respects required and no-measure branches", () => {
-    expect(deriveJobProgress({ ...base, job: { id: "j1", meta: { measure_needed: { status: "needed" } } } as unknown as CrmJob }).stage).toBe("need_measure");
+  it("sends a sold job with a deposit to order even when old measure meta says needed or draft", () => {
+    expect(deriveJobProgress({ ...base, job: { id: "j1", meta: { measure_needed: { status: "needed" } } } as unknown as CrmJob }).stage).toBe("need_to_order");
+    expect(deriveJobProgress({ ...base, job: { id: "j1", meta: { measure_needed: { status: "needed", form_status: "draft" } } } as unknown as CrmJob })).toMatchObject({
+      stage: "need_to_order",
+      blockers: expect.not.arrayContaining(["Required technical measure incomplete"]),
+    });
     expect(deriveJobProgress({ ...base, job: { id: "j1", meta: { measure_needed: { status: "not_needed" } } } as unknown as CrmJob }).stage).toBe("need_to_order");
   });
   it("a payment request does not satisfy the deposit", () => { expect(deriveJobProgress({ ...base, balanceOutstanding: 1000, depositOutstanding: 500 }).stage).toBe("sold_need_deposit"); });
