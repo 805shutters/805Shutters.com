@@ -69,6 +69,7 @@ import { GET as readKenPayoff } from "@/app/api/crm/ken-payoff/route";
 import { POST as postSquare } from "@/app/api/crm/square/route";
 import { POST as postProcessEmails } from "@/app/api/crm/process-emails/route";
 import { POST as shareQuote } from "@/app/api/crm/quotes/[id]/share/route";
+import { GET as listFrontDoorDrafts } from "@/app/api/crm/quote-front-door/drafts/route";
 import { GET as readHealth } from "@/app/api/crm/health/route";
 import { GET as startGoogleOAuth } from "@/app/api/crm/oauth/google/route";
 import { GET as googleContactsCallback } from "@/app/api/crm/google-contacts/callback/route";
@@ -110,6 +111,7 @@ const otherCrmRoutes: Array<[string, string, string, Handler]> = [
   ["square", "POST", "/api/crm/square", postSquare],
   ["process emails", "POST", "/api/crm/process-emails", postProcessEmails],
   ["quote share", "POST", `/api/crm/quotes/${ID}/share`, shareQuote],
+  ["front-door draft list", "GET", "/api/crm/quote-front-door/drafts", listFrontDoorDrafts],
   ["health", "GET", "/api/crm/health", readHealth],
   ["google oauth", "GET", "/api/crm/oauth/google", startGoogleOAuth],
   ["google contacts callback", "GET", "/api/crm/google-contacts/callback", googleContactsCallback],
