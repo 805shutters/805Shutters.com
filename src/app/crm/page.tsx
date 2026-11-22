@@ -11,6 +11,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
   const reports = view === "reports";
   const quotes = view === "quotes";
   const contracts = view === "contracts";
+  const calendar = view === "calendar";
   const userAgent = (await headers()).get("user-agent") || "";
   const isIpad = /iPad/i.test(userAgent) || (/Macintosh/i.test(userAgent) && /Mobile/i.test(userAgent));
 
@@ -18,5 +19,5 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
     redirect("/crm/mobile/");
   }
 
-  return <CrmApp initialTab={contracts ? "contracts" : quotes ? "quotes" : tracking ? "tracking" : reports ? "reports" : "tracking"} />;
+  return <CrmApp initialTab={calendar ? "calendar" : contracts ? "contracts" : quotes ? "quotes" : tracking ? "tracking" : reports ? "reports" : "tracking"} />;
 }

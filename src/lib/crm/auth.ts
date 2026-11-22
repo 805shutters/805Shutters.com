@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, User } from "@supabase/supabase-js";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
+import { maintainCrmProfile } from "./profile-maintenance";
 import { allowedCrmEmails, isAllowedCrmEmail, isKenCrmEmail, normalizeCrmEmail } from "@/lib/crm/allowed-users";
 import {
   QUOTER_SERVICE_DENIED_MESSAGE,
@@ -101,19 +102,21 @@ export async function requireCrmUser(request: NextRequest) {
         ? user.user_metadata.name
         : null;
 
-  const { error } = await supabase.from("crm_profiles").upsert(
-    {
-      id: user.id,
-      email,
-      display_name: displayName,
-      last_seen_at: new Date().toISOString()
-    },
-    { onConflict: "id" }
-  );
+  await maintainCrmProfile(JSON.stringify([process.env.NEXT_PUBLIC_SUPABASE_URL, user.id, email, displayName]), async () => {
+    const { error } = await supabase.from("crm_profiles").upsert(
+      {
+        id: user.id,
+        email,
+        display_name: displayName,
+        last_seen_at: new Date().toISOString()
+      },
+      { onConflict: "id" }
+    );
 
-  if (error) {
-    throw new CrmAuthError(502, "CRM profile setup failed. Run the 805 CRM Supabase migration.");
-  }
+    if (error) {
+      throw new CrmAuthError(502, "CRM profile setup failed. Run the 805 CRM Supabase migration.");
+    }
+  });
 
   return {
     supabase,

@@ -1,6 +1,6 @@
 import { objectMeta } from "./measure-needed-state";
 import { customerQuoteProductName } from "./customer-quote-branding";
-import { getProduct } from "@/lib/quote/catalog";
+import productLabels from "@/lib/quote/product-labels.json";
 const record = (value: unknown): Record<string, unknown> => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 const positiveQuantity = (value: unknown): number | null => Number.isSafeInteger(value) && Number(value) > 0 ? Number(value) : null;
 
@@ -15,7 +15,7 @@ export function quoteLineProductName(line: Record<string, unknown>, legacyMts: b
   const legacyNotes = legacyMts ? line.notes : null;
   if (designs.length && !selected && !direct && !legacyNotes) return null;
   const productId = typeof selected?.product_id === "string" ? selected.product_id : null;
-  const catalogName = productId ? getProduct(productId)?.name : null;
+  const catalogName = productId ? (productLabels as Record<string, string>)[productId] : null;
   const raw = [direct, legacyNotes, selectedName, legacyProductType, catalogName].find(value => typeof value === "string" && value.trim());
   return typeof raw === "string" ? customerQuoteProductName(raw) : null;
 }

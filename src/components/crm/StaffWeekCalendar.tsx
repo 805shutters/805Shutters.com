@@ -43,14 +43,17 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
     return body as Omit<Snapshot, "month">;
   }, [session.access_token]);
 
+  const eventRevision = JSON.stringify(events.map(event => [event.id, event.start_at, event.end_at, event.status, event.updated_at]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))));
+
   useEffect(() => {
     let current = true;
-    setLoading(true); setError(""); setNotice(""); setSnapshots({});
-    Promise.all(monthsKey.split(",").map(async month => ({ ...await request(`/api/crm/availability?month=${month}`), month }))).then(results => {
+    const controller = new AbortController();
+    setLoading(true); setError(""); setNotice("");
+    Promise.all(monthsKey.split(",").map(async month => ({ ...await request(`/api/crm/availability?month=${month}`, { signal: controller.signal }), month }))).then(results => {
       if (current) setSnapshots(Object.fromEntries(results.map(snapshot => [snapshot.month, snapshot])));
     }).catch(reason => { if (current) setError(reason.message); }).finally(() => { if (current) setLoading(false); });
-    return () => { current = false; };
-  }, [monthsKey, request, reload, events]);
+    return () => { current = false; controller.abort(); };
+  }, [monthsKey, request, reload, eventRevision]);
 
   useEffect(() => {
     // Size the grid to the actual remaining viewport, independent of its contents.
@@ -74,7 +77,7 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
   }
   const ready = !loading && monthsKey.split(",").every(month => !!snapshots[month]?.revision);
   const hasDrafts = Object.values(snapshots).some(snapshot => snapshot.ranges.some(range => range.status === "draft"));
-  const canChange = ready && !saving && !hasDrafts;
+  const canChange = ready && !error && !saving && !hasDrafts;
   const published = publishedCalendarRanges(Object.values(snapshots).flatMap(snapshot => snapshot.ranges));
   const isAvailable = (date: string) => published.some(range => losAngelesDateString(new Date(range.start_at)) === date);
 

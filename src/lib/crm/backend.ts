@@ -1,3 +1,5 @@
+import { ACTIVE_DESIGN_COLUMNS, activeDesignEvidence } from "./active-design-evidence";
+import { readActivityRows, type ActivityReadOptions, type ActivityCursor } from "./activity-pages";
 import type { KenPayoffAlias } from "./ken-payoff-identity";
 import { assertCustomerFileDeletable } from "./customer-file-delete-guard";
 import { allocateReceivedMoney } from "./payment-allocation";
@@ -1707,13 +1709,16 @@ export function vendorOrderTaskFromDraftRow(value: unknown): CrmVendorOrderTask 
   };
 }
 
-export async function loadCrmActivitySnapshot(supabase: CrmSupabaseClient): Promise<CrmActivitySnapshot> {
+export async function loadCrmActivitySnapshot(supabase: CrmSupabaseClient, options?: ActivityReadOptions): Promise<CrmActivitySnapshot> {
+  const refreshedAt = new Date(Date.now() - 60_000).toISOString();
   const [activityResult, paymentsResult, signedContractsResult, businessEventsResult] = await Promise.all([
-    loadCompleteCrmTable(supabase, "crm_activity_events", "created_at", "id,created_at,actor_auth_user_id,actor_email,entity_type,entity_id,action,before_data,after_data,metadata"),
+    options ? readActivityRows(supabase, "crm_activity_events", "created_at", "id,created_at,actor_auth_user_id,actor_email,entity_type,entity_id,action,before_data,after_data,metadata", options, options.page?.events) : loadCompleteCrmTable(supabase, "crm_activity_events", "created_at", "id,created_at,actor_auth_user_id,actor_email,entity_type,entity_id,action,before_data,after_data,metadata"),
     loadCompleteCrmTable(supabase, "crm_quote_bookkeeping_payments", "paid_at"),
     loadCompleteCrmTable(supabase, "crm_quotes", "signed_at", "id,job_id,signed_at,customer_printed_name,quote_number"),
-    loadCompleteCrmTable(supabase,"crm_business_events","occurred_at")
+    options?.report ? Promise.resolve({ data: [], error: null, next: null }) : options ? readActivityRows(supabase, "crm_business_events", "occurred_at", "*", options, options.page?.businessEvents) : loadCompleteCrmTable(supabase,"crm_business_events","occurred_at")
   ]);
+
+  if (options && (activityResult.error || businessEventsResult.error)) throw new CrmAuthError(502, "Activity history could not be loaded. Please retry.");
 
   if (activityResult.error && paymentsResult.error && signedContractsResult.error) {
     throw new CrmAuthError(502, "CRM activity is temporarily unavailable.");
@@ -1726,6 +1731,7 @@ export async function loadCrmActivitySnapshot(supabase: CrmSupabaseClient): Prom
   if (signedContractsResult.error) warnings.push("Signed contract activity is temporarily unavailable.");
 
   return {
+    ...(options ? { refreshedAt, activityPage: { events: (activityResult as { next?: ActivityCursor | null }).next || null, businessEvents: (businessEventsResult as { next?: ActivityCursor | null }).next || null } } : {}),
     activityEvents: [...((activityResult.error ? [] : activityResult.data || []) as CrmActivityEvent[]), ...(businessEventsResult.error ? [] : businessEventsResult.data || []).map(businessEventToActivity)],
     payments: (paymentsResult.error ? [] : paymentsResult.data || []) as CrmBookkeepingPayment[],
     signedContracts: (signedContractsResult.error ? [] : signedContractsResult.data || []).filter(row=>row.signed_at) as CrmActivitySnapshot["signedContracts"],
@@ -1751,7 +1757,7 @@ export function attachDashboardQuoteLineEvidence(
   }));
 }
 
-export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
+export async function loadCrmDashboardData(supabase: CrmSupabaseClient, options: { activeOnly?: boolean } = {}) {
   const [
     jobsResult,
     quotesResult,
@@ -1786,7 +1792,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     loadCompleteCrmTable(supabase, "crm_jobs", "created_at"),
     loadCompleteCrmTable(supabase, "crm_quotes", "created_at"),
     loadCompleteCrmTable(supabase, "crm_quote_line_items", "created_at"),
-    loadCompleteCrmTable(supabase, "crm_quote_designs", "created_at"),
+    loadCompleteCrmTable(supabase, "crm_quote_designs", "created_at", options.activeOnly ? ACTIVE_DESIGN_COLUMNS : "*"),
     loadCompleteCrmTable(supabase, "crm_calendar_events", "start_at"),
     loadCompleteCrmTable(supabase, "crm_customers", "latest_sold_date"),
     loadCompleteCrmTable(supabase, "crm_customer_products", "created_at"),
@@ -1813,7 +1819,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     loadCompleteCrmTable(supabase,"crm_product_movements","created_at"),
     loadCompleteCrmTable(supabase,"crm_service_visits","created_at"),
     loadCompleteCrmTable(supabase, "crm_job_mts_install_links", "last_verified_at", "*", "job_id"),
-    loadIntegrationHealth(supabase)
+    options.activeOnly ? Promise.resolve([]) : loadIntegrationHealth(supabase)
   ]);
 
   if (
@@ -1893,7 +1899,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   }
   const quotes = quoteLinesResult.error || quoteDesignsResult.error
     ? sourceQuotes
-    : attachDashboardQuoteLineEvidence(sourceQuotes, quoteLinesResult.data as CrmQuoteLineItem[], quoteDesignsResult.data as CrmQuoteDesign[]);
+    : attachDashboardQuoteLineEvidence(sourceQuotes, quoteLinesResult.data as CrmQuoteLineItem[], (options.activeOnly ? (quoteDesignsResult.data || []).map(activeDesignEvidence) : quoteDesignsResult.data) as CrmQuoteDesign[]);
   const events = (eventsResult.data || []) as CrmCalendarEvent[];
   const customers = ((customersResult.data || []) as CrmCustomer[]).filter(
     (customer) => !hasDeleteTombstone(customer.meta)

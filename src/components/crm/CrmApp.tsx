@@ -1,6 +1,7 @@
 "use client";
-import {StripeFinanceWorkspace} from "./StripeFinanceWorkspace";
-import {InHousePayments} from "./InHousePayments";
+import dynamic from "next/dynamic";
+const StripeFinanceWorkspace = dynamic(() => import("./StripeFinanceWorkspace").then(module => module.StripeFinanceWorkspace));
+const InHousePayments = dynamic(() => import("./InHousePayments").then(module => module.InHousePayments));
 
 import { readCrmResponse } from "@/lib/crm/client-response";
 import { createInFlightRequests } from "@/lib/crm/in-flight-requests";
@@ -9,10 +10,11 @@ import type { ActiveJobsSnapshot } from "@/lib/crm/active-jobs";
 import { canDeleteCustomerFile, customerFileDeletePayload } from "@/lib/crm/customer-file-deletion";
 
 import type { KenPayoffData } from "@/lib/crm/ken-payoff";
-import { PayablesWorkspace, type PayableReadinessRequest } from "./PayablesWorkspace";
+import type { PayableReadinessRequest } from "./PayablesWorkspace";
+const PayablesWorkspace = dynamic(() => import("./PayablesWorkspace").then(module => module.PayablesWorkspace));
 
-import { ContractsWorkspace } from "./ContractsWorkspace";
-import { SquareFinanceWorkspace } from "./SquareFinanceWorkspace";
+const ContractsWorkspace = dynamic(() => import("./ContractsWorkspace").then(module => module.ContractsWorkspace));
+const SquareFinanceWorkspace = dynamic(() => import("./SquareFinanceWorkspace").then(module => module.SquareFinanceWorkspace));
 import { CrmLoadingScreen } from "./CrmLoadingScreen";
 import { CrmNavigation } from "./CrmNavigation";
 import { orderCostKey, productOrderCosts } from "@/lib/crm/product-order-cost";
@@ -28,9 +30,11 @@ import type { CrmClosedSalesWeek } from "@/lib/crm/types";
 import { buildOperationsItems, productCompletionSourceLinks } from "@/lib/crm/operations-overview";
 import { calendarSlotState } from "@/lib/crm/calendar-slot-state";
 import { StaffWeekCalendar } from "./StaffWeekCalendar";
+import { useCalendarSnapshot } from "./useCalendarSnapshot";
+import { mergeActivityEvents } from "@/lib/crm/activity-pages";
 import { customerProductOrderLabel } from "@/lib/crm/technical-measure-orders";
 
-import { OperationsReports } from "@/components/crm/OperationsReports";
+const OperationsReports = dynamic(() => import("@/components/crm/OperationsReports").then(module => module.OperationsReports));
 import { JobTrackingWorkspace, type JobTrackingViewItem, type JobTrackingSavePatch, type JobTrackingStageId as WorkspaceStageId } from "@/components/crm/JobTrackingWorkspace";
 import { DragEvent, FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
@@ -68,14 +72,15 @@ import {
   zonedTimeToUtc
 } from "@/lib/booking/availability";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
-import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
-import { QuoteBuilderPanel as OriginalV1QuoteBuilderPanel } from "@/components/crm/quote-v1/QuoteBuilderPanel";
-import { PhoneDesk, type PhoneSnapshot } from "@/app/crm/phone/phone-desk";
+const QuoteBuilderPanel = dynamic(() => import("@/components/crm/QuoteBuilderPanel").then(module => module.QuoteBuilderPanel));
+const OriginalV1QuoteBuilderPanel = dynamic(() => import("@/components/crm/quote-v1/QuoteBuilderPanel").then(module => module.QuoteBuilderPanel));
+import type { PhoneSnapshot } from "@/app/crm/phone/phone-desk";
+const PhoneDesk = dynamic(() => import("@/app/crm/phone/phone-desk").then(module => module.PhoneDesk));
 import { PhoneCustomerMessages } from "@/components/crm/PhoneCustomerMessages";
-import { QuotesWorkspace } from "@/components/crm/quotes/QuotesWorkspace";
-import { SalesIntelligencePage } from "@/components/crm/SalesIntelligencePage";
-import { JessicaFeedbackHub } from "@/components/crm/JessicaFeedbackHub";
-import { OrderFormLibrary } from "@/components/crm/OrderFormLibrary";
+const QuotesWorkspace = dynamic(() => import("@/components/crm/quotes/QuotesWorkspace").then(module => module.QuotesWorkspace));
+const SalesIntelligencePage = dynamic(() => import("@/components/crm/SalesIntelligencePage").then(module => module.SalesIntelligencePage));
+const JessicaFeedbackHub = dynamic(() => import("@/components/crm/JessicaFeedbackHub").then(module => module.JessicaFeedbackHub));
+const OrderFormLibrary = dynamic(() => import("@/components/crm/OrderFormLibrary").then(module => module.OrderFormLibrary));
 import { DashboardRecordCard, dashboardRecordContactFromJob } from "@/components/crm/DashboardRecordCard";
 import { CloseRateDrilldown } from "@/components/crm/CloseRateDrilldown";
 import type { DeletedOpportunity } from "@/components/crm/DeletedOpportunities";
@@ -895,7 +900,7 @@ export function CrmApp({
     if(!session || isKenMode)return;
     let active=true,working=false,lastSync=0;
     async function updatePhone(){
-      if(working)return;working=true;
+      if(working || document.visibilityState !== "visible")return;working=true;
       try{
         const headers={Authorization:`Bearer ${session!.access_token}`};
         if(Date.now()-lastSync>60000){const sync=await fetch("/api/crm/phone/sync",{method:"POST",headers});if(sync.ok)lastSync=Date.now();}
@@ -906,7 +911,8 @@ export function CrmApp({
     }
     void updatePhone();const timer=setInterval(()=>void updatePhone(),10000);
     window.addEventListener("805-phone-updated",updatePhone);
-    return ()=>{active=false;clearInterval(timer);window.removeEventListener("805-phone-updated",updatePhone);};
+    document.addEventListener("visibilitychange",updatePhone);
+    return ()=>{active=false;clearInterval(timer);window.removeEventListener("805-phone-updated",updatePhone);document.removeEventListener("visibilitychange",updatePhone);};
   },[session,isKenMode]);
 
   const [user, setUser] = useState<CrmUser | null>(null);
@@ -934,10 +940,15 @@ export function CrmApp({
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const dashboardRequestVersion = useRef(0);
+  const activeJobsNeedRefresh = useRef(false);
   const dashboardReads = useRef(createInFlightRequests());
   const quoteOpenRequestVersion = useRef(0);
   useEffect(() => () => { quoteOpenRequestVersion.current += 1; }, []);
   const activityPollAbortRef = useRef<AbortController | null>(null);
+  const activitySinceRef = useRef<string | undefined>(undefined);
+  const [activityRaw, setActivityRaw] = useState(false);
+  const activityGeneration = useRef(0);
+  const activityHistoryBusy = useRef(false);
   const sessionIdentityRef = useRef<{ userId: string; accessToken: string } | null>(null);
   const crmLoadedRef = useRef(false);
   const [calendarDate, setCalendarDate] = useState(() => losAngelesDateString());
@@ -959,9 +970,12 @@ export function CrmApp({
   const [jobSearch, setJobSearch] = useState("");
 
   const configured = Boolean(supabase);
-  const jobs = useMemo(() => data?.jobs || [], [data]);
+  const calendar = useCalendarSnapshot(session, activeTab === "calendar", calendarDate);
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+  const jobs = useMemo(() => activeTab === "calendar" ? calendar.snapshot?.jobs || [] : data?.jobs || [], [data, activeTab, calendar.snapshot]);
   const quotes = useMemo(() => data?.quotes || [], [data]);
-  const events = useMemo(() => data?.events || [], [data]);
+  const events = useMemo(() => activeTab === "calendar" ? calendar.snapshot?.events || [] : data?.events || [], [data, activeTab, calendar.snapshot]);
   const customers = useMemo(() => data?.customers || [], [data]);
   const rows = useMemo(() => data?.bookkeepingRows || [], [data]);
   const customerFiles = useMemo(() => data?.customerFiles || [], [data]);
@@ -1413,6 +1427,7 @@ export function CrmApp({
       crmLoadedRef.current = true;
       return;
     }
+    if (initialTab === "calendar") { setUser(sessionResult); crmLoadedRef.current = true; return; }
     // The home screen needs active work, not the complete financial/activity history.
     const activeOnly = !isKenMode && initialTab === "tracking" && !window.location.search;
     if (activeOnly) {
@@ -1436,6 +1451,11 @@ export function CrmApp({
 
   async function refresh() {
     if (!session) return null;
+    if (activeTab === "calendar") {
+      await calendar.refresh();
+      dashboardDataRef.current = null; setData(null); activeJobsNeedRefresh.current = true;
+      return null;
+    }
     if (isKenMode) {
       setKenPayoffData(await crmFetch<NonNullable<typeof kenPayoffData>>(session, "/api/crm/ken-payoff"));
       return null;
@@ -1480,11 +1500,20 @@ export function CrmApp({
     return fullDashboardRequest.current;
   }
 
-  const needsFullDashboard = activeTab !== "tracking" || Boolean(trackingDetailId || trackingQuickAction || builderQuoteId || drill);
+  const needsFullDashboard = !["tracking", "calendar"].includes(activeTab) || Boolean(trackingDetailId || trackingQuickAction || builderQuoteId || drill);
   useEffect(() => {
     if (isKenMode || !session || loading || data || !needsFullDashboard) return;
     void ensureFullDashboard().catch(() => undefined);
   }, [session, loading, data, needsFullDashboard]);
+
+  useEffect(() => {
+    if (isKenMode || activeTab !== "tracking" || !session || loading || data || (activeJobsSnapshot && !activeJobsNeedRefresh.current)) return;
+    const generation = ++dashboardRequestVersion.current;
+    void readDashboard<ActiveJobsSnapshot>(session, "/api/crm/jobs?scope=active", generation).then(snapshot => {
+      if (generation !== dashboardRequestVersion.current) return;
+      setActiveJobsSnapshot(snapshot); activeJobsNeedRefresh.current = false;
+    }).catch(error => setDashboardRefreshError(crmLoadErrorMessage(error)));
+  }, [activeTab, session?.access_token, loading]);
 
   async function pullInstallationInvoices() {
     if (!session) return;
@@ -1775,7 +1804,7 @@ export function CrmApp({
     let cancelled = false;
 
     const sync = async () => {
-      if (cancelled || busyRef.current || fullDashboardRequest.current) return;
+      if (cancelled || busyRef.current || fullDashboardRequest.current || activeTabRef.current === "calendar") return;
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       // Focus, visibility, and interval events share the current generation.
       // Only foreground changes invalidate it; duplicate polls must not do so.
@@ -1821,6 +1850,10 @@ export function CrmApp({
   useEffect(() => {
     if (!session || isKenMode || loading || !["tools", "reports"].includes(activeTab)) return;
     let cancelled = false;
+    activitySinceRef.current = undefined;
+    ++activityGeneration.current;
+    setActivitySnapshot(null);
+    const report = activeTab === "reports";
 
     const syncActivity = async () => {
       if (cancelled || busyRef.current) return;
@@ -1830,9 +1863,13 @@ export function CrmApp({
       const controller = new AbortController();
       activityPollAbortRef.current = controller;
       try {
-        const snapshot = await crmFetch<CrmActivitySnapshot>(session, "/api/crm/activity", { signal: controller.signal });
+        const after = !report ? activitySinceRef.current : undefined;
+        const params = new URLSearchParams(report ? { scope: "report" } : after ? { after } : {});
+        if (activityRaw) params.set("raw", "1");
+        const snapshot = await crmFetch<CrmActivitySnapshot>(session, `/api/crm/activity?${params}`, { signal: controller.signal });
         if (cancelled) return;
-        setActivitySnapshot(snapshot);
+        activitySinceRef.current = snapshot.refreshedAt;
+        setActivitySnapshot(previous => after && previous ? { ...snapshot, activityEvents: mergeActivityEvents(previous.activityEvents, snapshot.activityEvents), activityPage: previous.activityPage } : snapshot);
         setActivityRefreshError(null);
       } catch (error) {
         if (cancelled) return;
@@ -1860,7 +1897,26 @@ export function CrmApp({
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [isKenMode, session, activeTab, loading]);
+  }, [isKenMode, session, activeTab, loading, activityRaw]);
+
+  async function loadOlderActivity() {
+    const page = activitySnapshot?.activityPage;
+    if (!session || activityHistoryBusy.current || !page || (!page.events && !page.businessEvents)) return;
+    activityHistoryBusy.current = true; setActivityLoading(true);
+    const identity = sessionIdentityRef.current;
+    const generation = activityGeneration.current;
+    try {
+      const older = await crmFetch<CrmActivitySnapshot>(session, `/api/crm/activity?page=${encodeURIComponent(JSON.stringify(page))}&raw=${activityRaw ? "1" : "0"}`);
+      if (sessionIdentityRef.current !== identity || generation !== activityGeneration.current || activeTabRef.current !== "tools") return;
+      setActivitySnapshot(previous => previous ? { ...previous, activityEvents: mergeActivityEvents(older.activityEvents, previous.activityEvents), activityPage: older.activityPage } : previous);
+      setActivityRefreshError(null);
+    } catch (error) {
+      if (sessionIdentityRef.current === identity && generation === activityGeneration.current && activeTabRef.current === "tools") setActivityRefreshError(crmLoadErrorMessage(error));
+    } finally {
+      activityHistoryBusy.current = false;
+      if (sessionIdentityRef.current === identity && generation === activityGeneration.current && activeTabRef.current === "tools") setActivityLoading(false);
+    }
+  }
 
   async function createJob(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -3473,6 +3529,8 @@ export function CrmApp({
             activitySnapshot={activitySnapshot}
             activityLoading={activityLoading}
             activityRefreshError={activityRefreshError}
+            onLoadOlderActivity={loadOlderActivity}
+            onActivityRawChange={setActivityRaw}
             installationInvoiceEmails={installationInvoiceEmails}
             partnerPaymentLedger={data?.partnerPaymentLedger}
             onOpenPayables={openPaymentLedger}
@@ -3684,7 +3742,8 @@ export function CrmApp({
 
       {activeTab === "calendar" && session ? (
         <>
-          <StaffWeekCalendar
+          {calendar.error ? <p role="alert" className="crm-alert">{calendar.error} <button onClick={() => void calendar.refresh()}>Retry</button></p> : null}
+          {!calendar.snapshot ? (calendar.error ? null : <CrmLoadingScreen />) : <StaffWeekCalendar
             session={session}
             events={events}
             jobs={jobs}
@@ -3693,7 +3752,7 @@ export function CrmApp({
             onSelectSlot={setSelectedCalendarSlot}
             onOpenEvent={setViewingCalendarEvent}
             onClose={() => openTab("tracking")}
-          />
+          />}
               {selectedCalendarSlot ? (
                 <CalendarAppointmentModal
                   session={session!}
@@ -5900,6 +5959,8 @@ function CommandDashboard({
   activitySnapshot,
   activityLoading,
   activityRefreshError,
+  onLoadOlderActivity,
+  onActivityRawChange,
   installationInvoiceEmails,
   partnerPaymentLedger,
   onOpenPayables,
@@ -5927,6 +5988,8 @@ function CommandDashboard({
   activitySnapshot: CrmActivitySnapshot | null;
   activityLoading: boolean;
   activityRefreshError: string | null;
+  onLoadOlderActivity: () => void;
+  onActivityRawChange: (raw: boolean) => void;
   installationInvoiceEmails: CrmInstallationInvoiceEmail[];
   partnerPaymentLedger?: CrmPartnerPaymentLedger;
   onOpenPayables: (person: CrmPaymentPerson) => void;
@@ -6282,6 +6345,8 @@ function CommandDashboard({
           customerFiles={files}
           loading={activityLoading}
           error={activityRefreshError}
+          onLoadOlder={onLoadOlderActivity}
+          onRawModeChange={onActivityRawChange}
           onOpenCustomer={onOpenCustomer}
         />
       </div>

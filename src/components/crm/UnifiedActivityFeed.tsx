@@ -82,6 +82,8 @@ export function UnifiedActivityFeed({
   customerFiles,
   loading,
   error,
+  onLoadOlder,
+  onRawModeChange,
   onOpenCustomer
 }: {
   snapshot: CrmActivitySnapshot | null;
@@ -93,10 +95,13 @@ export function UnifiedActivityFeed({
   customerFiles: CrmCustomerFile[];
   loading?: boolean;
   error?: string | null;
+  onLoadOlder?: () => void;
+  onRawModeChange?: (raw: boolean) => void;
   onOpenCustomer: (customerName: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const latestFeedRef = useRef<UnifiedActivityEvent[]>([]);
+  const displayedPageRef = useRef<string | undefined>(undefined);
   const [activeFilter, setActiveFilter] = useState<UnifiedActivityFilter>("operations");
   const [displayedFeed, setDisplayedFeed] = useState<UnifiedActivityEvent[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
@@ -117,10 +122,14 @@ export function UnifiedActivityFeed({
 
   useEffect(() => {
     latestFeedRef.current = feed;
-    const next = reconcileDisplayedActivity(displayedFeed, feed, scrollRef.current?.scrollTop || 0);
+    if (!snapshot) { if (displayedFeed.length) setDisplayedFeed([]); setPendingCount(0); return; }
+    const page = JSON.stringify(snapshot.activityPage);
+    const historyLoaded = page !== displayedPageRef.current;
+    displayedPageRef.current = page;
+    const next = reconcileDisplayedActivity(displayedFeed, feed, historyLoaded ? 0 : scrollRef.current?.scrollTop || 0);
     setDisplayedFeed(next.feed);
     setPendingCount(next.pendingCount);
-  }, [displayedFeed, feed]);
+  }, [displayedFeed, feed, snapshot]);
 
   const visibleFeed = useMemo(
     () => filterUnifiedActivity(displayedFeed, activeFilter),
@@ -181,7 +190,7 @@ export function UnifiedActivityFeed({
             role="tab"
             aria-selected={activeFilter === tab.value}
             className={activeFilter === tab.value ? "active" : ""}
-            onClick={() => setActiveFilter(tab.value)}
+            onClick={() => { setActiveFilter(tab.value); onRawModeChange?.(tab.value === "all"); }}
             key={tab.value}
           >
             {tab.label}<span>{counts.get(tab.value) || 0}</span>
@@ -222,6 +231,7 @@ export function UnifiedActivityFeed({
               </span>
             </button>
           ); })}
+          {onLoadOlder && (snapshot?.activityPage?.events || snapshot?.activityPage?.businessEvents) ? <button type="button" className="crm-ghost-button" disabled={loading} onClick={onLoadOlder}>Load older activity</button> : null}
           {!visibleFeed.length && !loading ? <p className="crm-empty">No activity matches this filter yet.</p> : null}
           {loading && !displayedFeed.length ? <p className="crm-empty">Loading live activity…</p> : null}
         </div>

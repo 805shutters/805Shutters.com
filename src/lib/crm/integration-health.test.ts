@@ -1,5 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { observeIntegration, loadIntegrationHealth } from "./integration-health";
+
+afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); });
 
 describe("integration processing evidence", () => {
   it("records attempts and successful completion with one correlation ID", async () => {
@@ -27,4 +29,15 @@ describe("integration processing evidence", () => {
     expect(health).toHaveLength(6);
     expect(health.every(source => source.state === "unavailable" && source.lastSuccessAt === null)).toBe(true);
   });
+  it("coalesces health reads for a short window and refreshes after expiry", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://health-cache-test.example");
+    vi.useFakeTimers();
+    const from = vi.fn(() => ({select(){return this;},eq(){return this;},order(){return this;},limit:async()=>({data:[],error:null})}));
+    await Promise.all([loadIntegrationHealth({from} as never), loadIntegrationHealth({from} as never)]);
+    expect(from).toHaveBeenCalledTimes(12);
+    await vi.advanceTimersByTimeAsync(15001);
+    await loadIntegrationHealth({from} as never);
+    expect(from).toHaveBeenCalledTimes(24);
+  });
+
 });

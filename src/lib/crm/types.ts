@@ -951,6 +951,8 @@ export type CrmActivityEvent = {
 };
 
 export type CrmActivitySnapshot = {
+  activityPage?: import("./activity-pages").ActivityPage;
+  refreshedAt?: string;
   activityEvents: CrmActivityEvent[];
   payments: CrmBookkeepingPayment[];
   signedContracts: Array<Pick<CrmQuote, "id" | "job_id" | "signed_at" | "customer_printed_name" | "quote_number">>;

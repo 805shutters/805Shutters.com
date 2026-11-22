@@ -11,9 +11,10 @@ export const revalidate = 0;
 export async function GET(request: NextRequest) {
   try {
     const { supabase, email } = await requireCrmUser(request);
-    const dashboard = await loadCrmDashboardData(supabase);
+    const activeOnly = request.nextUrl.searchParams.get("scope") === "active";
+    const dashboard = await loadCrmDashboardData(supabase, { activeOnly });
     const visibleDashboard = restrictDashboardPayablesForViewer(dashboard, email);
-    const response = NextResponse.json(request.nextUrl.searchParams.get("scope") === "active"
+    const response = NextResponse.json(activeOnly
       ? buildActiveJobsSnapshot(visibleDashboard)
       : visibleDashboard);
     response.headers.set("Cache-Control", "private, no-store, max-age=0");

@@ -4,6 +4,8 @@ export const PROCESSORS = ["order-cogs", "installation-invoices", "completed-rep
 export type IntegrationProcessor = typeof PROCESSORS[number];
 export type IntegrationHealth = { processor: IntegrationProcessor; state: "unknown" | "running" | "succeeded" | "failed" | "unavailable"; lastAttemptAt: string | null; lastSuccessAt: string | null };
 
+let healthCache: { key: string; until: number; value: Promise<IntegrationHealth[]> } | null = null;
+
 /** Append-only operational evidence. Never persist tokens, mail bodies or provider errors. */
 export async function observeIntegration<T>(
   supabase: SupabaseClient | null,
@@ -12,6 +14,7 @@ export async function observeIntegration<T>(
   succeeded: (result: T) => boolean = () => true,
   summarize?: (result: T) => Record<string, number>,
 ): Promise<T> {
+  healthCache = null;
   const runId = crypto.randomUUID();
   async function record(state: "running" | "succeeded" | "failed", summary?: Record<string, number>) {
     if (!supabase) return;
@@ -31,10 +34,19 @@ export async function observeIntegration<T>(
   } catch (error) {
     await record("failed");
     throw error;
-  }
+  } finally { healthCache = null; }
 }
 
 export async function loadIntegrationHealth(supabase: SupabaseClient): Promise<IntegrationHealth[]> {
+  const key = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!key) return readIntegrationHealth(supabase);
+  if (healthCache?.key === key && healthCache.until > Date.now()) return healthCache.value;
+  const value = readIntegrationHealth(supabase);
+  healthCache = { key, until: Date.now() + 15_000, value };
+  return value;
+}
+
+async function readIntegrationHealth(supabase: SupabaseClient): Promise<IntegrationHealth[]> {
   return Promise.all(PROCESSORS.map(async (processor) => {
     try {
     const query = () => supabase.from("crm_activity_events").select("created_at,action")

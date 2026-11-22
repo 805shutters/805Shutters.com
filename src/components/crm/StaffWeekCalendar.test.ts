@@ -31,6 +31,13 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
 
 describe("full Sunday–Saturday staff calendar", () => {
+  it("does not refetch availability for a replacement array with unchanged events", async () => {
+    await render("2026-09-24", []);
+    const reads = fetchHours.mock.calls.length;
+    await render("2026-09-24", []);
+    expect(fetchHours.mock.calls.length).toBe(reads);
+  });
+
   it("publishes only 10 AM through the 3 PM half-hour, reflects saved hours, and blocks on the next click", async () => {
     fetchHours.mockImplementation(async (_input, init) => {
       const ranges = init?.method === "PUT" ? JSON.parse(String(init.body)).ranges.map((range: object, index: number) => ({
