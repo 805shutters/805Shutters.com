@@ -200,17 +200,17 @@ export function SiteHeader() {
                 <span className="category-nav-products" aria-label={`${item.label} product types`}>
                   <span className="category-nav-product-list">
                     {item.products.map((product) => (
-                      <button
+                      <Link
+                        href={item.href}
                         className="category-nav-product-button"
                         key={product.label}
-                        type="button"
-                        onClick={() => showHeroPreview(product.image)}
+                        onClick={clearHeroPreview}
                         onFocus={() => showHeroPreview(product.image)}
                         onMouseEnter={() => showHeroPreview(product.image)}
                         onPointerEnter={() => showHeroPreview(product.image)}
                       >
                         {product.label}
-                      </button>
+                      </Link>
                     ))}
                   </span>
                 </span>

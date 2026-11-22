@@ -1,3 +1,4 @@
+import { MarketingImage } from "./MarketingImage";
 import { citySearchIntros, cityServiceLinks } from "@/lib/city-service-content";
 
 export function CityServiceLinks({ path }: { path: string }) {
@@ -25,7 +26,7 @@ export function CitySearchIntro({ path }: { path: string }) {
         <section className="content-wrap page-gallery" aria-label="805 Shutters installation photos">
           {intro.photos.map((photo) => (
             <figure className="page-gallery-item" key={photo.image}>
-              <img src={photo.image} alt={photo.alt} loading="lazy" decoding="async" />
+              <MarketingImage src={photo.image} alt={photo.alt} loading="lazy" decoding="async" />
             </figure>
           ))}
         </section>

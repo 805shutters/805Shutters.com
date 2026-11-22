@@ -6,7 +6,7 @@ import { ogDefaults, site } from "@/lib/site-data";
 
 const bookingTitle = "Book a Free In-Home Consultation | 805 Shutters";
 const bookingDescription =
-  "Choose a free in-home consultation time with 805 Shutters for custom shutters, shades, blinds, drapery, exterior shades, and commercial window coverings in Ventura County.";
+  "Book a free in-home consultation for custom shutters, shades, blinds, and drapery in Ventura County. Choose a time with the local 805 Shutters team.";
 
 const bookingProofPoints = [
   "Free Ventura County in-home consultation",

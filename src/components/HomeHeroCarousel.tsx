@@ -13,6 +13,7 @@ export type HomeHeroSlide = {
 
 type HomeHeroCarouselProps = {
   slides: HomeHeroSlide[];
+  aboveFold?: boolean;
   mobileSlides?: HomeHeroSlide[];
 };
 
@@ -26,8 +27,8 @@ type PreviewState = {
   active: boolean;
 };
 
-export function HomeHeroCarousel({ slides, mobileSlides }: HomeHeroCarouselProps) {
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+export function HomeHeroCarousel({ slides, mobileSlides, aboveFold = true }: HomeHeroCarouselProps) {
+  const [activeIndex, setActiveIndex] = useState<number | null>(0);
   const [isMobileHero, setIsMobileHero] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [preview, setPreview] = useState<PreviewState>({ layers: [], active: false });
@@ -78,7 +79,7 @@ export function HomeHeroCarousel({ slides, mobileSlides }: HomeHeroCarouselProps
       return;
     }
 
-    setActiveIndex(slideCount === 1 ? 0 : Math.floor(Math.random() * slideCount));
+    setActiveIndex(0);
   }, [isMobileHero, slideCount]);
 
   useEffect(() => {
@@ -157,15 +158,7 @@ export function HomeHeroCarousel({ slides, mobileSlides }: HomeHeroCarouselProps
     return () => window.clearTimeout(timeout);
   }, [preview.layers]);
 
-  const previousIndex = activeIndex !== null && renderedSlides.length > 1
-    ? (activeIndex - 1 + renderedSlides.length) % renderedSlides.length
-    : activeIndex;
-  const nextIndex = activeIndex !== null && renderedSlides.length > 1
-    ? (activeIndex + 1) % renderedSlides.length
-    : activeIndex;
-  const shouldLoadSlide = (index: number) =>
-    activeIndex !== null
-    && (renderedSlides.length <= 3 || index === activeIndex || index === previousIndex || index === nextIndex);
+  const shouldLoadSlide = (index: number) => index === activeIndex;
 
   return (
     <div className="home-hero-media home-hero-carousel" aria-hidden="true" ref={carouselRef}>
@@ -185,8 +178,9 @@ export function HomeHeroCarousel({ slides, mobileSlides }: HomeHeroCarouselProps
                 alt={slide.imageAlt}
                 fill
                 sizes="100vw"
-                preload={index === 0}
-                quality={85}
+                loading={aboveFold && index === activeIndex ? "eager" : "lazy"}
+                fetchPriority={aboveFold && index === activeIndex ? "high" : "auto"}
+                quality={75}
               />
             ) : null}
           </div>

@@ -1,4 +1,5 @@
 import published from "../../content/wordpress/published.json";
+import { optimizeEditorialImages } from "./editorial-images";
 
 export type EditorialPage = {
   title: string;
@@ -10,5 +11,6 @@ export type EditorialPage = {
 const pages: Record<string, EditorialPage> = published;
 
 export function editorialPage(path: string) {
-  return Object.hasOwn(pages, path) ? pages[path] : undefined;
+  const page = Object.hasOwn(pages, path) ? pages[path] : undefined;
+  return page ? { ...page, html: optimizeEditorialImages(page.html, ["/", "/bay-window-project/"].includes(path)) } : undefined;
 }
