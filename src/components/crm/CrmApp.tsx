@@ -1452,8 +1452,9 @@ export function CrmApp({
   async function refresh() {
     if (!session) return null;
     if (activeTab === "calendar") {
-      await calendar.refresh();
+      ++dashboardRequestVersion.current;
       dashboardDataRef.current = null; setData(null); activeJobsNeedRefresh.current = true;
+      await calendar.refresh();
       return null;
     }
     if (isKenMode) {

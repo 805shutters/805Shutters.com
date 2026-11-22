@@ -107,6 +107,8 @@ export function UnifiedActivityFeed({
   const [pendingCount, setPendingCount] = useState(0);
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
 
+  useEffect(() => { onRawModeChange?.(false); }, [onRawModeChange]);
+
   const feed = useMemo(
     () => buildUnifiedActivityFeed({
       activityEvents: snapshot?.activityEvents || [],
