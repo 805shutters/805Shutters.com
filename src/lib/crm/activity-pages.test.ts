@@ -26,5 +26,5 @@ it("refreshes newly recorded business events even when their occurrence is backd
   const query = { select(){return this;},order(){return this;},gte(...args: unknown[]){filters.push(args);return this;},range(from:number){return Promise.resolve({data:from === 0 ? [{id:"backdated",occurred_at:"2026-10-01T00:00:00Z",created_at:"2026-11-22T00:00:00Z"}] : [],error:null});} };
   const result = await readActivityRows({from:()=>query} as unknown as SupabaseClient,"crm_business_events","occurred_at","*",{after:"2026-11-21T00:00:00Z"},undefined);
   expect(filters).toContainEqual(["created_at","2026-11-21T00:00:00Z"]);
-  expect(result.data[0]).toMatchObject({id:"backdated"});
+  expect(result.data?.[0]).toMatchObject({id:"backdated"});
 });
