@@ -5,7 +5,10 @@ for (const width of [1440, 390]) {
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
     await page.goto("/e2e/fixtures/crm-performance.html");
+    await page.getByRole("button", { name: /Preview customer/ }).first().click();
+    await expect(page.getByRole("heading", { name: "Loaded timeline" })).toBeVisible();
     await page.getByRole("button", { name: "Load older activity" }).click();
+    await expect(page.getByRole("heading", { name: "Complete timeline" })).toBeVisible();
     await expect(page.getByText(/Nov 21, 2026/).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Load older activity" })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

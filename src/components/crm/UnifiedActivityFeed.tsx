@@ -250,7 +250,7 @@ export function UnifiedActivityFeed({
               <div><dt>Payment history</dt><dd>{selectedPayments.length ? `${selectedPayments.length} payments · ${currency.format(selectedPayments.reduce((sum, event) => sum + (event.amount || 0), 0))}` : "No payments recorded"}</dd></div>
             </dl>
             <section><h4>Customer notes</h4>{selectedNotes.length ? <ul>{Array.from(new Set(selectedNotes)).map((note) => <li key={note}>{note}</li>)}</ul> : <p>None recorded.</p>}</section>
-            <section><h4>Complete timeline</h4><ol className="crm-activity-mini-timeline">{selectedTimeline.map((event) => <li key={`detail-${event.id}`}><time dateTime={event.timestamp}>{displayTimestamp(event.timestamp)}</time><strong>{event.typeLabel}</strong><span>{event.description}</span>{event.amount !== null ? <em>{currency.format(event.amount)}</em> : null}</li>)}</ol></section>
+            <section><h4>{snapshot?.activityPage?.events || snapshot?.activityPage?.businessEvents ? "Loaded timeline" : "Complete timeline"}</h4><ol className="crm-activity-mini-timeline">{selectedTimeline.map((event) => <li key={`detail-${event.id}`}><time dateTime={event.timestamp}>{displayTimestamp(event.timestamp)}</time><strong>{event.typeLabel}</strong><span>{event.description}</span>{event.amount !== null ? <em>{currency.format(event.amount)}</em> : null}</li>)}</ol></section>
             <button type="button" className="button secondary" onClick={() => onOpenCustomer(selectedCustomer)}>Open full customer file</button>
           </aside>
         ) : null}
