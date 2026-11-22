@@ -50,7 +50,14 @@ jobs:
         run: npm run test:anatomy
 
       - name: Typecheck
-        run: npm run typecheck
+        run: |
+          # The anatomy browser boots `next dev`, which writes
+          # .next/dev/types/validator.ts. Shutting that server down can leave
+          # the file mid-write, and tsc includes it. A finished copy parses;
+          # the partial one does not. Drop it and let `next build` generate
+          # the production route types.
+          rm -f .next/dev/types/validator.ts
+          npm run typecheck
 
       - name: Build
         run: npm run build
