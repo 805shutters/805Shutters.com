@@ -6,6 +6,7 @@ import { recordCrmActivity } from "@/lib/crm/backend";
 import { POST } from "@/app/api/crm/bookkeeping/[id]/square-payment-link/route";
 import { sendSquareEntryPaymentLink } from "./square-entry-payment-links";
 import { createSquarePaymentLink, isSquareConfigured } from "@/lib/finance/square";
+import { createStripePaymentLink } from "@/lib/crm/stripe-collection";
 import { sendEmail } from "@/lib/notify/email";
 
 vi.mock("@/lib/crm/square-payment-requests", () => ({ trackSquarePaymentRequest: vi.fn().mockResolvedValue(undefined) }));
@@ -15,6 +16,11 @@ vi.mock("@/lib/finance/square", async (original) => ({
   ...await original<typeof import("@/lib/finance/square")>(),
   isSquareConfigured: vi.fn(() => true),
   createSquarePaymentLink: vi.fn().mockResolvedValue({ id: "link-1", url: "https://square.link/u/test" }),
+}));
+vi.mock("@/lib/finance/stripe", () => ({ isStripeConfigured: vi.fn(() => true) }));
+vi.mock("@/lib/crm/stripe-collection", () => ({ createStripePaymentLink: vi.fn() }));
+vi.mock("@/lib/crm/stripe-delivery", () => ({
+  deliverStripeRequest: vi.fn((_db: unknown, _id: unknown, _channel: unknown, _to: unknown, _key: unknown, _payload: unknown, send: () => Promise<unknown>) => send()),
 }));
 vi.mock("@/lib/notify/email", () => ({
   buildSquareOrderPaymentEmail: vi.fn(() => ({ subject: "Payment request", html: "preview", text: "preview" })),
@@ -50,13 +56,17 @@ function fixture(options: { entry?: Record<string, unknown>; quote?: Record<stri
 const actor = { email: "805@805shutters.com", userId: "staff-1" };
 const confirmation = { expectedAmount: 300, expectedRecipient: "exact@example.com" };
 
-beforeEach(() => { vi.clearAllMocks(); vi.mocked(isSquareConfigured).mockReturnValue(true); });
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.stubEnv("CARD_PAYMENT_PROVIDER", "square");
+  vi.mocked(isSquareConfigured).mockReturnValue(true);
+});
 
 describe("standalone entry Square requests", () => {
   it("uses the exact entry ledger and branded sender, not a quote ledger", async () => {
     const { supabase, calls } = fixture();
     const result = await sendSquareEntryPaymentLink(supabase, "entry-1", "deposit", actor, confirmation);
-    expect(result).toMatchObject({ amount: 300, recipient: "exact@example.com", email: { sent: true } });
+    expect(result).toMatchObject({ amount: 300, recipient: "exact@example.com", email: { sent: true }, deliveryState: "accepted", providerMessageId: null });
     expect(createSquarePaymentLink).toHaveBeenCalledWith(expect.objectContaining({ bookkeepingEntryId: "entry-1", amountCents: 30000 }));
     expect(vi.mocked(createSquarePaymentLink).mock.calls[0][0]).not.toHaveProperty("quoteId");
     expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ from: "805 Shutters <805@805shutters.com>", to: "exact@example.com" }));
@@ -89,6 +99,13 @@ describe("standalone entry Square requests", () => {
     await expect(sendSquareEntryPaymentLink(fixture(options).supabase, "entry-1", "deposit", actor, confirmation)).rejects.toThrow(error);
     expect(createSquarePaymentLink).not.toHaveBeenCalled(); expect(sendEmail).not.toHaveBeenCalled();
   });
+  it("refuses an unset provider before Square or Stripe", async () => {
+    vi.stubEnv("CARD_PAYMENT_PROVIDER", "");
+    await expect(sendSquareEntryPaymentLink(fixture().supabase, "entry-1", "deposit", actor, confirmation)).rejects.toMatchObject({ status: 503 });
+    expect(createSquarePaymentLink).not.toHaveBeenCalled();
+    expect(createStripePaymentLink).not.toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
   it("rejects missing confirmation and stale amounts/recipients", async () => {
     for (const value of [undefined, { ...confirmation, expectedAmount: 310 }, { ...confirmation, expectedRecipient: "wrong@example.com" }]) {
       await expect(sendSquareEntryPaymentLink(fixture().supabase, "entry-1", "deposit", actor, value!)).rejects.toThrow();
@@ -111,6 +128,15 @@ describe("entry payment request route", () => {
   function authorize() {
     vi.mocked(requireCrmUser).mockResolvedValue({ supabase: fixture().supabase, email: actor.email, user: { id: actor.userId } } as Awaited<ReturnType<typeof requireCrmUser>>);
   }
+  it("returns 503 when the card provider is unset", async () => {
+    vi.stubEnv("CARD_PAYMENT_PROVIDER", "");
+    authorize();
+    const response = await POST(request({ paymentType: "deposit", ...confirmation }), { params: Promise.resolve({ id: routeId }) });
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ message: "Card payment provider is not configured." });
+    expect(createSquarePaymentLink).not.toHaveBeenCalled();
+    expect(createStripePaymentLink).not.toHaveBeenCalled();
+  });
   it("requires CRM authorization before looking up a ledger", async () => {
     vi.mocked(requireCrmUser).mockRejectedValue(new CrmAuthError(401, "CRM session is required."));
     expect((await POST(request({ paymentType: "deposit", ...confirmation }), { params: Promise.resolve({ id: routeId }) })).status).toBe(401);
@@ -125,7 +151,25 @@ describe("entry payment request route", () => {
     authorize();
     const response = await POST(request({ paymentType: "deposit", ...confirmation }), { params: Promise.resolve({ id: routeId }) });
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ recipient: "exact@example.com", amount: 300, email: { sent: true } });
+    expect(await response.json()).toMatchObject({ recipient: "exact@example.com", amount: 300, email: { sent: true }, deliveryState: "accepted", providerMessageId: null });
+  });
+  it("includes deliveryState and providerMessageId from the email result", async () => {
+    authorize();
+    vi.mocked(sendEmail).mockResolvedValueOnce({ sent: true, id: "resend-entry-1" });
+    const accepted = await POST(request({ paymentType: "deposit", ...confirmation }), { params: Promise.resolve({ id: routeId }) });
+    expect(accepted.status).toBe(200);
+    expect(await accepted.json()).toMatchObject({ deliveryState: "accepted", providerMessageId: "resend-entry-1", email: { sent: true } });
+
+    vi.mocked(sendEmail).mockResolvedValueOnce({ sent: false, error: "rejected" });
+    const failed = await POST(request({ paymentType: "deposit", ...confirmation }), { params: Promise.resolve({ id: routeId }) });
+    expect(failed.status).toBe(200);
+    expect(await failed.json()).toMatchObject({ deliveryState: "failed", providerMessageId: null, email: { sent: false } });
+
+    vi.mocked(sendEmail).mockResolvedValueOnce({ sent: false, uncertain: true });
+    const unknown = await POST(request({ paymentType: "deposit", ...confirmation }), { params: Promise.resolve({ id: routeId }) });
+    expect(unknown.status).toBe(200);
+    expect(await unknown.json()).toMatchObject({ deliveryState: "unknown", providerMessageId: null, email: { sent: false, uncertain: true } });
+    expect(createSquarePaymentLink).toHaveBeenCalled();
   });
   it("honors the read-only account restriction", async () => {
     vi.mocked(requireCrmUser).mockRejectedValue(new CrmAuthError(403, "Ken's CRM login is read-only."));

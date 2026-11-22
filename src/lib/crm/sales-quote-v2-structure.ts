@@ -102,6 +102,7 @@ const QUOTE_PATCH_FIELDS = [
   "installerNotes",
   "quoteGroupId",
   "quoteLetter",
+  "sideMark",
 ] as const;
 
 const LINE_PATCH_FIELDS = [
@@ -453,6 +454,9 @@ function quotePatch(
       );
     }
     normalized.quoteLetter = letter;
+  }
+  if ("sideMark" in patch) {
+    normalized.sideMark = nullableText(patch.sideMark, `${label}.sideMark`, 200);
   }
   return normalized;
 }

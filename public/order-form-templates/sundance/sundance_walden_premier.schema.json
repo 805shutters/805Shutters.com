@@ -1,0 +1,672 @@
+{
+  "schema_version": 1,
+  "routing_key": "sundance:sundance_walden_premier",
+  "manufacturer": "Sundance",
+  "product_key": "sundance_walden_premier",
+  "product_name": "Walden Premier woven wood shade",
+  "product_kind": "Roman Shades",
+  "portal_ordering_type": "Wovenwood",
+  "catalog_version": "sundance-assortment-2026-09-26-r15",
+  "status": "gaps",
+  "source_url": "https://sundance.blindata.app",
+  "ordered_fields": [
+    "customer_name",
+    "quote_number",
+    "order_draft_name",
+    "account_number",
+    "po_number",
+    "sidemark",
+    "delivery_method",
+    "ship_to_name",
+    "ship_to_address",
+    "ship_to_zip",
+    "bill_to",
+    "contact_phone_email",
+    "special_instructions",
+    "order_date",
+    "room_name",
+    "quantity",
+    "width",
+    "height",
+    "mount_type",
+    "fabric_color",
+    "style",
+    "control",
+    "control_side",
+    "chain",
+    "wand_length",
+    "wand_color",
+    "motor_type",
+    "charger",
+    "remote",
+    "lining",
+    "edge_binding",
+    "twin_shade",
+    "front_mount",
+    "multi_blind",
+    "returns",
+    "return_material",
+    "flush_depth",
+    "assembly",
+    "interior_valance",
+    "valance_headrail",
+    "cutout_qty",
+    "hold_down",
+    "line_note"
+  ],
+  "fields": [
+    {
+      "key": "customer_name",
+      "label": "customer_name",
+      "ask_order": 1,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "quote_number",
+      "label": "quote_number",
+      "ask_order": 2,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "order_draft_name",
+      "label": "order_draft_name",
+      "ask_order": 3,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "account_number",
+      "label": "account_number",
+      "ask_order": 4,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "po_number",
+      "label": "po_number",
+      "ask_order": 5,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "sidemark",
+      "label": "sidemark",
+      "ask_order": 6,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "delivery_method",
+      "label": "delivery_method",
+      "ask_order": 7,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "ship_to_name",
+      "label": "ship_to_name",
+      "ask_order": 8,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "805 SHUTTERS (default, used on every past order)",
+          "label": "805 SHUTTERS (default, used on every past order)"
+        },
+        {
+          "value": "customer",
+          "label": "customer"
+        }
+      ]
+    },
+    {
+      "key": "ship_to_address",
+      "label": "ship_to_address",
+      "ask_order": 9,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "ship_to_zip",
+      "label": "ship_to_zip",
+      "ask_order": 10,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "bill_to",
+      "label": "bill_to",
+      "ask_order": 11,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "contact_phone_email",
+      "label": "contact_phone_email",
+      "ask_order": 12,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "special_instructions",
+      "label": "special_instructions",
+      "ask_order": 13,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "order_date",
+      "label": "order_date",
+      "ask_order": 14,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "room_name",
+      "label": "Room",
+      "ask_order": 15,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "quantity",
+      "label": "Qty",
+      "ask_order": 16,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "width",
+      "label": "Width",
+      "ask_order": 17,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "height",
+      "label": "Height / Drop",
+      "ask_order": 18,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "mount_type",
+      "label": "Mount",
+      "ask_order": 19,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Inside",
+          "label": "Inside"
+        },
+        {
+          "value": "Outside",
+          "label": "Outside"
+        }
+      ]
+    },
+    {
+      "key": "fabric_color",
+      "label": "Woven material + code",
+      "ask_order": 20,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "style",
+      "label": "style",
+      "ask_order": 21,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Standard",
+          "label": "Standard"
+        },
+        {
+          "value": "Waterfall",
+          "label": "Waterfall"
+        },
+        {
+          "value": "Valance Only",
+          "label": "Valance Only"
+        }
+      ]
+    },
+    {
+      "key": "control",
+      "label": "control",
+      "ask_order": 22,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Cordless (15-96\")",
+          "label": "Cordless (15-96\")"
+        },
+        {
+          "value": "Cordless TDBU",
+          "label": "Cordless TDBU"
+        },
+        {
+          "value": "Clutch and Loop",
+          "label": "Clutch and Loop"
+        },
+        {
+          "value": "Pro Wand",
+          "label": "Pro Wand"
+        },
+        {
+          "value": "Standard LI Motor",
+          "label": "Standard LI Motor"
+        },
+        {
+          "value": "Power Lift LI Motor",
+          "label": "Power Lift LI Motor"
+        },
+        {
+          "value": "Somfy Sonesse Ultra 30",
+          "label": "Somfy Sonesse Ultra 30"
+        }
+      ]
+    },
+    {
+      "key": "control_side",
+      "label": "control_side",
+      "ask_order": 23,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Left",
+          "label": "Left"
+        },
+        {
+          "value": "Right",
+          "label": "Right"
+        }
+      ]
+    },
+    {
+      "key": "chain",
+      "label": "chain",
+      "ask_order": 24,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "no closed list in the field file",
+      "choices": []
+    },
+    {
+      "key": "wand_length",
+      "label": "wand_length",
+      "ask_order": 25,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "24",
+          "label": "24"
+        },
+        {
+          "value": "36",
+          "label": "36"
+        },
+        {
+          "value": "48",
+          "label": "48"
+        },
+        {
+          "value": "60 in",
+          "label": "60 in"
+        }
+      ]
+    },
+    {
+      "key": "wand_color",
+      "label": "wand_color",
+      "ask_order": 26,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "motor_type",
+      "label": "motor_type",
+      "ask_order": 27,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "No",
+          "label": "No"
+        },
+        {
+          "value": "Standard Lift",
+          "label": "Standard Lift"
+        },
+        {
+          "value": "Ultra 30 Somfy Li-ion",
+          "label": "Ultra 30 Somfy Li-ion"
+        }
+      ]
+    },
+    {
+      "key": "charger",
+      "label": "charger",
+      "ask_order": 28,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "No",
+          "label": "No"
+        },
+        {
+          "value": "Charger (Li-On) Ultra Somfy",
+          "label": "Charger (Li-On) Ultra Somfy"
+        },
+        {
+          "value": "charger16",
+          "label": "charger16"
+        }
+      ]
+    },
+    {
+      "key": "remote",
+      "label": "remote",
+      "ask_order": 29,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Standard Lift 1- or 15-ch",
+          "label": "Standard Lift 1- or 15-ch"
+        },
+        {
+          "value": "Somfy Situo 1/5/16",
+          "label": "Somfy Situo 1/5/16"
+        }
+      ]
+    },
+    {
+      "key": "lining",
+      "label": "lining",
+      "ask_order": 30,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "None",
+          "label": "None"
+        },
+        {
+          "value": "Light Filtering",
+          "label": "Light Filtering"
+        }
+      ]
+    },
+    {
+      "key": "edge_binding",
+      "label": "edge_binding",
+      "ask_order": 31,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "no closed list in the field file",
+      "choices": []
+    },
+    {
+      "key": "twin_shade",
+      "label": "twin_shade",
+      "ask_order": 32,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "NO",
+          "label": "NO"
+        },
+        {
+          "value": "YES",
+          "label": "YES"
+        }
+      ]
+    },
+    {
+      "key": "front_mount",
+      "label": "front_mount",
+      "ask_order": 33,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "multi_blind",
+      "label": "multi_blind",
+      "ask_order": 34,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "No",
+          "label": "No"
+        },
+        {
+          "value": "Yes",
+          "label": "Yes"
+        }
+      ]
+    },
+    {
+      "key": "returns",
+      "label": "returns",
+      "ask_order": 35,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "None",
+          "label": "None"
+        },
+        {
+          "value": "Standard",
+          "label": "Standard"
+        },
+        {
+          "value": "Extended",
+          "label": "Extended"
+        }
+      ]
+    },
+    {
+      "key": "return_material",
+      "label": "return_material",
+      "ask_order": 36,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Shade fabric",
+          "label": "Shade fabric"
+        },
+        {
+          "value": "Edge binding fabric",
+          "label": "Edge binding fabric"
+        }
+      ]
+    },
+    {
+      "key": "flush_depth",
+      "label": "flush_depth",
+      "ask_order": 37,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "assembly",
+      "label": "assembly",
+      "ask_order": 38,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Single",
+          "label": "Single"
+        },
+        {
+          "value": "Two on one",
+          "label": "Two on one"
+        },
+        {
+          "value": "Three on one",
+          "label": "Three on one"
+        }
+      ]
+    },
+    {
+      "key": "interior_valance",
+      "label": "interior_valance",
+      "ask_order": 39,
+      "input_kind": "buttons",
+      "required": false,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Standard when unlined or light-filtering",
+          "label": "Standard when unlined or light-filtering"
+        },
+        {
+          "value": "Requested interior valance",
+          "label": "Requested interior valance"
+        }
+      ]
+    },
+    {
+      "key": "valance_headrail",
+      "label": "valance_headrail",
+      "ask_order": 40,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Loose",
+          "label": "Loose"
+        },
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "1.5",
+          "label": "1.5"
+        },
+        {
+          "value": "2.5",
+          "label": "2.5"
+        },
+        {
+          "value": "3.5",
+          "label": "3.5"
+        },
+        {
+          "value": "5",
+          "label": "5"
+        }
+      ]
+    },
+    {
+      "key": "cutout_qty",
+      "label": "cutout_qty",
+      "ask_order": 41,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "hold_down",
+      "label": "hold_down",
+      "ask_order": 42,
+      "input_kind": "buttons",
+      "required": false,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Yes",
+          "label": "Yes"
+        },
+        {
+          "value": "No",
+          "label": "No"
+        }
+      ]
+    },
+    {
+      "key": "line_note",
+      "label": "Note / Instructions (per line)",
+      "ask_order": 43,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    }
+  ]
+}

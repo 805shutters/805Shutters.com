@@ -9,6 +9,9 @@ type MetaLeadEvent = {
   city?: string | null;
   interest?: string | null;
   pagePath?: string | null;
+  fbp?: string | null;
+  fbc?: string | null;
+  fbclid?: string | null;
 };
 
 export async function sendMetaLeadEvent(request: NextRequest, lead: MetaLeadEvent) {
@@ -17,6 +20,6 @@ export async function sendMetaLeadEvent(request: NextRequest, lead: MetaLeadEven
     eventId: lead.eventId,
     eventTime: Math.floor(Date.now() / 1000),
     pagePath: lead.pagePath || "/free-window-treatment-consultation/",
-    matching: { ...scheduleMatchingData(lead.email || "", lead.phone || ""), ...requestMatchingData(request) },
+    matching: { ...scheduleMatchingData(lead.email || "", lead.phone || ""), ...requestMatchingData(request, lead) },
   });
 }

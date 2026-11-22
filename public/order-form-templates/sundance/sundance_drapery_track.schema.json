@@ -1,0 +1,372 @@
+{
+  "schema_version": 1,
+  "routing_key": "sundance:sundance_drapery_track",
+  "manufacturer": "Sundance",
+  "product_key": "sundance_drapery_track",
+  "product_name": "Sundance Glydea drapery track",
+  "product_kind": "Drapery Tracks",
+  "portal_ordering_type": "Glydea Track",
+  "catalog_version": "sundance-assortment-2026-09-26-r15",
+  "status": "gaps",
+  "source_url": "https://sundance.blindata.app",
+  "ordered_fields": [
+    "customer_name",
+    "quote_number",
+    "order_draft_name",
+    "account_number",
+    "po_number",
+    "sidemark",
+    "delivery_method",
+    "ship_to_name",
+    "ship_to_address",
+    "ship_to_zip",
+    "bill_to",
+    "contact_phone_email",
+    "special_instructions",
+    "order_date",
+    "room_name",
+    "quantity",
+    "track_width",
+    "motor_type",
+    "headrail_color",
+    "motor_position",
+    "curved_track",
+    "stack_type",
+    "drapery_style",
+    "remote_control",
+    "mount_type",
+    "line_note"
+  ],
+  "fields": [
+    {
+      "key": "customer_name",
+      "label": "customer_name",
+      "ask_order": 1,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "quote_number",
+      "label": "quote_number",
+      "ask_order": 2,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "order_draft_name",
+      "label": "order_draft_name",
+      "ask_order": 3,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "account_number",
+      "label": "account_number",
+      "ask_order": 4,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "po_number",
+      "label": "po_number",
+      "ask_order": 5,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "sidemark",
+      "label": "sidemark",
+      "ask_order": 6,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "delivery_method",
+      "label": "delivery_method",
+      "ask_order": 7,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "ship_to_name",
+      "label": "ship_to_name",
+      "ask_order": 8,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "805 SHUTTERS (default, used on every past order)",
+          "label": "805 SHUTTERS (default, used on every past order)"
+        },
+        {
+          "value": "customer",
+          "label": "customer"
+        }
+      ]
+    },
+    {
+      "key": "ship_to_address",
+      "label": "ship_to_address",
+      "ask_order": 9,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "ship_to_zip",
+      "label": "ship_to_zip",
+      "ask_order": 10,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "bill_to",
+      "label": "bill_to",
+      "ask_order": 11,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "contact_phone_email",
+      "label": "contact_phone_email",
+      "ask_order": 12,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "special_instructions",
+      "label": "special_instructions",
+      "ask_order": 13,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "order_date",
+      "label": "order_date",
+      "ask_order": 14,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "room_name",
+      "label": "Room",
+      "ask_order": 15,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "quantity",
+      "label": "quantity",
+      "ask_order": 16,
+      "input_kind": "typed",
+      "required": true,
+      "pending": null,
+      "choices": []
+    },
+    {
+      "key": "track_width",
+      "label": "track_width",
+      "ask_order": 17,
+      "input_kind": "typed",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "motor_type",
+      "label": "motor_type",
+      "ask_order": 18,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "GLYDEA MOTOR /1.O NM/ 110 VOLTS",
+          "label": "GLYDEA MOTOR /1.O NM/ 110 VOLTS"
+        },
+        {
+          "value": "GLYDEA MOTOR/ 0.6 NM /110 VOLTS",
+          "label": "GLYDEA MOTOR/ 0.6 NM /110 VOLTS"
+        },
+        {
+          "value": "IRISMO 35/ 24VOLTS/ 0.6 NM (WITH TRANSFORMER)",
+          "label": "IRISMO 35/ 24VOLTS/ 0.6 NM (WITH TRANSFORMER)"
+        },
+        {
+          "value": "IRISMO 45/LI-ON RECHARGEABLE/0.8 NM",
+          "label": "IRISMO 45/LI-ON RECHARGEABLE/0.8 NM"
+        },
+        {
+          "value": "No",
+          "label": "No"
+        }
+      ]
+    },
+    {
+      "key": "headrail_color",
+      "label": "headrail_color",
+      "ask_order": 19,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Bronze",
+          "label": "Bronze"
+        },
+        {
+          "value": "White",
+          "label": "White"
+        }
+      ]
+    },
+    {
+      "key": "motor_position",
+      "label": "motor_position",
+      "ask_order": 20,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Motor Left",
+          "label": "Motor Left"
+        },
+        {
+          "value": "Motor Right",
+          "label": "Motor Right"
+        }
+      ]
+    },
+    {
+      "key": "curved_track",
+      "label": "curved_track",
+      "ask_order": 21,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "No",
+          "label": "No"
+        },
+        {
+          "value": "Yes",
+          "label": "Yes"
+        }
+      ]
+    },
+    {
+      "key": "stack_type",
+      "label": "stack_type",
+      "ask_order": 22,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "ONE WAY LEFT",
+          "label": "ONE WAY LEFT"
+        },
+        {
+          "value": "ONE WAY RIGHT",
+          "label": "ONE WAY RIGHT"
+        },
+        {
+          "value": "Split.",
+          "label": "Split."
+        }
+      ]
+    },
+    {
+      "key": "drapery_style",
+      "label": "drapery_style",
+      "ask_order": 23,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "Pinch Pleat Drapery Style",
+          "label": "Pinch Pleat Drapery Style"
+        },
+        {
+          "value": "Ripple Fold Drapery style.",
+          "label": "Ripple Fold Drapery style."
+        }
+      ]
+    },
+    {
+      "key": "remote_control",
+      "label": "remote_control",
+      "ask_order": 24,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": null,
+      "choices": [
+        {
+          "value": "No",
+          "label": "No"
+        },
+        {
+          "value": "Situo 1 (Single Line)",
+          "label": "Situo 1 (Single Line)"
+        },
+        {
+          "value": "Situo 5 (5 Lines)",
+          "label": "Situo 5 (5 Lines)"
+        },
+        {
+          "value": "Telis 16",
+          "label": "Telis 16"
+        }
+      ]
+    },
+    {
+      "key": "mount_type",
+      "label": "mount_type",
+      "ask_order": 25,
+      "input_kind": "buttons",
+      "required": true,
+      "pending": "needs live form check",
+      "choices": []
+    },
+    {
+      "key": "line_note",
+      "label": "Note / Instructions (per line)",
+      "ask_order": 26,
+      "input_kind": "typed",
+      "required": false,
+      "pending": null,
+      "choices": []
+    }
+  ]
+}

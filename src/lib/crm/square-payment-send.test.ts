@@ -1,11 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { requireCrmUser } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
 import { ensureShareToken, loadPublicQuoteByToken, type PublicQuote } from "@/lib/crm/public-quote";
 import { createSquarePaymentLink, isSquareConfigured } from "@/lib/finance/square";
+import { createStripePaymentLink } from "@/lib/crm/stripe-collection";
 import { buildSquareOrderPaymentEmail, sendEmail } from "@/lib/notify/email";
 import { sendSms } from "@/lib/notify/twilio";
-import { type SquarePaymentConfirmation, sendSquareOrderPaymentLink as sendCurrentSquareOrderPaymentLink } from "./square-payment-links";
+import { POST } from "@/app/api/crm/quotes/[id]/square-payment-link/route";
+import { SquarePaymentDeliveryError, type SquarePaymentConfirmation, sendSquareOrderPaymentLink as sendCurrentSquareOrderPaymentLink } from "./square-payment-links";
 
 vi.mock("@/lib/crm/square-payment-requests", () => ({ trackSquarePaymentRequest: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/lib/crm/backend", () => ({ recordCrmActivity: vi.fn() }));
@@ -13,6 +17,12 @@ vi.mock("@/lib/crm/public-quote", () => ({ ensureShareToken: vi.fn(), loadPublic
 vi.mock("@/lib/finance/square", () => ({
   isSquareConfigured: vi.fn(), createSquarePaymentLink: vi.fn(), dollarsToCents: (amount: number) => Math.round(amount * 100)
 }));
+vi.mock("@/lib/finance/stripe", () => ({ isStripeConfigured: vi.fn(() => true) }));
+vi.mock("@/lib/crm/stripe-collection", () => ({ createStripePaymentLink: vi.fn() }));
+vi.mock("@/lib/crm/stripe-delivery", () => ({
+  deliverStripeRequest: vi.fn((_db: unknown, _id: unknown, _channel: unknown, _to: unknown, _key: unknown, _payload: unknown, send: () => Promise<unknown>) => send()),
+}));
+vi.mock("@/lib/crm/auth", async (importOriginal) => ({ ...await importOriginal<typeof import("@/lib/crm/auth")>(), requireCrmUser: vi.fn() }));
 vi.mock("@/lib/notify/twilio", async (importOriginal) => ({ ...await importOriginal<typeof import("@/lib/notify/twilio")>(), sendSms: vi.fn() }));
 vi.mock("@/lib/notify/email", () => ({ buildSquareOrderPaymentEmail: vi.fn(), sendEmail: vi.fn() }));
 
@@ -58,6 +68,7 @@ function ledger(options: { payments?: AmountRow[]; creditsIn?: AmountRow[]; cred
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubEnv("CARD_PAYMENT_PROVIDER", "square");
   vi.mocked(isSquareConfigured).mockReturnValue(true);
   vi.mocked(ensureShareToken).mockResolvedValue({ token: "test-share-token", url: "https://805.example.test/quote/test-share-token" });
   vi.mocked(loadPublicQuoteByToken).mockResolvedValue(quote());
@@ -69,6 +80,7 @@ beforeEach(() => {
 
 function expectNoExternalRequest() {
   expect(createSquarePaymentLink).not.toHaveBeenCalled();
+  expect(createStripePaymentLink).not.toHaveBeenCalled();
   expect(sendEmail).not.toHaveBeenCalled();
   expect(recordCrmActivity).not.toHaveBeenCalled();
 }
@@ -128,6 +140,40 @@ describe("Square payment send service safeguards", () => {
     expectNoExternalRequest();
   });
 
+  it("T12 unset provider refuses before Square or Stripe, and explicit Stripe still uses Stripe", async () => {
+    vi.stubEnv("CARD_PAYMENT_PROVIDER", "");
+    await expect(sendSquareOrderPaymentLink(ledger().client, quoteId, "deposit", actor)).rejects.toMatchObject({
+      name: "CardProviderConfigError", status: 503, message: "Card payment provider is not configured.",
+    });
+    expect(ensureShareToken).not.toHaveBeenCalled();
+    expectNoExternalRequest();
+
+    vi.stubEnv("CARD_PAYMENT_PROVIDER", "paypal");
+    await expect(sendSquareOrderPaymentLink(ledger().client, quoteId, "deposit", actor)).rejects.toMatchObject({ status: 503 });
+    expectNoExternalRequest();
+
+    vi.stubEnv("CARD_PAYMENT_PROVIDER", "stripe");
+    vi.mocked(loadPublicQuoteByToken).mockResolvedValue(quote({ signed: true }));
+    vi.mocked(createStripePaymentLink).mockResolvedValue({
+      id: "cs_test_1", orderId: "cs_test_1", url: "https://checkout.stripe.com/c/pay/cs_test_1", provider: "stripe", requestId: "req-1",
+    });
+    const sent = await sendSquareOrderPaymentLink(ledger().client, quoteId, "deposit", actor, { expectedAmount: 500, expectedRecipient: customerEmail });
+    expect(sent.url).toMatch(/^https:\/\/checkout\.stripe\.com\//);
+    expect(createStripePaymentLink).toHaveBeenCalledOnce();
+    expect(createSquarePaymentLink).not.toHaveBeenCalled();
+  });
+
+  it("returns 503 from the payment-link route when the provider is unset", async () => {
+    vi.stubEnv("CARD_PAYMENT_PROVIDER", "");
+    vi.mocked(requireCrmUser).mockResolvedValue({ supabase: ledger().client, email: actor.email, user: { id: actor.userId } } as Awaited<ReturnType<typeof requireCrmUser>>);
+    const response = await POST(new NextRequest(`https://www.805shutters.com/api/crm/quotes/${quoteId}/square-payment-link`, {
+      method: "POST", body: JSON.stringify({ paymentType: "deposit", expectedAmount: 500, expectedRecipient: customerEmail }),
+    }), { params: Promise.resolve({ id: quoteId }) });
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ message: "Card payment provider is not configured." });
+    expectNoExternalRequest();
+  });
+
   it("does not load or mutate quote data when Square is unconfigured", async () => {
     vi.mocked(isSquareConfigured).mockReturnValue(false);
     await expect(sendSquareOrderPaymentLink(ledger().client, quoteId, "deposit", actor)).rejects.toMatchObject({ status: 503 });
@@ -156,7 +202,7 @@ describe("Square payment send service safeguards", () => {
     expect(createSquarePaymentLink).toHaveBeenCalledExactlyOnceWith({ amountCents: 40000, title: "Deposit — 805 Shutters (Q-TEST)", quoteId, jobId: "job-1", idempotencyKey: undefined, paymentType: "deposit", buyerEmail: customerEmail });
     expect(sendEmail).toHaveBeenCalledExactlyOnceWith({ to: customerEmail, from: "805 Shutters <805@805shutters.com>", idempotencyKey: undefined, ...mail });
     expect(buildSquareOrderPaymentEmail).toHaveBeenCalledWith("Test customer", link.url, expect.objectContaining({ paymentType: "deposit", amount: 400, quoteNumber: "Q-TEST" }));
-    expect(result).toMatchObject({ amount: 400, recipient: customerEmail, url: link.url, email: { sent: true, id: "email-test-id" } });
+    expect(result).toMatchObject({ amount: 400, recipient: customerEmail, url: link.url, email: { sent: true, id: "email-test-id" }, deliveryState: "accepted", providerStatus: "accepted", providerMessageId: "email-test-id" });
     expect(result).toMatchObject({ auditRecorded: true, warning: null });
     expect(recordCrmActivity).toHaveBeenCalledWith(db.client, actor, expect.objectContaining({ action: "square_deposit_link.send", metadata: expect.objectContaining({ amount: 400, recipient: customerEmail, emailSent: true, squarePaymentLinkId: link.id }) }));
   });
@@ -172,9 +218,29 @@ describe("Square payment send service safeguards", () => {
     vi.mocked(sendEmail).mockResolvedValue(emailResult);
     const db = ledger();
     const result = await sendSquareOrderPaymentLink(db.client, quoteId, "deposit", actor);
-    expect(result).toMatchObject({ url: link.url, email: emailResult });
+    expect(result).toMatchObject({ url: link.url, email: emailResult, deliveryState: "failed", providerStatus: "failed" });
     expect(result.email!.sent).toBe(false);
+    expect(result.providerMessageId).toBeUndefined();
     expect(recordCrmActivity).toHaveBeenCalledWith(db.client, actor, expect.objectContaining({ metadata: expect.objectContaining({ emailSent: false, emailError: emailResult.error || emailResult.skipped }) }));
+  });
+
+  it("reports an uncertain Payment Hub email as unknown, never as accepted", async () => {
+    vi.mocked(sendEmail).mockResolvedValue({ sent: false, uncertain: true });
+    const result = await sendSquareOrderPaymentLink(ledger().client, quoteId, "deposit", actor);
+    expect(result.email).toMatchObject({ sent: false, uncertain: true });
+    expect(result).toMatchObject({ deliveryState: "unknown", providerStatus: "unknown" });
+    expect(result.providerMessageId).toBeUndefined();
+  });
+
+  it("still throws SquarePaymentDeliveryError for an explicit email channel that is not accepted", async () => {
+    vi.mocked(sendEmail).mockResolvedValue({ sent: false, error: "Mail provider rejected delivery" });
+    const failed = await sendCurrentSquareOrderPaymentLink(ledger().client, quoteId, "deposit", actor, undefined, { channel: "email" }, { expectedAmount: 500, expectedRecipient: customerEmail }).catch((error) => error);
+    expect(failed).toBeInstanceOf(SquarePaymentDeliveryError);
+    expect(failed.deliveryState).toBe("failed");
+    vi.mocked(sendEmail).mockResolvedValue({ sent: false, uncertain: true });
+    const unknown = await sendCurrentSquareOrderPaymentLink(ledger().client, quoteId, "deposit", actor, undefined, { channel: "email" }, { expectedAmount: 500, expectedRecipient: customerEmail }).catch((error) => error);
+    expect(unknown).toBeInstanceOf(SquarePaymentDeliveryError);
+    expect(unknown.deliveryState).toBe("unknown");
   });
 
   it("never reports sent when the email helper throws", async () => {

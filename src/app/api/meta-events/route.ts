@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
 import { requestMatchingData, sendMetaEvent } from "@/lib/booking/meta-schedule";
 import { marketingPath } from "@/lib/meta-event-context";
+import { isMetaBotOrPrefetch } from "@/lib/meta-user-data";
 
 export async function POST(request: NextRequest) {
   if (request.headers.get("origin") !== request.nextUrl.origin) return new Response(null, { status: 403 });
-  if (request.headers.get("sec-gpc") === "1") return new Response(null, { status: 204 });
+  if (request.headers.get("sec-gpc") === "1" || isMetaBotOrPrefetch(request.headers)) return new Response(null, { status: 204 });
   if (!request.headers.get("content-type")?.startsWith("application/json")) return new Response(null, { status: 415 });
   const input = await request.json().catch(() => null);
   const pagePath = marketingPath(input?.pagePath);

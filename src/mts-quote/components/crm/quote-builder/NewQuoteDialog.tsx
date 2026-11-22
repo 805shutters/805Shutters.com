@@ -28,6 +28,7 @@ export interface NewQuoteData {
   customerEmail: string;
   accountId: string;
   quoteType: QuoteType;
+  sideMark?: string;
 }
 
 export function NewQuoteDialog({
@@ -43,6 +44,7 @@ export function NewQuoteDialog({
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
+  const [sideMark, setSideMark] = useState("");
   const [quoteType, setQuoteType] = useState<QuoteType>("residential");
   const [mounted, setMounted] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
@@ -63,6 +65,7 @@ export function NewQuoteDialog({
     setCustomerPhone("");
     setCustomerAddress("");
     setCustomerEmail("");
+    setSideMark("");
     setQuoteType("residential");
     setSelectedCustomerId(null);
     setSuggestionsOpen(false);
@@ -121,6 +124,7 @@ export function NewQuoteDialog({
       customerEmail: customerEmail.trim(),
       accountId,
       quoteType,
+      sideMark: sideMark.trim(),
     });
   };
 
@@ -290,6 +294,15 @@ export function NewQuoteDialog({
               />
             </label>
           </div>
+          <label>
+            Side mark
+            <input
+              aria-label="Side mark"
+              placeholder="Leave blank to use the last name and new quote ID"
+              value={sideMark}
+              onChange={(event) => setSideMark(event.target.value)}
+            />
+          </label>
           {!nameReady && (
             <p
               style={{

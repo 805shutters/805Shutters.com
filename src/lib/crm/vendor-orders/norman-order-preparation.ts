@@ -14,7 +14,7 @@ import {
 import { resolveManufacturerTechnicalMeasureSchema } from "./manufacturer-technical-measure-schemas";
 
 export type VendorOrderPreparationSummary = {
-  manufacturer: "Norman" | "Onyx" | "Lotus" | "Polar";
+  manufacturer: "Norman" | "Onyx" | "Lotus" | "Polar" | "Sundance";
   productType: string;
   status: "skipped" | "awaiting_measure" | "needs_input" | "queued" | "processing" | "review_ready" | "failed" | "queue_failed";
   taskId: string | null;
@@ -143,6 +143,7 @@ export function enqueueOnyxShutterPreparations(
     generatedAt: form.submitted_at || new Date().toISOString(),
     customerId: form.customer_id,
     customerName: form.customer_snapshot.name,
+    sideMark: form.customer_snapshot.sideMark,
     customerPhone: form.customer_snapshot.phone,
     customerEmail: form.customer_snapshot.email,
     jobsiteAddress: [form.customer_snapshot.address, form.customer_snapshot.city].filter(Boolean).join(", ") || null,
@@ -177,7 +178,7 @@ export async function enqueueVendorOrderPreparations(
       continue;
     }
     const manufacturer = schema.manufacturer.toLowerCase() as OrderFormManufacturer;
-    if (!["norman", "onyx", "lotus", "polar"].includes(manufacturer)) continue;
+    if (!["norman", "onyx", "lotus", "polar", "sundance"].includes(manufacturer)) continue;
     const lines = grouped.get(manufacturer) || [];
     lines.push({ line, schema });
     grouped.set(manufacturer, lines);
@@ -193,6 +194,36 @@ export async function enqueueVendorOrderPreparations(
   return Promise.all(Array.from(grouped.entries()).map(async ([manufacturer, lines]) => {
     const routingKeys = Array.from(new Set(lines.map(({ schema }) => schema.routingKey)));
     const productNames = Array.from(new Set(lines.map(({ schema }) => schema.productName)));
+    if (manufacturer === "sundance") {
+      const sourceHash = createHash("sha256").update(JSON.stringify({
+        formId: form.id,
+        submittedAt: form.submitted_at,
+        manufacturer,
+        lineIds: lines.map(({ line }) => line.id),
+      })).digest("hex");
+      return {
+        manufacturer: "Sundance",
+        productType: productNames.length === 1 ? lines[0].schema.productKey : "mixed",
+        status: "needs_input",
+        taskId: `sundance-review:${form.id}:${sourceHash.slice(0, 12)}`,
+        issueCount: lines.length,
+        message: "Sundance order form is ready for review. Live form confirmation is still open, and no vendor account is seeded.",
+        requestedAt,
+        requestedBy: requestedBy || null,
+        sourceHash,
+        routingKeys,
+        productNames,
+        lineCount: lines.length,
+        portalUrl: manufacturerOrderPortalUrl("sundance"),
+        orderPacketUrl: `/api/crm/vendor-order-packets/${encodeURIComponent(form.quote_id)}?manufacturer=sundance&format=html`,
+        payload: {
+          schemaVersion: "sundance-order-form.v1",
+          safety: "review_before_submission",
+          quoteId: form.quote_id,
+          lineIds: lines.map(({ line }) => line.id),
+        },
+      } satisfies VendorOrderPreparationSummary;
+    }
     if (manufacturer === "polar") {
       const sourceHash = createHash("sha256").update(JSON.stringify({
         formId: form.id,

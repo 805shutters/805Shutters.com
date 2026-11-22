@@ -19,6 +19,9 @@ type LeadPayload = {
   utm_content?: string;
   utm_term?: string;
   gclid?: string;
+  fbclid?: string;
+  fbp?: string;
+  fbc?: string;
   referrer?: string;
   landingPath?: string;
   company?: string;
@@ -102,7 +105,10 @@ export async function POST(request: NextRequest) {
       phone: leadRecord.phone,
       city: leadRecord.city,
       interest: leadRecord.interest,
-      pagePath: leadRecord.page_path
+      pagePath: leadRecord.page_path,
+      fbp: payload.fbp,
+      fbc: payload.fbc,
+      fbclid: payload.fbclid,
     });
   } catch (error) {
     console.error(error);

@@ -166,7 +166,7 @@ export async function createPaymentPlanForJob(
   }
 
   const method = input.method || "square_autopay";
-  if(cardProvider() === "stripe" && method === "square_autopay")throw new CrmAuthError(409,"Use the current in-house installment schedule; new Square autopay enrollment is closed after Stripe cutover.");
+  if (method === "square_autopay" && cardProvider() === "stripe") throw new CrmAuthError(409,"Use the current in-house installment schedule; new Square autopay enrollment is closed after Stripe cutover.");
   // Card-network rules cap credit-card surcharges at 3%; only card plans carry a fee.
   const rawFeePercent = input.card_fee_percent ?? (method === "square_autopay" ? 3 : 0);
   const cardFeePercent = method === "square_autopay" ? Math.min(3, Math.max(0, Number(rawFeePercent) || 0)) : 0;

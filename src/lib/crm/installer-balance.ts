@@ -253,3 +253,48 @@ export async function refreshInstallerCustomerBalance(
   }
   return { ...form, meta };
 }
+
+function roundedMoney(value: unknown): number | null {
+  if (typeof value !== "number" && typeof value !== "string") return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return null;
+  return Math.round(amount * 100) / 100;
+}
+
+export function balanceDueFromPaymentTotals(data: unknown): number | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  if (!Object.prototype.hasOwnProperty.call(data, "balanceDue")) return null;
+  return roundedMoney((data as { balanceDue?: unknown }).balanceDue);
+}
+
+export function storedInstallerCustomerBalanceAmount(
+  form: Pick<InstallerBalanceForm, "meta">,
+): number | null {
+  const value = form.meta?.[INSTALLER_CUSTOMER_BALANCE_META_KEY];
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return roundedMoney((value as { remaining_customer_balance?: unknown }).remaining_customer_balance);
+}
+
+export async function resolveInstallerFormBalanceDue(
+  supabase: SupabaseClient,
+  form: Pick<InstallerBalanceForm, "id" | "quote_id" | "meta">,
+): Promise<number | null> {
+  try {
+    const { data, error } = await supabase.rpc("crm_customer_payment_totals", {
+      p_quote: form.quote_id,
+      p_entry: null,
+    });
+    if (error) throw new Error(error.message);
+    const live = balanceDueFromPaymentTotals(data);
+    if (live === null) throw new Error("crm_customer_payment_totals did not return balanceDue");
+    return live;
+  } catch (error) {
+    console.warn("installer form balance live lookup failed; using stored meta.customer_balance", {
+      formId: form.id,
+      quoteId: form.quote_id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return storedInstallerCustomerBalanceAmount(form);
+  }
+}

@@ -1096,7 +1096,7 @@ export function CrmApp({
         { method: "POST", body: JSON.stringify({ paymentType, recipientEmail: recipientEmail?.trim() || undefined, ...confirmation }) },
       );
       if (!result.email.sent) {
-        throw new Error(result.email.error || result.email.skipped || "Square link was created, but the email was not sent.");
+        throw new Error(result.email.error || result.email.skipped || "Card payment link was created, but the email was not sent.");
       }
       setMessage(`${paymentType === "deposit" ? "Deposit" : "Balance"} link for ${toCurrency(result.amount)} sent to ${result.recipient}.`);
       return result;
@@ -1224,7 +1224,7 @@ export function CrmApp({
       const result = await crmFetch<SquarePaymentLinkResult>(session, `/api/crm/bookkeeping/${item.row!.id}/square-payment-link`, {
         method: "POST", body: JSON.stringify({ paymentType, ...confirmation }),
       });
-      if (!result.email.sent) throw new Error(result.email.error || result.email.skipped || "Square link was created, but the email was not sent.");
+      if (!result.email.sent) throw new Error(result.email.error || result.email.skipped || "Card payment link was created, but the email was not sent.");
       setMessage(result.warning || `${paymentType === "deposit" ? "Deposit" : "Balance"} link for ${toCurrency(result.amount)} sent to ${result.recipient}.`);
       return result;
     } finally { setBusy(false); }
@@ -8972,6 +8972,7 @@ function buildDrillFieldPatch(event: FormEvent<HTMLFormElement>, entry: DrillEnt
             status: formString(formData, "quote_status") || row.status,
             sold_by: soldByOwner || undefined,
             quote_number: formString(formData, "quote_number"),
+            side_mark: formString(formData, "side_mark"),
             quote_total: total,
             materials_cost: cogs,
             sold_at: soldDate || null
@@ -9077,6 +9078,10 @@ function DrillDetailEditForm({
             <label>
               Quote / Job
               <input name="quote_number" defaultValue={row?.quoteNumber || ""} disabled={!isQuoteRow} />
+            </label>
+            <label>
+              Side mark
+              <input name="side_mark" defaultValue={row?.sideMark || ""} disabled={!isQuoteRow} aria-label="Side mark" />
             </label>
             <label>
               Product

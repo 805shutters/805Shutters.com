@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CrmAuthError, crmAuthErrorResponse } from "@/lib/crm/auth";
+import { quoterServiceGuard } from "@/lib/crm/quoter-service-auth";
 import { sendNormanOrderReviewTelegram } from "@/lib/crm/vendor-orders/order-review-alerts";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
@@ -192,6 +193,8 @@ async function completeTask(
 }
 
 export async function POST(request: NextRequest) {
+  const quoterDenied = quoterServiceGuard(request);
+  if (quoterDenied) return quoterDenied;
   try {
     requireWorkerAccess(request);
     const supabase = getSupabaseServiceClient();

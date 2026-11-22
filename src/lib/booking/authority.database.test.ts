@@ -683,16 +683,26 @@ describe("authenticated manual rescheduling", () => {
     await expect(db.query("update crm_calendar_events set location='Changed address' where id=$1", [event.id])).rejects.toThrow(/BOOKING_/);
   });
 
-  it("allows a missing-address visit beyond the public daily appointment limit", async () => {
-    await protectedPair();
-    // Four visits on the protected day is still valid; the fifth starts elsewhere.
+  it("allows a missing-address Mike visit without using Jessica's public cap", async () => {
+    const { next } = await protectedPair();
+    // Staff can still place missing-address visits, including moving one onto this day.
     for (const [day, time] of [[date, '08:00'], [date, '15:00'], ['2035-10-02', '09:00']]) {
       const visit = candidateVisit(day, time, '', 5);
       await db.query("insert into crm_calendar_events(id,title,start_at,end_at,assigned_to,event_type,location) values($1,'staff',$2,$3,'Mike','sales_consult',null)", [visit.id, visit.start_at, visit.end_at]);
       if (day !== date) await adminReschedule(visit, '10:00');
     }
     await db.exec("select booking_private.validate_protections()");
-    await expect(commit('14:00')).rejects.toThrow(/BOOKING_FULL/);
+    const event = candidateVisit(date, "14:00", "123 Main St", 5);
+    await commit("14:00", randomUUID(), {
+      event,
+      proofs: [{
+        eventId: event.id,
+        signature: eventSignature(event),
+        checkedAt: new Date().toISOString(),
+        previous: { id: next.id, signature: eventSignature(next), departureAt: next.end_at, seconds: 30 * 60 },
+        next: null,
+      }],
+    });
   });
 
   it("retains public booking on unaffected days", async () => {
@@ -1110,7 +1120,7 @@ describe("explicit manual booking override", () => {
     ).toBe(event.id);
     const filler = candidateVisit(date, "15:00", "Mike address", 5);
     await db.query(
-      "insert into crm_calendar_events(id,title,start_at,end_at,assigned_to,event_type,location) values($1,'full',$2,$3,'Mike','sales_consult',$4)",
+      "insert into crm_calendar_events(id,title,start_at,end_at,assigned_to,event_type,location) values($1,'full',$2,$3,'Jessica','sales_consult',$4)",
       [filler.id, filler.start_at, filler.end_at, filler.location],
     );
     await expect(commitOverride("16:00")).rejects.toThrow(/BOOKING_FULL/);
@@ -1136,5 +1146,95 @@ describe("atomic staff cancellation access", () => {
       try { await expect(adminCancel(event,previous)).rejects.toThrow(/permission denied/); }
       finally { await db.exec('reset role'); }
     }
+  });
+});
+
+const driveSeconds = 30 * 60;
+function routeProof(event: CrmCalendarEvent, previous: CrmCalendarEvent | null, next: CrmCalendarEvent | null) {
+  return {
+    eventId: event.id,
+    signature: eventSignature(event),
+    checkedAt: new Date().toISOString(),
+    previous: previous ? { id: previous.id, signature: eventSignature(previous), departureAt: previous.end_at, seconds: driveSeconds } : null,
+    next: next ? { id: next.id, signature: eventSignature(next), departureAt: event.end_at, seconds: driveSeconds } : null,
+  };
+}
+async function insertCommitment(time: string, assignedTo: string, eventType: CrmCalendarEvent["event_type"], title: string) {
+  const visit = candidateVisit(date, time, `${title} address`, 5);
+  const saved = { ...visit, assigned_to: assignedTo, event_type: eventType, title };
+  await db.query(
+    "insert into crm_calendar_events(id,title,start_at,end_at,assigned_to,event_type,location) values($1,$2,$3,$4,$5,$6,$7)",
+    [saved.id, title, saved.start_at, saved.end_at, assignedTo, eventType, saved.location],
+  );
+  return saved;
+}
+async function bookSpaced(times: string[], initialPrevious: CrmCalendarEvent | null = null) {
+  const booked: CrmCalendarEvent[] = [];
+  for (const time of times) {
+    const event = candidateVisit(date, time, `${time} Capacity Address`, 5);
+    const prior = booked.at(-1) ?? initialPrevious;
+    const proofs = [routeProof(event, prior, null)];
+    if (booked.length) proofs.push(routeProof(booked[booked.length - 1], booked.length >= 2 ? booked[booked.length - 2] : initialPrevious, event));
+    await commit(time, randomUUID(), { event, proofs });
+    booked.push(event);
+  }
+  return booked;
+}
+async function requestTime(time: string) {
+  return db.query("select public.booking_request_time($1,$2,$3,$4::timestamptz,$5::jsonb,$6::jsonb)", [
+    randomUUID(),
+    "a".repeat(64),
+    (await snapshot()).revision,
+    candidateVisit(date, time, "123 Main St", 5).start_at,
+    JSON.stringify({ page_path: "/book", meta: {} }),
+    JSON.stringify({ name: "Request Customer", phone: "8055550199", address: "500 Request St", productInterest: "consultation", bookingNotes: "Request only" }),
+  ]);
+}
+
+describe("Jessica daily cap ignores installs", () => {
+  it("lets four consultations book on a day full of MTS install events and rejects the fifth", async () => {
+    await publish();
+    for (const time of ["08:00", "09:30", "11:00", "13:00", "15:30"]) {
+      await insertCommitment(time, "MTS Installations", "install", "MTS install");
+    }
+    await requestTime("09:00");
+    await bookSpaced(["08:00", "10:00", "12:00", "14:00"]);
+    await expect(commit("16:00")).rejects.toThrow(/BOOKING_FULL/);
+    await expect(requestTime("16:00")).rejects.toThrow(/BOOKING_FULL/);
+    expect((await db.query<{ n: number }>("select count(*)::int n from crm_calendar_events where event_type='sales_consult'")).rows[0].n).toBe(4);
+  });
+
+  it("still counts non-install events that affect Jessica and ignores Mike", async () => {
+    await publish();
+    await insertCommitment("09:30", "Mike", "sales_consult", "Mike visit");
+    const unassigned = await insertCommitment("08:00", "Unassigned", "sales_consult", "Unassigned visit");
+    await bookSpaced(["10:00", "12:00", "14:00"], unassigned);
+    await expect(commit("16:00")).rejects.toThrow(/BOOKING_FULL/);
+    expect((await db.query<{ n: number }>("select count(*)::int n from crm_calendar_events where event_type='sales_consult' and assigned_to='Jessica'")).rows[0].n).toBe(3);
+  });
+
+  it("does not let installs assigned to Jessica consume consultation slots", async () => {
+    await publish();
+    const installs = [];
+    for (const time of ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00"]) installs.push(await insertCommitment(time, "Jessica", "install", "Jessica install"));
+    const event = candidateVisit(date, "08:00", "123 Main St", 5);
+    await commit("08:00", randomUUID(), { event, proofs: [routeProof(event, null, installs[0])] });
+    expect((await db.query<{ n: number }>("select count(*)::int n from crm_calendar_events where event_type='sales_consult'")).rows[0].n).toBe(1);
+  });
+
+  it("keeps blocks from consuming the cap and still rejects an overlapping block", async () => {
+    await publish();
+    for (const [time, owner] of [["08:00", "Jessica"], ["12:00", "Mike"], ["13:00", "Jessica"], ["14:00", "Unassigned"], ["15:00", "Jessica"]] as const) {
+      await insertCommitment(time, owner, "block", "Blocked");
+    }
+    await commit("10:00");
+    await db.exec("truncate crm_calendar_events,crm_jobs,leads,crm_quotes,booking_outbox,booking_requests,booking_route_protections cascade");
+    const block = candidateVisit(date, "10:00", "Block address", 5);
+    const end = candidateVisit(date, "10:30", "Block address", 5).start_at;
+    await db.query(
+      "insert into crm_calendar_events(id,title,start_at,end_at,assigned_to,event_type,location) values($1,'Blocked',$2,$3,'Mike','block',$4)",
+      [block.id, block.start_at, end, block.location],
+    );
+    await expect(commit("10:00")).rejects.toThrow(/BOOKING_CONFLICT/);
   });
 });

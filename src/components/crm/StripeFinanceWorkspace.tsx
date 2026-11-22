@@ -167,6 +167,11 @@ export function StripeFinanceWorkspace({ session }: { session: Session }) {
         and transfers are separate records. A payout is bank-confirmed only
         after matching the Mercury transaction.
       </p>
+      <p>
+        <Link href="/crm/stripe/clearance/" className="underline">
+          Review Square clearances
+        </Link>
+      </p>
       {error && (
         <p role="alert" className="rounded border border-red-300 p-3">
           {error}
@@ -376,6 +381,12 @@ export function StripeFinanceWorkspace({ session }: { session: Session }) {
           <p className="mt-5">
             {data.events.filter((e) => !e.processed_at).length} queued
             notifications.{" "}
+            {data.canReview ? (
+              <Link href="/crm/stripe/clearance/" className="underline">
+                Review Square clearances
+              </Link>
+            ) : null}
+            {data.canReview ? " · " : null}
             <Link href="/crm/square/" className="underline">
               Review historical Square activity
             </Link>

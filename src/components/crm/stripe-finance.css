@@ -16,6 +16,7 @@
 .stripe-finance form h2 { margin-top: 0; }
 .stripe-finance label { display: block; margin: 14px 0; font-weight: 600; }
 .stripe-finance input,.stripe-finance textarea { display: block; box-sizing: border-box; width: 100%; margin-top: 6px; padding: 10px; border: 1px solid #b9c8d5; border-radius: 6px; background: white; font: inherit; color: inherit; }
+.stripe-finance input[type="checkbox"] { display: inline-block; width: auto; margin: 0 8px 0 0; padding: 0; vertical-align: middle; }
 .stripe-finance textarea { min-height: 95px; }
 .stripe-finance [role=alert] { padding: 12px 16px; border: 1px solid #dbb597; border-radius: 8px; background: #fff8ef; color: #7a3a1f; }
 @media(max-width:600px) { .stripe-finance { padding: 18px 16px; font-size: 14px; } .stripe-finance h1 { margin-top: 22px; } .stripe-finance form { padding: 16px; } .stripe-finance form button { width: 100%; } }

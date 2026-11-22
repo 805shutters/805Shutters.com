@@ -7,6 +7,7 @@ export const MANUFACTURER_ORDER_QUEUE_URLS: Record<OrderFormManufacturer, string
   norman: "https://www.normanwindowcoverings.com/Login/default.asp",
   lotus: "https://www.lotusblind.com/",
   polar: "https://polarshades.picbusiness.com/",
+  sundance: "https://sundance.blindata.app",
 };
 
 export function manufacturerOrderChromeLaunchUrl(input: {

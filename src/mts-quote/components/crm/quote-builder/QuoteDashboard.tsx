@@ -32,6 +32,7 @@ import {
 } from "@mts/lib/quoteDashboardFilters";
 import { effectiveBookkeepingStatus } from "@/lib/crm/bookkeeping";
 import { withInstallationConfirmation } from "@/lib/crm/installation-confirmation";
+import { sideMarkForNewQuote } from "@/lib/crm/quote-id";
 import { formatSales805AppointmentTime, type Sales805Appointment } from "./sales805CalendarUtils";
 import type {
   QuoteLineItemWithDesigns,
@@ -519,6 +520,7 @@ export function QuoteDashboard({
           customerPhone: formData.customerPhone || null,
           customerEmail: formData.customerEmail || null,
           customerAddress: formData.customerAddress || null,
+          ...(formData.sideMark ? { sideMark: formData.sideMark } : {}),
           ...(formData.quoteType === "commercial" ? { installerNotes: newQuoteTypeFields("commercial").installer_notes } : {}),
           idempotencyKey: normanDraftRequest.current,
         });
@@ -543,10 +545,13 @@ export function QuoteDashboard({
           ? await getCurrentQuoteSalesOwnerPatch()
           : null;
 
+      const sideMark = sideMarkForNewQuote(formData.customerName, quoteNumber, formData.sideMark);
       const { data, error } = await (supabase as any)
         .from("sales_quotes")
         .insert({
           quote_number: quoteNumber,
+          side_mark: sideMark.sideMark,
+          side_mark_overridden: sideMark.overridden,
           account_id: submittedAccountId,
           customer_name: formData.customerName,
           customer_phone: formData.customerPhone || null,
@@ -592,10 +597,13 @@ export function QuoteDashboard({
       if (numError) throw numError;
       const salesOwnerPatch = await getCurrentQuoteSalesOwnerPatch();
 
+      const sideMark = sideMarkForNewQuote(appointment.customer_name, quoteNumber);
       const { data: quote, error: quoteError } = await (supabase as any)
         .from("sales_quotes")
         .insert({
           quote_number: quoteNumber,
+          side_mark: sideMark.sideMark,
+          side_mark_overridden: sideMark.overridden,
           account_id: ACCOUNT_IDS.SHUTTERS_805,
           status: "draft",
           customer_name: appointment.customer_name,
@@ -682,10 +690,13 @@ export function QuoteDashboard({
           ? await getCurrentQuoteSalesOwnerPatch()
           : null;
 
+      const sideMark = sideMarkForNewQuote(original.customer_name, quoteNumber);
       const { data: newQuote, error: insertErr } = await (supabase as any)
         .from("sales_quotes")
         .insert({
           quote_number: quoteNumber,
+          side_mark: sideMark.sideMark,
+          side_mark_overridden: sideMark.overridden,
           account_id: original.account_id,
           status: "draft",
           customer_name: original.customer_name,

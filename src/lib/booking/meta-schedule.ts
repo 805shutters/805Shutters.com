@@ -2,6 +2,8 @@ import { isIP } from "node:net";
 import type { NextRequest } from "next/server";
 import { marketingPath, metaOrigin } from "../meta-event-context";
 import { createHash } from "node:crypto";
+import { resolveFbc } from "@/lib/meta-click";
+import { metaTestEventCode } from "@/lib/meta-user-data";
 
 import { META_DATASET_ID } from "@/lib/tracking-config";
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -33,11 +35,23 @@ function browserFields(input: Matching) {
   return result;
 }
 
-export function requestMatchingData(request: NextRequest) {
+export function requestMatchingData(
+  request: NextRequest,
+  body?: { fbp?: unknown; fbc?: unknown; fbclid?: unknown },
+  nowMs = Date.now(),
+) {
+  const text = (value: unknown) => (typeof value === "string" ? value : undefined);
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   return browserFields({
-    fbc: request.cookies.get("_fbc")?.value,
-    fbp: request.cookies.get("_fbp")?.value,
-    client_ip_address: request.headers.get("x-forwarded-for")?.split(",")[0].trim(),
+    fbc: resolveFbc(
+      [
+        { fbc: request.cookies.get("_fbc")?.value, fbclid: request.cookies.get("805_fbclid")?.value },
+        { fbc: text(body?.fbc), fbclid: text(body?.fbclid) },
+      ],
+      nowMs,
+    ),
+    fbp: request.cookies.get("_fbp")?.value || text(body?.fbp),
+    client_ip_address: forwarded || request.headers.get("x-real-ip")?.trim(),
     client_user_agent: request.headers.get("user-agent") ?? undefined,
   });
 }
@@ -67,9 +81,8 @@ export async function sendMetaScheduleEvent(payload: SchedulePayload) {
 }
 
 export async function sendMetaEvent(eventName: "Schedule" | "Lead" | "Contact" | "PageView", payload: SchedulePayload) {
-  const token = process.env.META_CAPI_ACCESS_TOKEN;
-  const testCode = process.env.VERCEL_ENV === "preview" || isMetaVerificationMatching(payload.matching)
-    ? process.env.META_CAPI_TEST_EVENT_CODE : undefined;
+  const token = process.env.META_CAPI_ACCESS_TOKEN?.trim();
+  const testCode = metaTestEventCode(isMetaVerificationMatching(payload.matching));
   if (!token) throw new Error("META_TOKEN_MISSING");
   if (process.env.VERCEL_ENV === "preview" && !testCode)
     throw new Error("META_PREVIEW_TEST_CODE_MISSING");

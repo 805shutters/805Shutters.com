@@ -11,6 +11,8 @@ export type LiveLookupLineSummary = {
   shipping: number | null;
   priceSource: "live_site" | "manual_no_source" | null;
   manualTypedBy: string | null;
+  /** False when the stored hash is not `price_record_line_spec_hash`. Old revision hashes stay stored and read as not current. */
+  specCurrent?: boolean;
 };
 
 function money(value: number): string {
@@ -25,6 +27,7 @@ export function liveLookupQuoteText(quote: LiveLookupQuoteSummary): string {
 }
 
 export function liveLookupLineText(line: LiveLookupLineSummary): string {
+  if (line.specCurrent === false) return "This live price does not match the current line.";
   const manual = line.priceSource === "manual_no_source"
     ? `manual${line.manualTypedBy ? ` by ${line.manualTypedBy}` : ""}`
     : null;

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { losAngelesDateString } from "@/lib/booking/availability";
 import { brandIdentity } from "@/lib/brand-identity";
-import { getLeadAttribution, trackBookingEvent, trackBookingStep } from "@/lib/client-tracking";
+import { getLeadAttribution, getMetaClickParams, trackBookingEvent, trackBookingStep } from "@/lib/client-tracking";
 import { productInterestOptions } from "@/lib/product-interest-options";
 import type { BookingCalendarProps } from "./BookingCalendar";
 import { ConsultationConfirmation } from "./ConsultationConfirmation";
@@ -273,7 +273,7 @@ export function ConsultationBooking({ active = true, className = "", heading,
     setSubmitting(true);
     setMessage("");
     const payload = { ...selection, ...contact, address: address.trim(), windowCount: windowCount || null,
-      productTypes, variant: "standard", followUpRequested, ...trackingContext() };
+      productTypes, variant: "standard", followUpRequested, ...trackingContext(), ...getMetaClickParams() };
     const bodyKey = JSON.stringify({ requestMode, ...payload });
     if (requestKey.current?.body !== bodyKey) requestKey.current = { body: bodyKey, key: crypto.randomUUID() };
     try {

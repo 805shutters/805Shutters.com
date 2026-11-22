@@ -57,6 +57,8 @@ type BookingPayload = {
   utm_term?: string;
   gclid?: string;
   fbclid?: string;
+  fbp?: string;
+  fbc?: string;
   referrer?: string;
   landingPath?: string;
 };
@@ -366,7 +368,11 @@ export async function submitConsultation(
     startAt,
     endAt,
   };
-  const metaSchedule = { eventTime: Math.floor(Date.now() / 1000), pagePath, matching: { ...scheduleMatchingData(email, phone), ...requestMatchingData(request) } };
+  const metaSchedule = {
+    eventTime: Math.floor(Date.now() / 1000),
+    pagePath,
+    matching: { ...scheduleMatchingData(email, phone), ...requestMatchingData(request, payload) },
+  };
   for (let attempt = 0; attempt < 2; attempt++) {
     const { data: replay, error: replayError } = await supabase
       .from("booking_requests")
