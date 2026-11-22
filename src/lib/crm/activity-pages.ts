@@ -30,7 +30,9 @@ export async function readActivityRows(db: SupabaseClient, table: string, timest
     let q = db.from(table).select(columns).order(timestamp, { ascending: false }).order("id", { ascending: false });
     if (options.report) q = q.eq("action", "fulfillment_line");
     else if (!options.raw && table === "crm_activity_events") q = q.neq("entity_type", "system");
-    if (options.after) q = q.gte(timestamp, options.after);
+    // Business events can describe an earlier occurrence; refresh by insertion
+    // time so newly recorded, backdated events are not missed.
+    if (options.after) q = q.gte(table === "crm_business_events" ? "created_at" : timestamp, options.after);
     if (cursor) q = q.or(`${timestamp}.lt.${cursor.at},and(${timestamp}.eq.${cursor.at},id.lt.${cursor.id})`);
     return q;
   };
