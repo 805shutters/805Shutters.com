@@ -35,8 +35,19 @@ describe("GET CRM activity", () => {
     expect(dynamic).toBe("force-dynamic");
     expect(revalidate).toBe(0);
     expect(mocks.requireCrmUser).toHaveBeenCalledWith(request);
-    expect(mocks.loadCrmActivitySnapshot).toHaveBeenCalledWith({ service: true });
+    expect(mocks.loadCrmActivitySnapshot).toHaveBeenCalledWith({ service: true }, { after: undefined, page: undefined, report: false, raw: false });
     expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0");
     expect(await response.json()).toEqual({ activityEvents: [], payments: [], warnings: [] });
   });
+  it("rejects an invalid cursor before reading history", async () => {
+    const response = await GET(new NextRequest("http://localhost/api/crm/activity?page=invalid"));
+    expect(response.status).toBe(400);
+    expect(mocks.loadCrmActivitySnapshot).not.toHaveBeenCalled();
+  });
+
+  it("forwards a validated incremental refresh after authorization", async () => {
+    await GET(new NextRequest("http://localhost/api/crm/activity?after=2026-11-22T00:00:00Z&raw=1"));
+    expect(mocks.loadCrmActivitySnapshot).toHaveBeenCalledWith({ service: true }, expect.objectContaining({ after: "2026-11-22T00:00:00Z", raw: true }));
+  });
+
 });

@@ -9,7 +9,7 @@ describe("CRM unified activity dashboard", () => {
   it("replaces the payment-only card with the live unified feed", () => {
     expect(source).toContain("UnifiedActivityFeed");
     expect(source).toContain("activitySnapshot");
-    expect(source).toContain('"/api/crm/activity"');
+    expect(source).toContain("/api/crm/activity?");
     expect(source).toContain("customerFiles={files}");
     expect(source).not.toContain("buildRecentFinancialActivity(rows)");
     expect(source).not.toContain("Recent Financial Activity");
