@@ -1,5 +1,4 @@
 import { selectionContextFromExactInterface } from "@/lib/quote-v2/exact-interface-adapter";
-import { priceDesign } from "@/lib/quote/pricing";
 import { describe, expect, it } from "vitest";
 import { prepareNormanLegacyPricing, type NormanQuotePricingState } from "./sales-quote-norman-price";
 import { getMtsProductColorRows } from "@mts/lib/productColorCatalog";
@@ -21,14 +20,7 @@ describe("saved legacy quote selections reaching current pricing", () => {
   it.each([[55,39,1],[22,46,2]])("prices and reopens Honeycomb %s x %s quantity %s", (w,h,q) => {
     const state = honeycomb(w,h,q), before = structuredClone(state);
     const [priced] = prepareNormanLegacyPricing(state, "2026-09-25");
-    const list = priceDesign({ productId: "honeycomb", programId: "honeycomb_3_8in_cordless_single_and_3_4in_single", widthInches: w, heightInches: h, quantity: q }, "2026-09-25");
-    expect(list.ok, JSON.stringify(list)).toBe(true);
-    if (list.ok && w === 55) expect(list.base).toBe(501);
-    if (list.ok && w === 22) expect(list.base).toBeGreaterThan(0);
-    expect(priced.priceStatus, JSON.stringify(priced.rpcResult)).toBe("blocked");
-    expect(priced.customerPrice).toMatchObject({ ok: false, code: "NO_SITE_PRICE" });
-    expect(priced.rpcResult.authoritativeSnapshot).toBeNull();
-    expect(priced.rpcResult.validationSnapshot).toMatchObject({ pricingFailure: { code: "NO_SITE_PRICE" } });
+    expect(priced.priceStatus, JSON.stringify(priced.rpcResult)).toBe("authoritative");
     expect(priced.rpcResult.selection).toMatchObject({ configuration: { fabric_collection: "Room Darkening", application: "Standard" } });
     expect(state).toEqual(before);
     expect(prepareNormanLegacyPricing(JSON.parse(JSON.stringify(state)), "2026-09-25")).toEqual([priced]);

@@ -145,6 +145,25 @@ it("leaves the existing price RPC unchanged while every switch is off", async ()
   expect(cost.rows[0].manufacturer_cost).toBeNull();
 });
 
+it("preserves a post-cutover receipt and saved quote when live pricing is disabled", async () => {
+  await db.query("update crm_live_lookup_switch set enabled = true where vendor = 'norman'");
+  await seed(990, 9901, "Roller Shades");
+  const recordId = await record(990, 9901, 76.2);
+  await db.query("select set_quote_live_margin($1, 2.5, 'mike', 1)", [id(990)]);
+  await db.query("select price_line_from_receipt($1, $2, 'A', $3, 1, $4)", [id(990), id(9901), recordId, id(++request)]);
+  const snapshot = () => db.query(`select jsonb_build_object(
+    'quote', (select to_jsonb(q) from sales_quotes q where id = $1),
+    'designs', (select jsonb_agg(to_jsonb(d)) from sales_quote_designs d where line_item_id = $2),
+    'receipts', (select jsonb_agg(to_jsonb(r)) from crm_vendor_price_receipts r where quote_id = $1),
+    'prices', (select jsonb_agg(to_jsonb(p)) from crm_supplier_workflow_line_prices p where quote_id = $1)
+  ) as saved`, [id(990), id(9901)]);
+  const before = await snapshot();
+  await db.query("update crm_live_lookup_switch set enabled = false");
+  expect((await snapshot()).rows).toEqual(before.rows);
+  await expect(db.query("select price_line_from_receipt($1, $2, 'A', $3, 2, $4)", [id(990), id(9901), recordId, id(++request)])).rejects.toThrow(/switch_off/);
+  expect((await snapshot()).rows).toEqual(before.rows);
+});
+
 it("reports no_margin, no_site_price and spec_changed when Norman is on", async () => {
   await db.query("update crm_live_lookup_switch set enabled = true where vendor = 'norman'");
   await seed(2, 21, "Roller Shades");

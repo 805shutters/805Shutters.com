@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SalesQuoteDesign, SalesQuoteLineItem } from '@mts/types/quote';
-import { priceDesign } from '@/lib/quote/pricing';
 import { repriceExactQuoteBuilderForServerDate, type ExactQuoteBuilderRepriceInput } from './exact-backend';
-
-function noSite(result: {ok:boolean}, label?: unknown) {
- expect(result, typeof label === "string" ? label : JSON.stringify(result)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
- expect(result).not.toHaveProperty("unitPrice");
-}
 
 function fixture(kind: 'roman' | 'onyx', width = kind === 'roman' ? 91 : 92, quantity = 1) {
  const line = {id:'line',quote_id:'quote',room_name:'Test room',product_type:kind === 'roman' ? 'Roman Shades':'Shutters',width_whole:width,width_fraction:'0',height_whole:kind === 'roman'?48:71,height_fraction:'0',quantity,sort_order:0,created_at:'2026-09-21T12:00:00Z'} as SalesQuoteLineItem;
@@ -23,9 +17,9 @@ function run(input:ExactQuoteBuilderRepriceInput, date='2026-09-21') {
 describe('grid and priced-option quoting',()=>{
  it('prices the Roman grid without recess measurements and includes installation',()=>{
   const result=run(fixture('roman')).designs[0].result;
-  noSite(result, JSON.stringify(result));
-  expect(run(fixture('roman')).designs[0].snapshot).toBeNull();
-  expect(priceDesign({ productId: 'roman', programId: 'roman_cordless_usa_price_group_2_pg2', widthInches: 91, heightInches: 48 }, '2026-09-21')).toMatchObject({ ok: true, matchedWidth: 96, matchedHeight: 48, base: 2008 });
+  expect(result.ok,JSON.stringify(result)).toBe(true);
+  if(!result.ok)return;
+  expect(result).toMatchObject({matchedWidth:96,matchedHeight:48,base:2008,unitPrice:2047,total:2047,customerCharges:{installationTotal:25,shippingTotal:14}});
  });
  it.each([[92,1,1590],[69,2,2458]])('prices Onyx %s with H3 exactly once and no fabrication measurements',(width,quantity,total)=>{
   const result=run(fixture('onyx',width,quantity)).designs[0].result;
@@ -45,21 +39,21 @@ describe('grid and priced-option quoting',()=>{
   const q=fixture('roman',91,3);
   q.designs[0].options_json={...q.designs[0].options_json,discount_percent:10};
   const r=run(q).designs[0].result;
-  noSite(r, JSON.stringify(r));
-  expect(run(q).designs[0].snapshot).toBeNull();
+  expect(r.ok,JSON.stringify(r)).toBe(true);if(!r.ok)return;
+  expect(r.customerCharges).toMatchObject({eligibleUnitCount:3,installationTotal:75,shippingTotal:42,total:117});
+  expect(r.unitPrice).toBe(1846.2);expect(r.total).toBe(5538.6);
  });
  it('retains all four lines, physical quantities and customer snapshot totals',()=>{
   const cases=[fixture('roman'),fixture('onyx'),fixture('onyx',69,2),fixture('onyx',69,2)];
   const q={lines:[] as SalesQuoteLineItem[],designs:[] as SalesQuoteDesign[],selectedVariantByLine:{} as Record<string,string>,applyCustomerCharges:true};
   cases.forEach((f,i)=>{const id=`line${i}`;q.lines.push({...f.lines[0],id});q.designs.push({...f.designs[0],id:`design${i}`,line_item_id:id});q.selectedVariantByLine[id]='A';});
   const r=run(q);
-  noSite(r.designs[0].result);
-  expect(r.designs[0].snapshot).toBeNull();
-  expect(r.designs.slice(1).map(d=>d.result.ok && d.result.total)).toEqual([1590,2458,2458]);
-  expect(r.total).toBe(6506);expect(r.customerQuote.total).toBe(6506);
+  expect(r.total).toBe(8553);expect(r.customerQuote.total).toBe(8553);
   expect(r.customerQuote.lines).toHaveLength(4);
+  expect(r.designs.map(d=>d.result.ok&&d.result.total)).toEqual([2047,1590,2458,2458]);
   expect(r.designs.map(d=>d.selection.quantity)).toEqual([1,1,2,2]);
-  expect(r.designs.slice(1).map(d=>d.snapshot?.retail.total)).toEqual([1590,2458,2458]);
+  const persisted=JSON.parse(JSON.stringify(r.designs.map(d=>d.snapshot)));
+  expect(persisted.map((d:{retail:{total:number}})=>d.retail.total)).toEqual([2047,1590,2458,2458]);
   expect(JSON.stringify(r.customerQuote)).not.toContain('wholesale');
  });
  it('names an actual unpriced H3 selection without inventing a zero',()=>{

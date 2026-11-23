@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SalesQuoteDesign, SalesQuoteLineItem } from '@mts/types/quote';
-import { priceDesign } from '@/lib/quote/pricing';
 import { validateRollerMatrix } from '@/lib/quote-v2/roller-matrix';
 import { prepareSalesQuoteV2PricingBatch } from '@/lib/crm/sales-quote-v2-price-save';
-
-function noSite(result: {ok:boolean}, label?: unknown) {
- expect(result, typeof label === "string" ? label : JSON.stringify(result)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
- expect(result).not.toHaveProperty("unitPrice");
-}
 
 function fixture(width=101,height=88,quantity=1,options:Record<string,unknown>={}) {
   const line={id:'line',quote_id:'quote',room_name:'Synthetic roller room',product_type:'Roller Shades',width_whole:width,width_fraction:'0',height_whole:height,height_fraction:'0',quantity,sort_order:0,selected_design_id:'design',created_at:'2026-09-21T00:00:00Z'} as SalesQuoteLineItem;
@@ -21,19 +15,20 @@ describe('regional Roller codes do not suppress the shared retail grid',()=>{
   it.each([[101,88,1],[72,88,2],[99,85,1]])('prices and prepares saved %sx%s qty%s without selecting a region',(w,h,q)=>{
     const input=fixture(w,h,q), before=JSON.stringify(input);
     const result=price(input);
-    expect(result.prepared[0].priceStatus).toBe('blocked');
+    expect(result.prepared[0].priceStatus,JSON.stringify(result.prepared[0].rpcResult.validationSnapshot)).toBe('authoritative');
     const unscoped=result.repriced.designs[0].result;
-    noSite(unscoped);
-    expect(result.repriced.designs[0].snapshot).toBeNull();
+    if(!unscoped.ok)throw Error('Expected retail');
     for(const region of ['ca_ma','other_regions']) {
-      noSite(price(fixture(w,h,q,{roller_region_scope:region})).repriced.designs[0].result);
+      const scoped=price(fixture(w,h,q,{roller_region_scope:region})).repriced.designs[0].result;
+      expect(scoped.ok).toBe(true);
+      if(scoped.ok)expect(unscoped.total).toBe(scoped.total);
     }
+    expect(unscoped.customerCharges).toMatchObject({installationTotal:25*q,shippingTotal:14*q});
     expect(unscoped.validationIssues).toEqual(expect.arrayContaining([expect.objectContaining({ruleId:'roller.matrix.region_scope_required',severity:'warning'})]));
     expect(result.prepared[0].rpcResult.selection).toMatchObject({configuration:expect.not.objectContaining({roller_region_scope:expect.any(String)})});
     expect(JSON.stringify(input)).toBe(before);
-    const list=priceDesign({productId:'roller',programId:'roller_cordless_solar_screen_price_group_1_pg1',widthInches:w,heightInches:h,motorization:[{groupId:'smart_motorization',optionId:'motor',units:1}]},'2026-09-21');
-    expect(list.ok,JSON.stringify(list)).toBe(true);
-    if(list.ok){expect(list.base).toBe(w===72?690:941);expect(list.surchargeLines).toEqual([expect.objectContaining({id:'motor:smart_motorization:motor',amount:482})]);}
+    expect(unscoped).toMatchObject({base:w===72?690:941,unitPrice:w===72?1211:1462,total:w===72?2422:1462});
+    expect(unscoped.surchargeLines).toEqual([expect.objectContaining({id:'motor:smart_motorization:motor',amount:482})]);
     if(w!==72) {
       expect(unscoped.validationIssues).toEqual(expect.arrayContaining([expect.objectContaining({ruleId:'roller.matrix.maxAreaSqft',severity:'warning'})]));
       // The source restriction remains strict when inspected for manufacturing.

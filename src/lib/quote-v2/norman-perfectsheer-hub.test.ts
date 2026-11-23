@@ -49,7 +49,8 @@ describe('PerfectSheer explicit Automate hub membership',()=>{
   }
   const price=()=>{const r=repriceExactQuoteBuilderForServerDate(q,'2026-09-20');if(!('backend'in r)||r.backend!=='v2')throw Error('Expected V2');return r;};
   const saved=price();for(const d of saved.designs)expect(d.result.validationIssues.filter(i=>i.severity==='hard_block')).toEqual([]);
-  expect(saved.designs.every(d=>!d.result.ok&&d.result.code==='NO_SITE_PRICE')).toBe(true);
+  const components=saved.designs.flatMap(d=>d.result.ok?d.result.components:[]).filter(c=>c.priceLineId==='motor:automate_home:hub');
+  expect(components).toHaveLength(1);expect(components[0].catalogAmount).toBe(483);
   expect(perfectsheerHub(saved.designs[0].selection)).toMatchObject({motorQuantity:4,chargeHub:true});
   saved.designs.forEach((d,i)=>q.designs[i].options_json=JSON.parse(JSON.stringify({...q.designs[i].options_json,...d.selection.configuration})));
   expect(price()).toEqual(saved);

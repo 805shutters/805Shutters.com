@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
-import { priceDesign } from "@/lib/quote/pricing";
 import { toCustomerQuotePriceResult } from "@/lib/quote-v2/engine";
 import {
   POLAR_ALL_SEASONS_FREIGHT_SURCHARGE_ID,
@@ -12,11 +11,6 @@ import {
   repriceExactQuoteBuilderForQuoteLabPreview as repriceExactQuoteBuilder,
   repriceExactQuoteBuilderForServerDate,
 } from "./exact-backend";
-
-function noSite(result: {ok:boolean}, label?: unknown) {
- expect(result, typeof label === "string" ? label : JSON.stringify(result)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
- expect(result).not.toHaveProperty("unitPrice");
-}
 
 function line(
   id: string,
@@ -214,14 +208,15 @@ describe("exact-interface V2 integration", () => {
 
   it("accepts 1 and 40 measured-window line items but rejects the 41st", () => {
     const one = priceOne(1);
-    noSite(one.designs[0].result);
-    expect(one.designs[0].selection.programId).toBe("roller_cordless_fabric_price_group_2_pg2");
-    expect(one.designs[0].snapshot).toBeNull();
-    expect(one.sendability.sendable).toBe(false);
+    expect(one.designs[0].result.ok).toBe(true);
+    expect(one.designs[0].result.ok && one.designs[0].result.programId).toBe(
+      "roller_cordless_fabric_price_group_2_pg2",
+    );
+    expect(one.sendability.sendable).toBe(true);
 
     const quantityFortyOne = priceOne(41);
-    noSite(quantityFortyOne.designs[0].result);
-    expect(quantityFortyOne.designs[0].selection.quantity).toBe(41);
+    expect(quantityFortyOne.designs[0].result.ok).toBe(true);
+    expect(quantityFortyOne.designs[0].result.ok && quantityFortyOne.designs[0].result.quantity).toBe(41);
 
     const lines = Array.from({ length: 40 }, (_, index) => line(`line-${index + 1}`));
     const designs = lines.map((item) => rollerDesign(item.id));
@@ -238,10 +233,9 @@ describe("exact-interface V2 integration", () => {
 
   it("does not let quantity 1 -> 0 retain an authoritative fingerprint or price", () => {
     const valid = priceOne(1);
-    noSite(valid.designs[0].result);
+    expect(valid.designs[0].result.ok).toBe(true);
     expect(valid.designs[0].result.selectionFingerprint).toMatch(/^sha256:/);
-    expect(valid.total).toBe(0);
-    expect(valid.designs[0].snapshot).toBeNull();
+    expect(valid.total).toBeGreaterThan(0);
 
     const invalidLine = line("line-invalid-quantity", { quantity: 0 });
     expect(() =>
@@ -255,10 +249,9 @@ describe("exact-interface V2 integration", () => {
 
   it("does not let fraction 0 -> 1/0 retain an authoritative fingerprint or price", () => {
     const valid = priceOne(1);
-    noSite(valid.designs[0].result);
+    expect(valid.designs[0].result.ok).toBe(true);
     expect(valid.designs[0].result.selectionFingerprint).toMatch(/^sha256:/);
-    expect(valid.total).toBe(0);
-    expect(valid.designs[0].snapshot).toBeNull();
+    expect(valid.total).toBeGreaterThan(0);
 
     const invalidLine = line("line-invalid-fraction", {
       width_fraction: "1/0",
@@ -294,9 +287,7 @@ describe("exact-interface V2 integration", () => {
         selectedVariantByLine,
       }),
     );
-    for (const entry of valid.designs) noSite(entry.result);
-    expect(valid.designs.every((entry) => entry.snapshot === null)).toBe(true);
-    expect(valid.sendability.sendable).toBe(false);
+    expect(valid.designs.map((entry) => entry.result.ok)).toEqual([true, true]);
     expect(
       valid.designs.flatMap((entry) =>
         entry.result.validationIssues.map((issue) => issue.ruleId),
@@ -377,10 +368,11 @@ describe("exact-interface V2 integration", () => {
     );
     const pricedA = quote.designs.find((entry) => entry.variant === "A")?.result;
     const pricedB = quote.designs.find((entry) => entry.variant === "B")?.result;
-    noSite(pricedA!);
-    noSite(pricedB!);
-    expect(quote.total).toBe(0);
-    expect(quote.designs.every((entry) => entry.snapshot === null)).toBe(true);
+    expect(pricedA?.ok).toBe(true);
+    expect(pricedB?.ok).toBe(true);
+    if (!pricedA?.ok || !pricedB?.ok) return;
+    expect(quote.total).toBe(pricedA.total);
+    expect(quote.total).not.toBe(pricedA.total + pricedB.total);
     expect(quote.customerQuote.lines).toHaveLength(1);
     expect(quote.customerQuote.lines[0]).toMatchObject({
       selectedDesignId: designA.id,
@@ -398,7 +390,7 @@ describe("exact-interface V2 integration", () => {
         retail: {},
       },
     });
-    noSite(stale.designs[0].result);
+    expect(stale.designs[0].result.ok).toBe(true);
     expect(stale.sendability.sendable).toBe(false);
     expect(stale.sendability.lines[0]).toMatchObject({ stale: true, sendable: false });
     expect(stale.sendability.lines[0].reasons.map((reason) => reason.code)).toContain(
@@ -406,19 +398,20 @@ describe("exact-interface V2 integration", () => {
     );
 
     const current = priceOne(1);
-    expect(current.designs[0].snapshot).toBeNull();
-    const currentResult = current.designs[0].result;
+    const currentSnapshot = current.designs[0]?.snapshot;
+    if (!currentSnapshot?.dealerPolicy) {
+      throw new Error("Expected a pinned Norman dealer policy snapshot.");
+    }
     const stalePolicy = priceOne(1, {
       authoritative_v2_snapshot: {
-        catalogVersion: currentResult.catalogVersion,
-        catalogAsOf: currentResult.catalogAsOf,
-        selectionFingerprint: currentResult.selectionFingerprint,
-        priceStatus: "authoritative",
-        dealerPolicy: { policyId: "norman", fixtureId: "stale", effectiveDealerFactor: 0.3, revision: "stale" },
-        retail: {},
+        ...currentSnapshot,
+        dealerPolicy: {
+          ...currentSnapshot.dealerPolicy,
+          revision: `${currentSnapshot.dealerPolicy.revision}-stale`,
+        },
       },
     });
-    noSite(stalePolicy.designs[0].result);
+    expect(stalePolicy.designs[0].result.ok).toBe(true);
     expect(stalePolicy.sendability.lines[0]).toMatchObject({
       stale: true,
       sendable: false,
@@ -448,27 +441,31 @@ describe("exact-interface V2 integration", () => {
 
   it("marks a pre-MSRP-policy catalog snapshot stale even when its fingerprint matches", () => {
     const current = priceOne(1);
-    const currentResult = current.designs[0].result;
-    expect(current.designs[0].snapshot).toBeNull();
-    expect(currentResult).toMatchObject({ ok: false, code: "NO_SITE_PRICE", catalogVersion: QUOTE_V2_ROLLER_PREVIEW_VERSION });
+    const currentSnapshot = current.designs[0]?.snapshot;
+    const currentResult = current.designs[0]?.result;
+    if (!currentSnapshot || !currentResult?.ok) {
+      throw new Error("Expected a current authoritative Roller snapshot.");
+    }
+    expect(currentResult.catalogVersion).toBe(
+      QUOTE_V2_ROLLER_PREVIEW_VERSION,
+    );
 
     const prePolicy = priceOne(1, {
       authoritative_v2_snapshot: {
-        catalogVersion: PRE_MSRP_ROLLER_PREVIEW_VERSION,
-        catalogAsOf: "2026-08-01",
-        selectionFingerprint: currentResult.selectionFingerprint,
-        priceStatus: "authoritative",
+        ...currentSnapshot,
         // Keep the current fingerprint deliberately: this isolates the
         // catalog revision as an independently sufficient stale-price guard.
-        retail: { catalogVersion: PRE_MSRP_ROLLER_PREVIEW_VERSION },
+        catalogVersion: PRE_MSRP_ROLLER_PREVIEW_VERSION,
+        retail: {
+          ...currentSnapshot.retail,
+          catalogVersion: PRE_MSRP_ROLLER_PREVIEW_VERSION,
+        },
       },
     });
     expect(prePolicy.designs[0].result).toMatchObject({
-      ok: false,
-      code: "NO_SITE_PRICE",
+      ok: true,
       catalogVersion: QUOTE_V2_ROLLER_PREVIEW_VERSION,
     });
-    expect(prePolicy.designs[0].snapshot).toBeNull();
     expect(prePolicy.sendability.lines[0]).toMatchObject({
       stale: true,
       sendable: false,
@@ -541,15 +538,34 @@ describe("exact-interface V2 integration", () => {
       ],
     });
     const result = quote.designs[0].result;
-    noSite(result);
-    expect(quote.designs[0].snapshot).toBeNull();
-    expect(quote.sendability.sendable).toBe(false);
-    const list = priceDesign({ productId: "roller", programId: "roller_cordless_fabric_price_group_2_pg2", widthInches: 36, heightInches: 60, surcharges: [{ id: "additional_fiberglass_pole", units: 2 }] }, "2026-08-01");
-    expect(list.ok, JSON.stringify(list)).toBe(true);
-    if (list.ok) {
-      expect(list.surchargeLines).toEqual(expect.arrayContaining([expect.objectContaining({ id: "additional_fiberglass_pole", amount: 56 })]));
-      expect(list.unitPrice).toBe(440);
-    }
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.surchargeLines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "additional_fiberglass_pole",
+          amount: 56,
+          wholesaleAmount: 18.48,
+          detail: "28 x 2 units",
+        }),
+      ]),
+    );
+    expect(result.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "accessory:additional_fiberglass_pole",
+          catalogAmount: 56,
+          wholesaleAmount: 18.48,
+          customerAmount: 56,
+        }),
+      ]),
+    );
+    expect(result.componentTotals).toMatchObject({
+      catalogPerWindow: 440,
+      wholesalePerWindow: 145.2,
+      customerPerWindow: 440,
+    });
+    expect(quote.sendability.sendable).toBe(true);
   });
 
   it("preserves the legacy backend's historical unsupported-surcharge filtering", () => {
@@ -564,7 +580,7 @@ describe("exact-interface V2 integration", () => {
       ],
     });
     const result = priceExactQuoteBuilderDesign(quoteLine, design);
-    expect(result.ok, JSON.stringify(result)).toBe(true);
+    expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.surchargeLines).toEqual([]);
   });
@@ -652,7 +668,7 @@ describe("exact-interface V2 integration", () => {
       quote_v2_catalog_version: "attacker-version",
       quote_v2_catalog_as_of: "2099-01-01",
     });
-    noSite(injected.designs[0].result);
+    expect(injected.designs[0].result.ok).toBe(true);
     expect(injected.designs[0].result.catalogVersion).toBe(
       QUOTE_V2_ROLLER_PREVIEW_VERSION,
     );
@@ -713,12 +729,85 @@ describe("exact-interface V2 integration", () => {
 
     const first = quote.designs.find((entry) => entry.lineItemId === firstLine.id)?.result;
     const second = quote.designs.find((entry) => entry.lineItemId === secondLine.id)?.result;
-    noSite(first!);
-    noSite(second!);
-    expect(quote.designs.every((entry) => entry.snapshot === null)).toBe(true);
+    expect(first?.ok).toBe(true);
+    expect(second?.ok).toBe(true);
+    if (!first?.ok || !second?.ok) return;
+    if (!first.internalCost || !second.internalCost) {
+      throw new Error("Expected protected internal cost for both Norman lines.");
+    }
+
+    const firstProcessingFee =
+      Math.round(
+        (first.internalCost.productCostTotal + 25) * 0.02 * 100,
+      ) / 100;
+    const totalProcessingFee =
+      Math.round(
+        (first.internalCost.productCostTotal +
+          second.internalCost.productCostTotal +
+          36) *
+          0.02 *
+          100,
+      ) / 100;
+    const secondProcessingFee =
+      Math.round((totalProcessingFee - firstProcessingFee) * 100) / 100;
+
+    expect(first.internalCost).toMatchObject({
+      freightAllocated: 25,
+      oversizeAllocated: 80,
+      processingFeeAllocated: firstProcessingFee,
+      freightStatus: "published",
+    });
+    expect(second.internalCost).toMatchObject({
+      freightAllocated: 11,
+      oversizeAllocated: 50,
+      processingFeeAllocated: secondProcessingFee,
+      freightStatus: "published",
+    });
+    expect(first.internalCost.landedCostTotal).toBe(
+      Math.round(
+        (first.internalCost.productCostTotal +
+          25 +
+          80 +
+          firstProcessingFee) *
+          100,
+      ) / 100,
+    );
+    expect(second.internalCost.landedCostTotal).toBe(
+      Math.round(
+        (second.internalCost.productCostTotal +
+          11 +
+          50 +
+          secondProcessingFee) *
+          100,
+      ) / 100,
+    );
+    expect(quote.costSummary).toMatchObject({
+      status: "incomplete",
+      freightHandling: 36,
+      oversize: 130,
+      processingFee: totalProcessingFee,
+    });
+    expect(quote.costSummary.warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/oversize charge is not source-verified/i),
+      ]),
+    );
+    expect(first.validationStatus).toBe("blocked");
+    expect(second.validationStatus).toBe("blocked");
+    expect(first.validationIssues.map((issue) => issue.ruleId)).toContain(
+      "norman.processing_fee.oversize_scope_unverified",
+    );
+    expect(second.validationIssues.map((issue) => issue.ruleId)).toContain(
+      "norman.processing_fee.oversize_scope_unverified",
+    );
     expect(quote.sendability.sendable).toBe(false);
-    expect(quote.total).toBe(0);
-    if (!first || !second || first.ok || second.ok) throw new Error("expected site-price blocks");
+    expect(quote.sendability.lines.every((entry) => !entry.sendable)).toBe(true);
+    expect(quote.designs.every((entry) => entry.snapshot === null)).toBe(true);
+    expect(
+      first.internalCost.processingFeeAllocated +
+        second.internalCost.processingFeeAllocated,
+    ).toBe(totalProcessingFee);
+    expect(quote.total).toBe(first.total + second.total);
   });
 
   it("charges the exact motor bound to the validated Roller power configuration", () => {
@@ -741,19 +830,57 @@ describe("exact-interface V2 integration", () => {
       }),
     );
     const result = quote.designs[0].result;
-    noSite(result);
-    expect(quote.designs[0].snapshot).toBeNull();
-    const list = priceDesign({
-      productId: "roller",
-      programId: "roller_cordless_fabric_price_group_2_pg2",
-      widthInches: 36,
-      heightInches: 60,
-      motorization: [{ groupId: "automate_home", optionId: "motor_rechargeable_battery_pack", units: 1 }],
-    }, "2026-08-01");
-    expect(list.ok, JSON.stringify(list)).toBe(true);
-    if (list.ok) expect(list.surchargeLines).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: "motor:automate_home:motor_rechargeable_battery_pack", amount: 682 }),
-    ]));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.surchargeLines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "motor:automate_home:motor_rechargeable_battery_pack",
+          amount: 682,
+          wholesaleAmount: 225.06,
+        }),
+      ]),
+    );
+    const costResult = quote.designs[0].costResult;
+    expect(costResult.ok).toBe(true);
+    if (costResult.ok) {
+      expect(costResult.wholesaleBase).toBe(result.wholesaleBase);
+      expect(costResult.wholesaleAddOns).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "motor:automate_home:motor_rechargeable_battery_pack",
+            amount: 225.06,
+          }),
+        ]),
+      );
+      expect(costResult.wholesaleUnitCost).toBe(
+        result.internalCost?.productCostUnit,
+      );
+      expect(costResult).toMatchObject({
+        freightAllocated: result.internalCost?.freightAllocated,
+        oversizeAllocated: result.internalCost?.oversizeAllocated,
+        processingFeeAllocated:
+          result.internalCost?.processingFeeAllocated,
+        landedCostTotal: result.internalCost?.landedCostTotal,
+        freightStatus: result.internalCost?.freightStatus,
+      });
+    }
+    expect(result.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "operating:motor:automate_home:motor_rechargeable_battery_pack",
+          category: "operating_system",
+          catalogAmount: 682,
+          wholesaleAmount: 225.06,
+          customerAmount: 682,
+        }),
+      ]),
+    );
+    expect(result.componentTotals).toMatchObject({
+      catalogPerWindow: 1_066,
+      wholesalePerWindow: 351.78,
+      customerPerWindow: 1_066,
+    });
 
     const undercharged = {
       ...design,
@@ -809,26 +936,33 @@ describe("exact-interface V2 integration", () => {
       }),
     );
     const result = quote.designs[0].result;
-    noSite(result);
-    expect(quote.designs[0].snapshot).toBeNull();
-    const list = priceDesign({
-      productId: "roller",
-      programId: "roller_cordless_fabric_price_group_2_pg2",
-      widthInches: 36,
-      heightInches: 60,
-      motorization: [
-        { groupId: "smart_motorization", optionId: "motor", units: 1 },
-        { groupId: "smart_motorization", optionId: "hub", units: 1 },
-      ],
-    }, "2026-08-01");
-    expect(list.ok, JSON.stringify(list)).toBe(true);
-    if (list.ok) {
-      expect(list.surchargeLines.filter((line) => line.id.endsWith(":hub"))).toEqual([
-        expect.objectContaining({ id: "motor:smart_motorization:hub", amount: 321 }),
-      ]);
-      expect(list.unitPrice).toBe(1187);
-    }
-    // 96.3 and 356.1 were list × 0.30.
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(
+      result.surchargeLines.filter((line) => line.id.endsWith(":hub")),
+    ).toEqual([
+      expect.objectContaining({
+        id: "motor:smart_motorization:hub",
+        amount: 321,
+        wholesaleAmount: 105.93,
+      }),
+    ]);
+    expect(result.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "motor:smart_motorization:hub",
+          category: "accessory",
+          catalogAmount: 321,
+          wholesaleAmount: 105.93,
+          customerAmount: 321,
+        }),
+      ]),
+    );
+    expect(result.componentTotals).toMatchObject({
+      catalogPerWindow: 1_187,
+      wholesalePerWindow: 391.71,
+      customerPerWindow: 1_187,
+    });
   });
 
   it("keeps Lotus dealer cost internal while applying owner-approved x3 retail", () => {
@@ -1193,8 +1327,8 @@ describe("exact-interface V2 integration", () => {
     );
     expect(quote.customerQuote.total).toBe(quote.total);
     expect(quote.customerQuote.lines[0].price).toMatchObject({
-      ok: false,
-      code: "NO_SITE_PRICE",
+      ok: true,
+      total: quote.total,
     });
   });
 });

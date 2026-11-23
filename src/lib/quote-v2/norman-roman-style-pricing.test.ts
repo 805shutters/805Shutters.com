@@ -8,9 +8,7 @@ describe('Roman configurator style pricing',()=>{
  it.each([['Flat Fold without Seams',1038],['Flat Fold with Batten Back',1038],['Soft Fold',1349.4]])('prices saved Caroline %s against the dealer-confirmed 30 percent relationship',(style,retail)=>{
   const selection=JSON.parse(JSON.stringify(shade(style))) as SelectionContext;
   const result=priceQuoteV2Selection({selection,priceInput:{productId:'roman',programId:selection.programId!,widthInches:36,heightInches:60,surcharges:authoritativeAutomaticSurchargeSelections(selection)},includeInternalCost:true});
-  expect(result,JSON.stringify(result)).toMatchObject({ok:false,code:'NO_SITE_PRICE',blocked:'no_site_price'});
-  const catalog=priceDesign({productId:'roman',programId:selection.programId!,widthInches:36,heightInches:60,surcharges:authoritativeAutomaticSurchargeSelections(selection)});
-  expect(catalog,JSON.stringify(catalog)).toMatchObject({ok:true,unitPrice:retail,total:retail});
+  expect(result,JSON.stringify(result)).toMatchObject({ok:true,unitPrice:retail,total:retail});
  });
  it.each([['Soft Fold','soft_fold_edge_banding_border'],['Edge Banded','soft_fold_edge_banding_border'],['Ribbon Banded','ribbon_banding']])('derives %s exactly once from the saved style',(style,id)=>{
   const s=shade(style);s.configuration={...s.configuration,roman_style:'soft_fold',decorative_trim:'ribbon_banding'};
@@ -36,7 +34,6 @@ describe('Roman saved fabric valance pricing',()=>{
  it('charges a36inch fabric valance145 once in the saved server-priced configuration',()=>{
   const s=shade('Flat Fold without Seams');s.configuration={...s.configuration,valance:'Fabric Valance',valance_returns:'No Returns'};
   const result=priceQuoteV2Selection({selection:s,priceInput:{productId:'roman',programId:s.programId!,widthInches:36,heightInches:60,surcharges:authoritativeAutomaticSurchargeSelections(s)}});
-  expect(result,JSON.stringify(result)).toMatchObject({ok:false,code:'NO_SITE_PRICE',blocked:'no_site_price'});
-  expect(priceDesign({productId:'roman',programId:s.programId!,widthInches:36,heightInches:60,surcharges:authoritativeAutomaticSurchargeSelections(s)})).toMatchObject({ok:true,unitPrice:1183,total:1183});
+  expect(result,JSON.stringify(result)).toMatchObject({ok:true,unitPrice:1183,total:1183});
  });
 });

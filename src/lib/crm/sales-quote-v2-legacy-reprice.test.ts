@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
-import { priceDesign } from "@/lib/quote/pricing";
 import {
   applyLegacySalesQuoteV2Reprice,
   assertLegacyV2CustomerPayloadHasNoProtectedFields,
@@ -377,24 +376,36 @@ describe("explicit legacy sales-quote V2 repricing", () => {
       previewInput(),
     );
     expect(preview).toMatchObject({
-      canApply: false,
-      previewId: null,
+      canApply: true,
+      previewId: PREVIEW_ID,
       legacyStoredTotal: 9_999,
       lineCount: 1,
     });
-    expect(preview.lines[0].priceStatus).toBe("blocked");
-    expect(preview.lines[0].price).toMatchObject({ ok: false, code: "NO_SITE_PRICE" });
-    expect(preview.proposedSelectedDesignTotal).not.toBe(9_999);
-    expect(preview.proposedSelectedDesignTotal).not.toBe(999_999);
-    const list = priceDesign({
-      productId: "roller",
-      programId: "roller_cordless_fabric_price_group_2_pg2",
-      widthInches: 36,
-      heightInches: 60,
-    }, "2026-08-01");
-    expect(list.ok, JSON.stringify(list)).toBe(true);
-    if (list.ok) expect(list.base).toBe(384);
-    expect(fake.rpcCalls).toHaveLength(0);
+    expect(preview.proposedSelectedDesignTotal).toBe(
+      (preview.lines[0].price as { total: number }).total,
+    );
+    expect(preview.proposedSelectedDesignTotal).toBeLessThan(9_999);
+    expect(preview.lines[0].price).toMatchObject({
+      discountPercent: 10,
+      customerCharges: { installationPerUnit: 25, shippingPerUnit: 14, perWindowTotal: 39 },
+    });
+    expect((preview.lines[0].price as { discountAmount: number }).discountAmount).toBeGreaterThan(0);
+
+    const record = fake.rpcCalls.find(
+      (call) => call.name === "record_quote_v2_legacy_reprice_preview",
+    );
+    expect(record).toBeDefined();
+    expect(record?.args.p_selection_map).toEqual(selections());
+    expect(record?.args.p_results).toHaveLength(1);
+    expect(record?.args.p_customer_payload).toMatchObject({
+      backend: "authoritative_v2",
+      mode: "legacy_reprice_preview_proof",
+      quoteId: QUOTE_ID,
+      lineCount: 1,
+    });
+    expect(JSON.stringify(record?.args.p_customer_payload)).not.toMatch(
+      /dealer|wholesale|landed|internalCost|margin|productCost|freightAllocated/i,
+    );
     const resultJson = JSON.stringify(preview);
     expect(resultJson).not.toMatch(
       /dealer|wholesale|landed|internalCost|margin|productCost|freightAllocated/i,
@@ -408,10 +419,9 @@ describe("explicit legacy sales-quote V2 repricing", () => {
       fake.client,
       previewInput(),
     );
-    expect(preview.canApply).toBe(false);
+    expect(preview.canApply).toBe(true);
     expect(preview.lines).toHaveLength(1);
     expect(preview.lines[0].selectedDesignId).toBe(designId(0));
-    expect(preview.lines[0].priceStatus).toBe("blocked");
     expect(preview.proposedSelectedDesignTotal).not.toBe(88_888);
     expect(preview.proposedSelectedDesignTotal).not.toBeGreaterThan(80_000);
   });
@@ -422,11 +432,13 @@ describe("explicit legacy sales-quote V2 repricing", () => {
       fake.client,
       previewInput(40),
     );
-    expect(preview.canApply).toBe(false);
+    expect(preview.canApply).toBe(true);
     expect(preview.lineCount).toBe(40);
     expect(preview.lines).toHaveLength(40);
-    expect(preview.lines.every((line) => line.priceStatus === "blocked")).toBe(true);
-    expect(fake.rpcCalls).toHaveLength(0);
+    const record = fake.rpcCalls.find(
+      (call) => call.name === "record_quote_v2_legacy_reprice_preview",
+    );
+    expect(record?.args.p_results).toHaveLength(40);
   });
 
   it("rejects the 41st line before recording any preview or mutation", async () => {
@@ -461,16 +473,7 @@ describe("explicit legacy sales-quote V2 repricing", () => {
 
   it("applies only from the saved preview and redacts protected costs from the response", async () => {
     const rows = quoteRows();
-    for (const line of rows.sales_quote_line_items) Object.assign(line, { product_type: "Shutters", width_whole: 30, height_whole: 60 });
-    for (const design of rows.sales_quote_designs) Object.assign(design, {
-      product_type: "Shutters", supplier: "Norman", material: "Woodlore", louver_size: '3 1/2"',
-      tilt_type: "Standard Tilt", panel_config: "LR", mount_type: "Inside Mount", shade_type: null,
-      lift_system: null, valance: null, fabric: null,
-      options_json: { quote_lab_product_id: "norman_shutters", catalog_product_id: "norman_shutters",
-        quote_lab_program_id: "woodlore", catalog_program_id: "woodlore", fabric_program_id: "woodlore",
-        color: "001", frame_type: "Direct Mount (No Frame)", size_type: "F - Frame to Frame" },
-    });
-    rows.sales_quote_v2_legacy_reprice_previews = [{ ...previewRow(), server_catalog_date: "2026-09-22" }];
+    rows.sales_quote_v2_legacy_reprice_previews = [previewRow()];
     const fake = fakeSupabase(rows, {
       apply_quote_v2_legacy_reprice: {
         data: [
@@ -491,7 +494,10 @@ describe("explicit legacy sales-quote V2 repricing", () => {
         error: null,
       },
     });
-    const result = await applyLegacySalesQuoteV2Reprice(fake.client, applyInput());
+    const result = await applyLegacySalesQuoteV2Reprice(
+      fake.client,
+      applyInput(),
+    );
     expect(result).toMatchObject({
       mode: "legacy_reprice_applied",
       previewId: PREVIEW_ID,
@@ -500,7 +506,9 @@ describe("explicit legacy sales-quote V2 repricing", () => {
       pricedDesignCount: 1,
       blockedDesignCount: 0,
     });
-    const apply = fake.rpcCalls.find((call) => call.name === "apply_quote_v2_legacy_reprice");
+    const apply = fake.rpcCalls.find(
+      (call) => call.name === "apply_quote_v2_legacy_reprice",
+    );
     expect(apply?.args).toMatchObject({
       p_preview_id: PREVIEW_ID,
       p_preview_digest: PREVIEW_DIGEST,

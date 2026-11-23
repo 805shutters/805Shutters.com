@@ -74,7 +74,7 @@ describe("Norman vertical Honeycomb Butt Together source p38", () => {
     const input={lines,designs,selectedVariantByLine:{left:"A",right:"A"}};
     const valid=repriceExactQuoteBuilderForServerDate(input,"2026-09-20");
     if (!("backend" in valid) || valid.backend !== "v2") throw new Error("Expected V2");
-    expect(valid.designs.every(d=>!d.result.ok&&d.result.code==='NO_SITE_PRICE'), JSON.stringify(valid.designs.map(d=>d.result))).toBe(true);
+    expect(valid.designs.every(d=>d.result.ok), JSON.stringify(valid.designs.map(d=>d.result))).toBe(true);
     expect(valid.designs[0].selection.configuration[VERTICAL_HONEYCOMB_PAIR_KEY]).toMatchObject({lineIds:["left","right"],orderWidths:[40,60]});
     expect(v2CustomerConfigurationOptions(customerConfigurationFromSelection(valid.designs[0].selection)).join(" ")).toContain("Butt Together");
     lines[1].height_whole=85;

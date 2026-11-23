@@ -63,9 +63,7 @@ describe("live lookup stays off", () => {
     const norman = priceBrook(false);
     const normanOff = priceBrook(true);
     expect(JSON.stringify(normanOff)).toBe(JSON.stringify(norman));
-    expect(norman).toMatchObject({ ok: false, code: "NO_SITE_PRICE", blocked: "no_site_price" });
-    expect(norman).not.toHaveProperty("unitPrice");
-    expect(JSON.stringify(norman)).not.toContain("76.2");
+    expect(norman).toMatchObject({ ok: true, base: 254, wholesaleBase: 83.82 });
 
     for (const productId of ["onyx_shutters", "roller"] as const) {
       const input = baseQuote(productId);

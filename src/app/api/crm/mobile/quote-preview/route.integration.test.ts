@@ -5,7 +5,6 @@ import {
   prepareSalesQuoteV2PricingBatch,
   quoteV2ServerCatalogDate,
 } from "@/lib/crm/sales-quote-v2-price-save";
-import { priceDesign } from "@/lib/quote/pricing";
 
 const LINE_ID = "11111111-1111-4111-8111-111111111111";
 const DESIGN_ID = "22222222-2222-4222-8222-222222222222";
@@ -72,29 +71,19 @@ describe("mobile quote preview current-catalog integration", () => {
     expect(parsed.lines).toHaveLength(1);
     expect(parsed.designs).toHaveLength(1);
     expect(batch.prepared).toHaveLength(1);
-    const list = priceDesign({
-      productId: "roller",
-      programId: "roller_cordless_fabric_price_group_2_pg2",
-      widthInches: 36,
-      heightInches: 60,
-    }, quoteV2ServerCatalogDate());
-    expect(list.ok, JSON.stringify(list)).toBe(true);
-    if (list.ok) expect(list.base).toBe(384);
     expect(batch.prepared[0]).toMatchObject({
       lineItemId: LINE_ID,
       designId: DESIGN_ID,
-      priceStatus: "blocked",
+      priceStatus: "authoritative",
       customerPrice: {
-        ok: false,
-        code: "NO_SITE_PRICE",
+        ok: true,
+        productId: "roller",
+        programId: "roller_cordless_fabric_price_group_2_pg2",
+        total: expect.any(Number),
       },
     });
-    expect(batch.prepared[0].rpcResult).toMatchObject({
-      priceStatus: "blocked",
-      authoritativeSnapshot: null,
-      validationSnapshot: { pricingFailure: { code: "NO_SITE_PRICE" } },
-    });
-    expect(batch.repriced.total).toBe(0);
+    expect(Number(batch.prepared[0].customerPrice.total)).toBeGreaterThan(0);
+    expect(batch.repriced.total).toBe(Number(batch.prepared[0].customerPrice.total));
   });
   it("diagnoses the captured Normandy Painted projection without substituting its program", () => {
     const parsed = parseMobileQuotePreview({

@@ -60,7 +60,7 @@ describe('source p76 cross-product Automate hub allocation',()=>{
   });
   const run=()=>{const r=repriceExactQuoteBuilderForServerDate(q,'2026-09-20');if(!('backend'in r)||r.backend!=='v2')throw Error('Expected V2');return r;};
   const first=run();for(const d of first.designs)expect(d.result.validationIssues.filter(i=>i.severity==='hard_block'),JSON.stringify(d.result)).toEqual([]);
-  expect(first.designs.every(d=>!d.result.ok&&d.result.code==='NO_SITE_PRICE')).toBe(true);
+  const hubs=first.designs.flatMap(d=>d.result.ok?d.result.components:[]).filter(c=>c.priceLineId==='motor:automate_home:hub');expect(hubs).toHaveLength(1);expect(hubs[0].catalogAmount).toBe(483);
   first.designs.forEach((d,i)=>{expect(sharedAutomateHub(d.selection)?.motorQuantity).toBe(6);q.designs[i].options_json=JSON.parse(JSON.stringify({...q.designs[i].options_json,...d.selection.configuration}));});
   expect(run()).toEqual(first);
   q.lines[2].quantity=27;
@@ -69,7 +69,7 @@ describe('source p76 cross-product Automate hub allocation',()=>{
   expect(run()).toEqual(first);
   // Ownership moves to Roman after removing the Roller; original stored source record is untouched.
   const original=JSON.stringify(first);q.lines.shift();q.designs.shift();const removed=run();expect(sharedAutomateHub(removed.designs[0].selection)).toMatchObject({chargeHub:true,motorQuantity:4});expect(JSON.stringify(first)).toBe(original);
-  expect(removed.designs.every(d=>!d.result.ok&&d.result.code==='NO_SITE_PRICE')).toBe(true);
+  const remaining=removed.designs.flatMap(d=>d.result.ok?d.result.components:[]).filter(c=>c.priceLineId==='motor:automate_home:hub');expect(remaining).toHaveLength(1);expect(remaining[0].catalogAmount).toBe(483);
   expect(first.sendability.sendable).toBe(false); // PerfectSheer source restriction hold remains.
  });
 });

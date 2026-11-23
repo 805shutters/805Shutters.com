@@ -5,7 +5,6 @@ import { prepareNormanLegacyPricing, type NormanQuotePricingState } from './sale
 import fixtures from './sales-quote-norman-price.fixtures.json';
 import sundanceFixture from './sundance-pricing.fixture.json';
 import { quoteLabProductType } from '@/lib/quote-lab/builder';
-import { priceDesign } from '@/lib/quote/pricing';
 const db = new PGlite();
 const id = (n: number) => `20000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 beforeAll(async () => {
@@ -165,56 +164,31 @@ describe('real Norman calculator to atomic SQL persistence', () => {
     return fixture;
   }
   it.each(fixtures.map(f=>f.selection.productId))('%s saves its real grid result and source/cost metadata', async productId=>{
-    const fixture=await configure(productId,1);
+    await configure(productId,1);
     const before=await state();
     const prepared=prepareNormanLegacyPricing(before as NormanQuotePricingState,'2026-09-22');
     expect(prepared).toHaveLength(1);
-    const list=priceDesign({productId,programId:fixture.selection.programId,widthInches:fixture.selection.widthInches,heightInches:fixture.selection.heightInches},'2026-09-22');
-    expect(list.ok, JSON.stringify(list)).toBe(true);
-    const catalogBase=productId==='faux_wood'?314:productId==='smartprivacy_faux'?246:fixture.base;
-    if(list.ok) expect(list.base).toBe(catalogBase);
+    expect(prepared[0].priceStatus).toBe('authoritative');
     const payload=prepared[0].rpcResult;
-    if(prepared[0].priceStatus==='authoritative'){
-      const retail=(payload.authoritativeSnapshot as any).retail;
-      const outcome=await save(before,[payload]);
-      expect(outcome.total).toBeCloseTo(retail.total+666,2);
-      const after=await state();
-      expect(after.quote.quote_v2_backend).toBe(false);
-      expect(Number(after.designs[0].unit_price)).toBe(retail.unitPrice);
-      expect(after.designs[0].options_json.authoritative_v2_snapshot).toEqual(payload.authoritativeSnapshot);
-      expect(after.designs.slice(1)).toEqual(before.designs.slice(1));
-      return;
-    }
-    expect(prepared[0].priceStatus).toBe('blocked');
-    expect(prepared[0].customerPrice).toMatchObject({ok:false,code:'NO_SITE_PRICE'});
-    expect(payload.authoritativeSnapshot).toBeNull();
-    expect(String(payload.staffPricingError)).toMatch(/exact website price/);
+    const retail=(payload.authoritativeSnapshot as any).retail;
     const outcome=await save(before,[payload]);
-    expect(outcome).toMatchObject({pricedDesignCount:0,blockedDesignCount:1});
-    expect(outcome.total).toBeCloseTo(666,2);
+    expect(outcome.total).toBeCloseTo(retail.total+666,2);
     const after=await state();
     expect(after.quote.quote_v2_backend).toBe(false);
-    expect(Number(after.designs[0].unit_price)).toBe(0);
-    expect(after.designs[0].options_json.authoritative_price_status).toBe('blocked');
-    expect(after.designs[0].options_json.authoritative_v2_snapshot).toBeUndefined();
+    expect(Number(after.designs[0].unit_price)).toBe(retail.unitPrice);
+    expect(after.designs[0].options_json.authoritative_v2_snapshot).toEqual(payload.authoritativeSnapshot);
     expect(after.designs.slice(1)).toEqual(before.designs.slice(1));
   });
   it.each(['faux_wood','smartprivacy_faux'])('%s preserves the real quantity-three cent allocation',async productId=>{
-    const fixture=await configure(productId,3);
+    await configure(productId,3);
     const before=await state();
     const [prepared]=prepareNormanLegacyPricing(before as NormanQuotePricingState,'2026-09-22');
-    expect(prepared.priceStatus).toBe('blocked');
-    expect(prepared.customerPrice).toMatchObject({ok:false,code:'NO_SITE_PRICE'});
-    expect(prepared.rpcResult.authoritativeSnapshot).toBeNull();
-    const list=priceDesign({productId,programId:fixture.selection.programId,widthInches:fixture.selection.widthInches,heightInches:fixture.selection.heightInches},'2026-09-22');
-    expect(list.ok, JSON.stringify(list)).toBe(true);
-    if(list.ok) expect(list.base).toBe(productId==='faux_wood'?314:246);
+    const retail=(prepared.rpcResult.authoritativeSnapshot as any).retail;
+    expect(retail.onceTotal).toBe(0.02);
     const saved=await save(before,[prepared.rpcResult]);
-    expect(saved).toMatchObject({pricedDesignCount:0,blockedDesignCount:1});
-    expect(saved.total).toBeCloseTo(666,2);
+    expect(saved.total).toBeCloseTo(retail.total+666,2);
     const after=await state();
-    expect(Number(after.designs[0].unit_price)).toBe(0);
-    expect(after.designs[0].options_json.authoritative_once_total).toBeUndefined();
+    expect(Number(after.designs[0].unit_price)*3+after.designs[0].options_json.authoritative_once_total).toBeCloseTo(retail.total,2);
   });
   it('resets the old Norman once charge when the same line receives a manual price',async()=>{
     await save(await state(),[result()]);

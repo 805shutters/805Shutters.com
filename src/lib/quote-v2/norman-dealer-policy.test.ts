@@ -45,7 +45,7 @@ describe("805 Norman dealer policy", () => {
         standard: {
           id: "standard",
           selectionPercent: 30,
-          effectivePortalFactor: 0.3,
+          effectivePortalFactor: 0.33,
           fixtureId: "norman-805-live-portal-2026-07-21",
         },
         shutterLeadTime: {
@@ -56,7 +56,7 @@ describe("805 Norman dealer policy", () => {
         },
       },
       dealerFactors: {
-        standard: 0.3,
+        standard: 0.33,
         shutterLeadTime: 0.297,
       },
       freight: {
@@ -92,7 +92,7 @@ describe("805 Norman dealer policy", () => {
     expect(normanDealerScheduleForSelection(undefined)).toMatchObject({
       id: "standard",
       selectionPercent: 30,
-      effectivePortalFactor: 0.3,
+      effectivePortalFactor: 0.33,
     });
     expect(normanDealerScheduleForSelection(28.5)).toMatchObject({
       id: "shutter_lead_time",

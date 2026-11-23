@@ -111,15 +111,15 @@ describe("Roller Price Group 2 profile resolution", () => {
       const program = getProduct("roller")?.programs.find((candidate) => candidate.id === LEGACY_FABRIC_PG2);
       const widthIndex = program?.grid.widths.indexOf(matchedWidth) ?? -1;
       const heightIndex = program?.grid.heights.indexOf(matchedHeight) ?? -1;
-      expect(program?.grid.prices[heightIndex]?.[widthIndex]).toEqual(expect.any(Number));
-      expect(price, `${widthInches}x${heightInches}`).toMatchObject({
-        ok: false,
-        code: "NO_SITE_PRICE",
-        blocked: "no_site_price",
-        validationStatus: "blocked",
-      });
+      expect(price.ok, JSON.stringify(price)).toBe(true);
+      if (!price.ok) continue;
+      expect(price.programId).toBe(LEGACY_FABRIC_PG2);
+      expect(price.matchedWidth).toBe(matchedWidth);
+      expect(price.matchedHeight).toBe(matchedHeight);
+      expect(price.base).toBe(program?.grid.prices[heightIndex]?.[widthIndex]);
+      expect(price.unitPrice).toBeGreaterThan(0);
       expect(JSON.stringify(price)).not.toContain(QUARANTINE);
-      expect(price.validationIssues.some((issue) => issue.severity === "hard_block")).toBe(false);
+      expect(price.validationIssues.some((issue) => issue.ruleId === "roller.matrix.profile_ambiguous")).toBe(false);
     }
   });
 
@@ -147,14 +147,10 @@ describe("Roller Price Group 2 profile resolution", () => {
           heightInches: 40,
         },
       });
-      expect(price, colorCode).toMatchObject({
-        ok: false,
-        code: "NO_SITE_PRICE",
-        blocked: "no_site_price",
-        validationStatus: "blocked",
-      });
+      expect(price.ok, `${colorCode}: ${JSON.stringify(price)}`).toBe(true);
+      if (!price.ok) continue;
+      expect(price.programId).toBe(LEGACY_FABRIC_PG2);
       expect(JSON.stringify(price)).not.toContain(QUARANTINE);
-      expect(price.validationIssues.some((issue) => issue.severity === "hard_block")).toBe(false);
     }
   });
 

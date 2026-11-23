@@ -541,101 +541,113 @@ describe("portal parity AFTER permanent artifact contract", () => {
 
 describe("portal parity AFTER live runtime outcomes", () => {
   it("matches all three Norman source-MSRP cases and their component arithmetic", () => {
-    const roller = runtimePrice(
-      selection(
-        "norman",
-        "roller",
-        "roller_cordless_fabric_price_group_1_pg1",
-        24,
-        36,
-        {
-          mount_type: "Inside Mount",
-          roller_region_scope: "ca_ma",
-          roller_application: "Single Shade",
-          lift_system: "SmartRelease",
-          fabric_collection: "Brook",
-          fabric_color_code: "F1120",
-          roller_top_treatment: "No Top Treatment",
-          roller_tube: '1 3/4" (43mm) Tube',
-          shim: true,
-        },
+    const roller = requireRuntimePrice(
+      runtimePrice(
+        selection(
+          "norman",
+          "roller",
+          "roller_cordless_fabric_price_group_1_pg1",
+          24,
+          36,
+          {
+            mount_type: "Inside Mount",
+            roller_region_scope: "ca_ma",
+            roller_application: "Single Shade",
+            lift_system: "SmartRelease",
+            fabric_collection: "Brook",
+            fabric_color_code: "F1120",
+            roller_top_treatment: "No Top Treatment",
+            roller_tube: '1 3/4" (43mm) Tube',
+            shim: true,
+          },
+        ),
+        [{ id: "smartrelease" }, { id: "shim" }],
       ),
-      [{ id: "smartrelease" }, { id: "shim" }],
     );
-    expect(roller).toMatchObject({ ok: false, code: "NO_SITE_PRICE", blocked: "no_site_price" });
-    const rollerList = priceDesign({
-      productId: "roller",
-      programId: "roller_cordless_fabric_price_group_1_pg1",
-      widthInches: 24,
-      heightInches: 36,
-      surcharges: [{ id: "smartrelease" }, { id: "shim" }],
-    });
-    expect(rollerList.ok, JSON.stringify(rollerList)).toBe(true);
-    if (rollerList.ok) {
-      expect(cents(rollerList.base)).toBe(25_400);
-      expect(rollerList.surchargeLines).toEqual(expect.arrayContaining([
-        expect.objectContaining({ id: "smartrelease", amount: 89 }),
-        expect.objectContaining({ id: "shim", amount: 7 }),
-      ]));
-      expect(cents(rollerList.unitPrice)).toBe(35_000);
-    }
+    expect(cents(roller.total)).toBe(
+      afterCase("norman-roller-smartrelease-24x36").systemAfter.displayedTotalCents,
+    );
+    expect(
+      roller.components.map((component) => [
+        component.category,
+        cents(component.customerAmount),
+      ]),
+    ).toEqual(
+      expect.arrayContaining([
+        ["base_grid", 25_400],
+        ["fabric_upgrade", 0],
+        ["operating_system", 8_900],
+        ["accessory", 700],
+      ]),
+    );
+    expect(
+      sumCents(
+        roller.components.map((component) => cents(component.customerAmount)),
+      ),
+    ).toBe(35_000);
+    expect(cents(roller.internalCost?.productCostTotal ?? 0)).toBe(11_550);
+    expect(roller.validationStatus).toBe("valid");
+    expect(
+      afterCase("norman-roller-smartrelease-24x36").systemAfter.sendable,
+    ).toBe(true);
 
-    const vertical = runtimePrice(
-      selection(
-        "norman",
-        "synchrony_vertical",
-        "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
-        24,
-        48,
-        {
-          mount_type: "Outside Mount",
-          fabric_collection: "Classic",
-          fabric_color_name: "Pure White",
-          stack_option: "Left",
-          draw_direction: "Left Wand",
-        },
+    const vertical = requireRuntimePrice(
+      runtimePrice(
+        selection(
+          "norman",
+          "synchrony_vertical",
+          "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
+          24,
+          48,
+          {
+            mount_type: "Outside Mount",
+            fabric_collection: "Classic",
+            fabric_color_name: "Pure White",
+            stack_option: "Left",
+            draw_direction: "Left Wand",
+          },
+        ),
       ),
     );
-    expect(vertical).toMatchObject({ ok: false, code: "NO_SITE_PRICE", blocked: "no_site_price" });
-    const verticalList = priceDesign({
-      productId: "synchrony_vertical",
-      programId: "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
-      widthInches: 24,
-      heightInches: 48,
-    });
-    expect(verticalList.ok, JSON.stringify(verticalList)).toBe(true);
-    if (verticalList.ok) expect(cents(verticalList.base)).toBe(20_400);
+    expect(cents(vertical.total)).toBe(
+      afterCase("norman-synchrony-vertical-24x48").systemAfter.displayedTotalCents,
+    );
+    expect(cents(vertical.base)).toBe(20_400);
+    expect(vertical.validationStatus).toBe("valid");
+    expect(
+      afterCase("norman-synchrony-vertical-24x48").systemAfter.sendable,
+    ).toBe(true);
 
-    const roman = runtimePrice(
-      selection(
-        "norman",
-        "roman",
-        "roman_cordless_usa_price_group_1_pg1",
-        96,
-        72,
-        {
-          mount_type: "Outside Mount",
-          shade_type: "Single",
-          lift_system: "Continuous Cord Loop",
-          headrail_size: '2"',
-          fold_style: "Flat Fold with Batten Back",
-          fabric_collection: "Scarlett",
-          fabric_color_code: "F1599",
-          lining: "Unlined",
-          fabric_orientation: "Standard",
-          seaming: "No Seams",
-        },
+    const roman = requireRuntimePrice(
+      runtimePrice(
+        selection(
+          "norman",
+          "roman",
+          "roman_cordless_usa_price_group_1_pg1",
+          96,
+          72,
+          {
+            mount_type: "Outside Mount",
+            shade_type: "Single",
+            lift_system: "Continuous Cord Loop",
+            headrail_size: '2"',
+            fold_style: "Flat Fold with Batten Back",
+            fabric_collection: "Scarlett",
+            fabric_color_code: "F1599",
+            lining: "Unlined",
+            fabric_orientation: "Standard",
+            seaming: "No Seams",
+          },
+        ),
       ),
     );
-    expect(roman).toMatchObject({ ok: false, code: "NO_SITE_PRICE", blocked: "no_site_price" });
-    const romanList = priceDesign({
-      productId: "roman",
-      programId: "roman_cordless_usa_price_group_1_pg1",
-      widthInches: 96,
-      heightInches: 72,
-    });
-    expect(romanList.ok, JSON.stringify(romanList)).toBe(true);
-    if (romanList.ok) expect(cents(romanList.base)).toBe(230_600);
+    expect(cents(roman.total)).toBe(
+      afterCase("norman-roman-large-96x72").systemAfter.displayedTotalCents,
+    );
+    expect(cents(roman.base)).toBe(230_600);
+    // The line price passes parity. Quote-level sendability is separately
+    // blocked because the oversize processing-fee scope is not verified.
+    expect(roman.validationStatus).toBe("valid");
     expect(afterCase("norman-roman-large-96x72")).toMatchObject({
       comparisonAfter: { result: "pass" },
       systemAfter: {
@@ -644,6 +656,7 @@ describe("portal parity AFTER live runtime outcomes", () => {
       },
     });
   });
+
   it.skip("retires Polar book pricing outcomes from the launch path", () => {
     const eliteTotals = [88, 92, 85.5].map((widthInches) =>
       requireRuntimePrice(
@@ -1236,14 +1249,39 @@ describe("portal parity AFTER stale-price and privacy boundaries", () => {
   it("marks a pre-MSRP snapshot stale even when its fingerprint is current", () => {
     const current = exactRollerQuote();
     const currentDesign = current.designs[0];
-    expect(currentDesign?.result).toMatchObject({ ok: false, code: "NO_SITE_PRICE", blocked: "no_site_price" });
-    expect(currentDesign?.snapshot).toBeNull();
-    expect(current.sendability.sendable).toBe(false);
+    if (!currentDesign?.result.ok || !currentDesign.snapshot) {
+      throw new Error("Expected a current authoritative preview snapshot.");
+    }
+    const stale = exactRollerQuote({
+      authoritative_v2_snapshot: {
+        ...currentDesign.snapshot,
+        catalogVersion: PRE_MSRP_ROLLER_PREVIEW_VERSION,
+        retail: {
+          ...currentDesign.snapshot.retail,
+          catalogVersion: PRE_MSRP_ROLLER_PREVIEW_VERSION,
+        },
+      },
+    });
+    expect(stale.designs[0].result).toMatchObject({
+      ok: true,
+      catalogVersion: QUOTE_V2_ROLLER_PREVIEW_VERSION,
+    });
+    expect(stale.sendability.lines[0]).toMatchObject({
+      stale: true,
+      sendable: false,
+      pricedSelectionFingerprint: currentDesign.result.selectionFingerprint,
+      pricedCatalogVersion: PRE_MSRP_ROLLER_PREVIEW_VERSION,
+      catalogVersion: QUOTE_V2_ROLLER_PREVIEW_VERSION,
+    });
+    expect(stale.sendability.lines[0].reasons.map((reason) => reason.code)).toContain(
+      "catalog_version_mismatch",
+    );
     expect(QUOTE_V2_ROLLER_PREVIEW_VERSION).toContain("msrp-r1");
   });
 
   it("never exposes protected cost or policy fields in customer projections", () => {
-    const successful = runtimePrice(
+    const successful = requireRuntimePrice(
+      runtimePrice(
         selection(
           "norman",
           "roller",
@@ -1263,10 +1301,9 @@ describe("portal parity AFTER stale-price and privacy boundaries", () => {
           },
         ),
         [{ id: "smartrelease" }, { id: "shim" }],
-      );
-    expect(successful).toMatchObject({ ok: false, code: "NO_SITE_PRICE", blocked: "no_site_price" });
-    expect(successful).not.toHaveProperty("unitPrice");
-    const customerSuccess = JSON.stringify(successful);
+      ),
+    );
+    const customerSuccess = JSON.stringify(toCustomerQuotePriceResult(successful));
 
     const lotusSuccess = runtimePrice(
       selection(
@@ -1286,7 +1323,7 @@ describe("portal parity AFTER stale-price and privacy boundaries", () => {
     const exactCustomerQuote = JSON.stringify(exactRollerQuote().customerQuote);
     const forbidden =
       /wholesale|internalCost|productCost|landed|freight|oversize|processing|dealer|multiplier|margin|schedule|2\.5/i;
-    expect(customerSuccess).not.toMatch(/wholesaleUnitPrice|effectiveDealerFactor|internalCost/);
+    expect(customerSuccess).not.toMatch(forbidden);
     expect(customerLotus).not.toMatch(forbidden);
     expect(exactCustomerQuote).not.toMatch(forbidden);
     expect(JSON.parse(customerLotus)).toMatchObject({

@@ -6,11 +6,6 @@ import { repriceExactQuoteBuilderForServerDate } from "./exact-backend";
 import { customerConfigurationFromSelection, v2CustomerConfigurationOptions } from "@/lib/crm/sales-quote-v2-customer-configuration";
 import { getProductColorOptions } from "@/lib/quote/product-color-options";
 
-function noSite(result: {ok:boolean}, label?: unknown) {
- expect(result, typeof label === "string" ? label : JSON.stringify(result)).toMatchObject({ok:false,code:"NO_SITE_PRICE",blocked:"no_site_price"});
- expect(result).not.toHaveProperty("unitPrice");
-}
-
 function currentQuote(productId: string, productType: string, code: string, options: Record<string, unknown> = {}) {
  const color=getProductColorOptions(productId).find(c=>c.colorCode===code)!;
  const line={id:"audit-line",quote_id:"audit",room_name:"Office",product_type:productType,width_whole:36,width_fraction:"0",height_whole:60,height_fraction:"0",quantity:1,sort_order:0,created_at:"2026-09-19T00:00:00Z"} as SalesQuoteLineItem;
@@ -25,9 +20,9 @@ describe("Current Norman production configurations",()=>{
   q.designs[0].options_json={...q.designs[0].options_json,surcharges:[],motorization_selections:[],catalog_product_id:"citylights_aluminum",catalog_program_id:q.designs[0].options_json!.quote_lab_program_id,fabric_program_id:q.designs[0].options_json!.quote_lab_program_id,fabric_product_id:"citylights_aluminum",color:'7031 - Porcelain | Available in 1" & 2"'};
 
   const p=repriceExactQuoteBuilderForServerDate({...q,applyCustomerCharges:true},"2026-09-19");if(!("backend"in p)||p.backend!=="v2")throw new Error("Expected V2");
-  noSite(p.designs[0].result, JSON.stringify(p.designs[0].result));
-  const batch=prepareSalesQuoteV2PricingBatch({lines:q.lines,selectedDesigns:q.designs,serverDate:"2026-09-19"});expect(batch.prepared[0].priceStatus,JSON.stringify(batch.prepared[0])).toBe("blocked");
-  // Retired quote total: expect(batch.repriced.total).toBe(460.9);
+  expect(p.designs[0].result.ok,JSON.stringify(p.designs[0].result)).toBe(true);
+  const batch=prepareSalesQuoteV2PricingBatch({lines:q.lines,selectedDesigns:q.designs,serverDate:"2026-09-19"});expect(batch.prepared[0].priceStatus,JSON.stringify(batch.prepared[0])).toBe("authoritative");
+  expect(batch.repriced.total).toBe(460.9);
   q.designs[0].options_json={...q.designs[0].options_json,slat_size:'1/2"'};
   expect(prepareSalesQuoteV2PricingBatch({lines:q.lines,selectedDesigns:q.designs,serverDate:"2026-09-19"}).prepared[0].priceStatus).toBe("blocked");
  });
@@ -37,8 +32,8 @@ describe("Current Norman production configurations",()=>{
   q.designs[0].mount_type="Outside Mount";q.designs[0].lift_system="Cordless";q.designs[0].valance=null;
   q.lines.push({...q.lines[0],id:"right",width_whole:48});q.designs.push({...q.designs[0],id:"right-A",line_item_id:"right",options_json:{...q.designs[0].options_json}});q.selectedVariantByLine.right="A";
   const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend" in p)||p.backend!=="v2")throw new Error("Expected V2");
-  for(const d of p.designs)noSite(d.result, JSON.stringify(d.result));
-  // Retired quote dollar: expect(p.designs[0].result.ok&&p.designs[0].result.total).toBe(421.9);
+  for(const d of p.designs)expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+  expect(p.designs[0].result.ok&&p.designs[0].result.total).toBe(421.9);
   expect(p.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({slatSize:2,color:{code:"7031",finish:"matte"},mounting:{brackets:2,shims:4,holdDowns:2},wand:{drop:47.25,side:"Right",split:true}});
   expect(p.designs[1].selection.configuration.norman_assembly_v1).toMatchObject({mounting:{brackets:4,shims:8}});
   expect(p.designs[0].selection.configuration.citylights_matching_v1).toMatchObject({lineIds:["audit-line","right"]});
@@ -52,7 +47,7 @@ describe("Current Norman production configurations",()=>{
   q.designs[0].mount_type="Outside Mount";q.designs[0].lift_system="Cordless";q.designs[0].valance="3-inch Linear";
   q.lines.push({...q.lines[0],id:"right",width_whole:48});q.designs.push({...q.designs[0],id:"right-A",line_item_id:"right",options_json:{...q.designs[0].options_json}});q.selectedVariantByLine.right="A";
   const matching=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in matching)||matching.backend!=="v2")throw new Error("Expected V2");
-  for(const d of matching.designs){noSite(d.result, JSON.stringify(d.result));expect(d.selection.configuration.ultimate_matching_v1).toMatchObject({lineIds:["audit-line","right"]});}
+  for(const d of matching.designs){expect(d.result.ok,JSON.stringify(d.result)).toBe(true);expect(d.selection.configuration.ultimate_matching_v1).toMatchObject({lineIds:["audit-line","right"]});}
   q.designs.forEach((d,i)=>d.options_json={...d.options_json,ultimate_common_group:"1",ultimate_common_position:i+1,ultimate_common_gap_after:i===0?1:0});
   const common=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in common)||common.backend!=="v2")throw new Error("Expected V2");
   for(const d of common.designs){expect(d.result.ok).toBe(false);expect(d.selection.configuration.ultimate_common_valance_v1).toMatchObject({finishedWidth:86,pricingStatus:"unresolved_common_valance_width_basis"});}
@@ -70,9 +65,8 @@ describe("Current Norman production configurations",()=>{
   const q=currentQuote("faux_wood","Faux Wood Blinds","P001",{product_line:"Ultimate",faux_configuration_version:"faux-wood-v2",faux_blind_count:1,slat_size:'2"',finish_type:"Smooth",ultimate_keystone_count:1,ultimate_keystone_layout:"Custom",ultimate_keystone_location_1:18,ultimate_cutout_left_type:"Corner (Bottom)",ultimate_cutout_left_width:1,ultimate_cutout_left_top:20,ultimate_cutout_right_type:"Side (Middle)",ultimate_cutout_right_width:2,ultimate_cutout_right_top:30,ultimate_cutout_right_bottom:40});
   q.designs[0].mount_type="Outside Mount";q.designs[0].lift_system="Cordless";q.designs[0].valance="3-inch Linear";
   const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in p)||p.backend!=="v2")throw new Error("Expected V2");
-  const d=p.designs[0];noSite(d.result, JSON.stringify(d.result));
-  // 306.5 was source-cost-plus math on catalog wholesale, not a site price.
-  expect(d.selection.configuration.norman_assembly_v1).toMatchObject({keystones:{count:1,locations:[18]},cutouts:[{side:"left",width:1,top:20},{side:"right",width:2,top:30,bottom:40}]});
+  const d=p.designs[0];expect(d.result.ok,JSON.stringify(d.result)).toBe(true);if(!d.result.ok)throw new Error("Expected price");
+  expect(d.result.total).toBe(324.65);expect(d.selection.configuration.norman_assembly_v1).toMatchObject({keystones:{count:1,locations:[18]},cutouts:[{side:"left",width:1,top:20},{side:"right",width:2,top:30,bottom:40}]});
   const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(p);
   const customer=JSON.stringify(v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection)));expect(customer).toContain("Left Cut-out Width in Inches");expect(customer).toContain("Keystone 1 from Left in Inches");expect(customer).not.toContain("dealerFactor");
  });
@@ -83,8 +77,8 @@ describe("Current Norman production configurations",()=>{
   const base=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   q.designs[0].options_json={...q.designs[0].options_json,smartdrape_extra_vane_packs:2,smartdrape_vane_pack_style:"B — Middle Vanes Only",smartdrape_extra_wands:1};
   const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in p)||p.backend!=="v2"||!("backend"in base)||base.backend!=="v2")throw new Error("Expected V2");
-  const d=p.designs[0],b=base.designs[0];noSite(d.result, JSON.stringify(d.result));
-  // Retired quote dollar: expect(Math.round((d.result.total-b.result.total)*100)).toBe(147400);
+  const d=p.designs[0],b=base.designs[0];expect(d.result.ok,JSON.stringify(d.result)).toBe(true);if(!d.result.ok||!b.result.ok)throw new Error("Expected prices");
+  expect(Math.round((d.result.total-b.result.total)*100)).toBe(147400);
   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({extraVanesAndWands:{extraWands:1,vanePacks:{quantity:2,priceHeight:60,middle:[{quantity:6,color:"F1604"}]}}});
   const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(p);
  });
@@ -93,8 +87,8 @@ describe("Current Norman production configurations",()=>{
   q.designs[0].lift_system=null;q.designs[0].mount_type="Outside Mount";q.designs[0].shade_type="Light Filtering";q.lines[0].width_whole=100;
   q.lines.push({...q.lines[0],id:"right",width_whole:150});q.designs.push({...q.designs[0],id:"right-A",line_item_id:"right",options_json:{...q.designs[0].options_json,smartdrape_pair_position:"Right",stack_option:"Stack Right",control_side:"Left"}});q.selectedVariantByLine.right="A";
   const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in p)||p.backend!=="v2")throw new Error("Expected V2");
-  for(const d of p.designs)noSite(d.result, JSON.stringify(d.result));
-  // Retired quote dollar: expect(p.designs.map(d=>d.result.ok?d.result.components.filter(c=>c.priceLineId==="keystone").map(c=>c.catalogAmount):[])).toEqual([[146],[73]]);
+  for(const d of p.designs)expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+  expect(p.designs.map(d=>d.result.ok?d.result.components.filter(c=>c.priceLineId==="keystone").map(c=>c.catalogAmount):[])).toEqual([[146],[73]]);
   expect(p.designs[0].selection.configuration.smartdrape_pair_v1).toMatchObject({orderedWidths:[100,150],openCenterGap:2.25,chargeCenterKeystone:true});
   const reopened=JSON.parse(JSON.stringify(q));for(let i=0;i<2;i++)reopened.designs[i].options_json={...reopened.designs[i].options_json,...p.designs[i].selection.configuration};expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(p);
  });
@@ -107,7 +101,7 @@ describe("Current Norman production configurations",()=>{
   q.lines.push({...q.lines[0],id:"independent"});q.designs.push({...q.designs[0],id:"independent-A",line_item_id:"independent",options_json:independent});q.selectedVariantByLine.independent="A";
   q.designs.push({...q.designs[0],id:"audit-B",variant:"B",options_json:independent});
   const run=()=>{const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in p)||p.backend!=="v2")throw new Error("Expected V2");return p;};
-  for(const d of run().designs)noSite(d.result, JSON.stringify(d.result));
+  for(const d of run().designs)expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
   if(mismatch==="height")q.lines[1].height_whole=61;
   else if(mismatch==="room")q.lines[1].room_name="Bedroom";
   else q.designs[1].options_json={...q.designs[1].options_json,installation_method:"Ceiling Mount"};
@@ -117,11 +111,11 @@ describe("Current Norman production configurations",()=>{
    expect(d.result.validationIssues.filter(i=>i.ruleId===rule)).toHaveLength(1);
    expect(d.result.ok).toBe(false);expect(d.snapshot).toBeNull();
   }
-  for(const d of blocked.designs.slice(2))noSite(d.result, JSON.stringify(d.result));
+  for(const d of blocked.designs.slice(2))expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
   const saved=prepareSalesQuoteV2PricingBatch({lines:q.lines,selectedDesigns:q.designs.slice(0,3),serverDate:"2026-09-19"});
     for(const d of saved.prepared.slice(0,2))expect(d.priceStatus).toBe("blocked");
   for(const d of saved.repriced.designs.slice(0,2))expect(d.result.validationIssues.map(i=>i.ruleId)).toContain(rule);
-  noSite(saved.repriced.designs[2].result);
+  expect(saved.repriced.designs[2].result.ok).toBe(true);
   expect(saved.repriced.designs[2].result.validationIssues).toEqual([]);
   expect(repriceExactQuoteBuilderForServerDate(JSON.parse(JSON.stringify(q)),"2026-09-19")).toEqual(blocked);
  });
@@ -132,15 +126,15 @@ describe("Current Norman production configurations",()=>{
   q.designs[0].options_json={...q.designs[0].options_json,smartdrape_keystone_joints:"1, 2",aluminum_shim:"Yes"};
   const priced=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if(!("backend" in priced)||priced.backend!=="v2"||!("backend" in base)||base.backend!=="v2")throw new Error("Expected V2");
-  const d=priced.designs[0],b=base.designs[0];noSite(d.result, JSON.stringify(d.result));noSite(b.result);
-  
-  // Retired quote dollar: expect(d.result.total-b.result.total).toBe(2*(2*73+6*28));
+  const d=priced.designs[0],b=base.designs[0];expect(d.result.ok,JSON.stringify(d.result)).toBe(true);expect(b.result.ok).toBe(true);
+  if(!d.result.ok||!b.result.ok)throw new Error("Expected valid hardware");
+  expect(d.result.total-b.result.total).toBe(2*(2*73+6*28));
   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({mounting:{smartJointCount:2,shimQuantity:6,keystoneJoints:[1,2]}});
   const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(priced);
   expect(v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection))).toContain("Keystones at Track Joints: 1, 2");
   q.designs[0].options_json={...q.designs[0].options_json,aluminum_shim:null,installation_method:"Ceiling Pocket Mount",pocket_depth_inches:6,pocket_height_inches:3.75};
   const pocket=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend" in pocket)||pocket.backend!=="v2")throw new Error("Expected V2");
-  noSite(pocket.designs[0].result);expect(pocket.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({mounting:{shadeHeight:57.625,pocket:{hangStripHeight:2.375}}});
+  expect(pocket.designs[0].result.ok).toBe(true);expect(pocket.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({mounting:{shadeHeight:57.625,pocket:{hangStripHeight:2.375}}});
  });
  it("prices SmartDrape motors and whole-line accessories with a persisted USB-C allocation",()=>{
   const q=currentQuote("smartdrape","Smart Drapes","F1124",{control_type:"Motorized",stack_option:"Stack Left",control_side:"Left",installation_method:"Wall Mount",hub_required:true});
@@ -149,10 +143,10 @@ describe("Current Norman production configurations",()=>{
   q.designs[0].options_json={...q.designs[0].options_json,smartdrape_remote_quantity:1,smartdrape_remote_channel:4,smartdrape_hub_quantity:1,smartdrape_extra_charging_kits:2,smartdrape_charging_wand_length:39,smartdrape_charging_wand_color:"2052 Day Light",smartdrape_repeaters:2,smartdrape_color_ring_sets:2};
   const priced=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if(!("backend" in priced)||priced.backend!=="v2"||!("backend" in base)||base.backend!=="v2")throw new Error("Expected V2");
-  const d=priced.designs[0],b=base.designs[0];noSite(d.result, JSON.stringify(d.result));noSite(b.result, JSON.stringify(b.result));
-  
-  // Retired quote dollar: expect(d.result.total-b.result.total).toBe(-2*268-2*321+2*43+3*75+2*107+2*43);
-  // Retired quote dollar: expect(d.result.components).toEqual(expect.arrayContaining([expect.objectContaining({id:"operating:motor:smart_motorization:motor",catalogAmount:642})]));
+  const d=priced.designs[0],b=base.designs[0];expect(d.result.ok,JSON.stringify(d.result)).toBe(true);expect(b.result.ok,JSON.stringify(b.result)).toBe(true);
+  if(!d.result.ok||!b.result.ok)throw new Error("Expected valid SmartDrape motor price");
+  expect(d.result.total-b.result.total).toBe(-2*268-2*321+2*43+3*75+2*107+2*43);
+  expect(d.result.components).toEqual(expect.arrayContaining([expect.objectContaining({id:"operating:motor:smart_motorization:motor",catalogAmount:642})]));
   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({motorAccessories:{controller:{quantity:1,channel:4},chargingWand:{length:39,quantity:3}},includedChargingKits:{family:"smartdrape_usb_c",orderQuantity:1,fulfillmentQuantity:1}});
   const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(priced);
   expect(v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection))).toEqual(expect.arrayContaining(["Remote Controls for This Line: 1","Shade Remote Channel: 4","Charging Extension Wand Length: 39"]));
@@ -162,7 +156,7 @@ describe("Current Norman production configurations",()=>{
   q.lines[0].height_whole=70;q.designs[0].lift_system=null;q.designs[0].mount_type="Outside Mount";q.designs[0].shade_type="Light Filtering";
   const priced=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if(!("backend" in priced)||priced.backend!=="v2")throw new Error("Expected V2");
-  const d=priced.designs[0];noSite(d.result);expect(d.selection.heightInches).toBe(70);
+  const d=priced.designs[0];expect(d.result.ok).toBe(true);expect(d.selection.heightInches).toBe(70);
   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({mounting:{orderHeight:70,shadeHeight:68},wand:{drop:36,defaultDrop:36}});
   const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};
   expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(priced);
@@ -170,7 +164,7 @@ describe("Current Norman production configurations",()=>{
   const wall=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if(!("backend" in wall)||wall.backend!=="v2")throw new Error("Expected V2");
   expect(wall.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({wand:{drop:40}});
-  // Retired quote dollar: expect(wall.designs[0].result.ok&&wall.designs[0].result.total).toBe(d.result.ok&&d.result.total);
+  expect(wall.designs[0].result.ok&&wall.designs[0].result.total).toBe(d.result.ok&&d.result.total);
  });
  it("server-prices and persists all 77 SmartDrape colors, including alternating colors and hardware overrides",()=>{
   for(const row of SMARTDRAPE_COORDINATION){
@@ -178,7 +172,7 @@ describe("Current Norman production configurations",()=>{
    q.designs[0].lift_system=null;q.designs[0].mount_type="Outside Mount";q.designs[0].shade_type=row.category.replace(":","");
    const priced=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
    if(!("backend" in priced)||priced.backend!=="v2")throw new Error("Expected V2");
-   const d=priced.designs[0];expect(d.selection.programId).toBe(row.category.includes("Essentials")?"smartdrape_smartdrape_lakeshore_stripe":"smartdrape_smartdrape_light_filtering");noSite(d.result, row.customerColorCode+JSON.stringify(d.result.validationIssues));
+   const d=priced.designs[0];expect(d.selection.programId).toBe(row.category.includes("Essentials")?"smartdrape_smartdrape_lakeshore_stripe":"smartdrape_smartdrape_light_filtering");expect(d.result.ok,row.customerColorCode+JSON.stringify(d.result.validationIssues)).toBe(true);
    expect(d.selection.configuration.norman_assembly_v1).toMatchObject({fabrics:[{customerColorCode:row.customerColorCode,factoryColorCode:row.factoryColorCode}],coordination:{headrail:"4534 Brass"},wand:{color:"3058 White",drop:48}});
    const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};
    expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(priced);
@@ -186,7 +180,7 @@ describe("Current Norman production configurations",()=>{
   const q=currentQuote("smartdrape","Smart Drapes","F1124",{control_type:"Manual",stack_option:"Stack Left",control_side:"Right",installation_method:"Wall Mount",smartdrape_headrail_color:"4534 Brass",smartdrape_wand_color:"3058 White",vane_style:"Alternating",smartdrape_second_color:"F1128"});
   q.designs[0].lift_system=null;q.designs[0].mount_type="Outside Mount";q.designs[0].shade_type="Light Filtering";
   const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in p)||p.backend!=="v2")throw new Error("Expected V2");
-  noSite(p.designs[0].result);
+  expect(p.designs[0].result.ok).toBe(true);
   expect(p.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({alternating:true,fabrics:[{customerColorCode:"F1124"},{customerColorCode:"F1128"}]});
   const customer=v2CustomerConfigurationOptions(customerConfigurationFromSelection(p.designs[0].selection));expect(customer.join(" ")).not.toMatch(/factoryColor|coordinationRange/);
   expect(customer).toContain("Second Alternating Fabric: F1128");
@@ -199,11 +193,11 @@ describe("Current Norman production configurations",()=>{
   q.selectedVariantByLine.right="A";
   const result=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if (!("backend" in result) || result.backend!=="v2")throw new Error("Expected V2 backend");
-  for(const d of result.designs){noSite(d.result);expect(d.result.validationIssues.filter(i=>i.severity==="hard_block")).toEqual([]);}
+  for(const d of result.designs)expect(d.result).toMatchObject({ok:true,validationIssues:[]});
   const left=result.designs[0],right=result.designs[1];
-  
-  // Retired quote dollar: expect(left.result.components.filter(c=>["wood_valance","keystone"].includes(c.priceLineId ?? "")).map(c=>[c.priceLineId,c.catalogAmount])).toEqual(expect.arrayContaining([["keystone",73],["wood_valance",232]]));
-  // Retired quote dollar: expect(right.result.components.filter(c=>["wood_valance","keystone"].includes(c.priceLineId ?? ""))).toEqual([]);
+  if(!left.result.ok||!right.result.ok)throw new Error("Expected valid common valance");
+  expect(left.result.components.filter(c=>["wood_valance","keystone"].includes(c.priceLineId ?? "")).map(c=>[c.priceLineId,c.catalogAmount])).toEqual(expect.arrayContaining([["keystone",73],["wood_valance",232]]));
+  expect(right.result.components.filter(c=>["wood_valance","keystone"].includes(c.priceLineId ?? ""))).toEqual([]);
   expect(left.selection.configuration.perfectsheer_common_valance_v1).toMatchObject({orderedWidths:[36,42],orderSpan:80});
   const reopened=JSON.parse(JSON.stringify(q));for(let i=0;i<2;i++)reopened.designs[i].options_json={...reopened.designs[i].options_json,...result.designs[i].selection.configuration};
   expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(result);
@@ -216,9 +210,9 @@ describe("Current Norman production configurations",()=>{
   q.designs[0].options_json={...q.designs[0].options_json,perfectsheer_remote_quantity:1,perfectsheer_remote_channel:5,perfectsheer_color_ring_sets:2};
   const priced=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if(!("backend" in priced)||priced.backend!=="v2"||!("backend" in base)||base.backend!=="v2")throw new Error("Expected V2");
-  const d=priced.designs[0],b=base.designs[0];noSite(d.result);expect(d.result.validationIssues?.filter(i=>i.severity==="hard_block")).toEqual([]);
-  
-  // Retired quote dollar: expect(d.result.total-b.result.total).toBe(-2*268+2*43);
+  const d=priced.designs[0],b=base.designs[0];expect(d.result.ok).toBe(true);expect(d.result.validationIssues?.filter(i=>i.severity==="hard_block")).toEqual([]);
+  if(!d.result.ok||!b.result.ok)throw new Error("Expected valid control pricing");
+  expect(d.result.total-b.result.total).toBe(-2*268+2*43);
   expect(d.selection.configuration.motorization_selections).toContainEqual({groupId:"smart_motorization",optionId:"smartdial_g2_remote",role:"controller",units:1,billingScope:"once_per_line"});
   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({motorAccessories:{controller:{quantity:1,channel:5,defaultRing:"Black",extraFourColorRingSets:2}}});
   const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};
@@ -232,11 +226,11 @@ describe("Current Norman production configurations",()=>{
   q.designs[0].options_json={...q.designs[0].options_json,perfectsheer_extra_charging_kits:2,perfectsheer_extension_cables:1,perfectsheer_repeaters:2};
   const priced=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if (!("backend" in priced) || priced.backend!=="v2" || !("backend" in base) || base.backend!=="v2") throw new Error("Expected V2 backend");
-  const d=priced.designs[0], b=base.designs[0];noSite(d.result);expect(d.result.validationIssues.filter((i:{severity:string})=>i.severity==='hard_block')).toEqual([]);
-  
-  // Retired quote dollar: expect(d.result.total-b.result.total).toBe(2*43+43+2*107);
-  // Retired quote dollar: expect(d.result.unitPrice).toBe(b.result.unitPrice);
-  // Retired quote dollar: expect(d.result.components.filter(c=>c.billingScope==="once_per_line").map(c=>[c.id,c.units])).toEqual(expect.arrayContaining([["motor:smart_motorization:charging_kit",2],["motor:smart_motorization:extension_cable",1],["motor:smart_motorization:repeater",2]]));
+  const d=priced.designs[0], b=base.designs[0];expect(d.result).toMatchObject({ok:true,validationIssues:[]});
+  if (!d.result.ok || !b.result.ok) throw new Error("Expected motor price");
+  expect(d.result.total-b.result.total).toBe(2*43+43+2*107);
+  expect(d.result.unitPrice).toBe(b.result.unitPrice);
+  expect(d.result.components.filter(c=>c.billingScope==="once_per_line").map(c=>[c.id,c.units])).toEqual(expect.arrayContaining([["motor:smart_motorization:charging_kit",2],["motor:smart_motorization:extension_cable",1],["motor:smart_motorization:repeater",2]]));
   const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};
   expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(priced);
  });
@@ -245,9 +239,9 @@ describe("Current Norman production configurations",()=>{
   q.designs[0].lift_system="Continuous Cord Loop";q.lines[0].quantity=2;
   const priced=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if (!("backend" in priced) || priced.backend!=="v2") throw new Error("Expected V2 backend");
-  const d=priced.designs[0];noSite(d.result);expect(d.result.validationIssues.filter((i:{severity:string})=>i.severity==='hard_block')).toEqual([]);
-  
-  // Retired quote dollar: expect(d.result.unitPrice-d.result.base).toBe(117+28+6*7);
+  const d=priced.designs[0];expect(d.result).toMatchObject({ok:true,validationIssues:[]});
+  if (!d.result.ok) throw new Error("Expected hardware price");
+  expect(d.result.unitPrice-d.result.base).toBe(117+28+6*7);
   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({hardware:{shimQuantity:6,lightGuard:{sideBlockCount:2,topBlockCount:1}}});
   const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};
   expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(priced);
@@ -260,7 +254,7 @@ describe("Current Norman production configurations",()=>{
   q.designs[0].lift_system="Motorized";q.designs[0].motor_type="Norman Smart AC Adapter";q.designs[0].remote_type="Basic Remote";
   const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
-  const d=first.designs[0];noSite(d.result);expect(d.result.validationIssues?.filter(i=>i.severity === "hard_block")).toEqual([]);
+  const d=first.designs[0];expect(d.result.validationIssues?.filter(i=>i.severity === "hard_block")).toEqual([]);expect(d.result.ok).toBe(true);
   expect(d.selection.configuration.motorization_selections).toEqual(expect.arrayContaining([{groupId:"smart_motorization",optionId:"motor",role:"base_motor",units:1},{groupId:"smart_motorization",optionId:"basic_remote_black",role:"controller",units:1}]));
   const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};
   expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(first);
@@ -275,7 +269,7 @@ describe("Current Norman production configurations",()=>{
   q.designs[0].lift_system="Continuous Cord Loop";q.designs[0].valance="Modern Wood Valance";
   const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
-  const d=first.designs[0];noSite(d.result);expect(d.result.validationIssues.filter((i:{severity:string})=>i.severity==='hard_block')).toEqual([]);
+  const d=first.designs[0];expect(d.result).toMatchObject({ok:true,validationIssues:[]});
   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({fabric:{customerFabricCode:"AA0326",customerColorCode:"F1179",factoryFabricCode:"AA0335",factoryColorCode:"F1359"},valance:{type:"Modern Wood Valance",height:4.5,woodFinish:"003 Silk White"},chain:{length:90}});
   const customer=v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection));
   expect(customer).toEqual(expect.arrayContaining(["Wood Valance Finish: 003 Silk White","Custom Cord Length: 90"]));
@@ -293,8 +287,7 @@ describe("Current Norman production configurations",()=>{
   q.selectedVariantByLine.second="A";
   const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
-  for (const row of first.designs) noSite(row.result);
-  // Catalog list cells were base 606 / unit 995 and base 671 / unit 671.
+  expect(first.designs.map(d=>d.result)).toMatchObject([{ok:true,base:606,unitPrice:995,validationIssues:[]},{ok:true,base:671,unitPrice:671,validationIssues:[]}]);
   expect(first.designs[0].selection.configuration.smartfold_common_valance_v1).toMatchObject({orderSpan:80,orderedWidths:[36,42],chargeSharedOptions:true});
   const reopened=JSON.parse(JSON.stringify(q));for(const [i,d]of first.designs.entries())reopened.designs[i].options_json={...reopened.designs[i].options_json,...d.selection.configuration};
   expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(first);
@@ -309,7 +302,7 @@ describe("Current Norman production configurations",()=>{
   const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
   for (const [i,d] of first.designs.entries()) {
-   noSite(d.result);expect(d.result.validationIssues.filter((i:{severity:string})=>i.severity==='hard_block')).toEqual([]);
+   expect(d.result).toMatchObject({ok:true,validationIssues:[]});
    expect(d.selection.configuration.norman_assembly_v1).toMatchObject({chain:{length:i===0?90:60,lengthBasis:"custom",unobstructedBelow:i===0}});
    expect(d.selection.configuration.full_fold_required).toBe("Yes");
    expect(d.selection.configuration.norman_assembly_v1).toMatchObject({sideBySide:{groupId:"Group 1",room:"Office",shadeQuantity:2}});
@@ -328,10 +321,10 @@ describe("Current Norman production configurations",()=>{
   const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
   for(const d of first.designs){
-   noSite(d.result);expect(d.result.validationIssues.filter((i:{severity:string})=>i.severity==='hard_block')).toEqual([]);
+   expect(d.result).toMatchObject({ok:true,validationIssues:[]});
    expect(d.selection.configuration.norman_order_record_v1).toMatchObject({totalConnections:4,connectedLineIds:["audit-line","second"]});
   }
-  // Quote totals 3649 and 2306 were list-factor math on the shared panel and motors.
+  expect(first.designs.map(d=>d.result)).toMatchObject([{base:606,total:3649},{base:671,total:2306}]);
   const reopened=JSON.parse(JSON.stringify(q));for(const [i,d]of first.designs.entries())reopened.designs[i].options_json={...reopened.designs[i].options_json,...d.selection.configuration};
   expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(first);
   reopened.designs[0].options_json.smartfold_common_valance_id=null;
@@ -345,7 +338,7 @@ describe("Current Norman production configurations",()=>{
   q.designs[0].valance="Curved Fascia";
   const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
-  const priced=first.designs[0];noSite(priced.result); // catalog list was base:606,unitPrice:935,validationIssues:[];
+  const priced=first.designs[0];expect(priced.result).toMatchObject({ok:true,base:606,unitPrice:935,validationIssues:[]});
   expect(priced.selection.configuration.norman_assembly_v1).toMatchObject({style:{fabricPattern:"Reverse",fasciaColor:"Anodized Silver",fasciaEndCap:"White",hemColor:"Bronze",hemEndCap:"Chocolate"}});
   const customer=customerConfigurationFromSelection(priced.selection);
   expect(v2CustomerConfigurationOptions(customer)).toEqual(expect.arrayContaining(["Fabric Pattern: Reverse","Fascia Color: Anodized Silver","Hem-Bar Color: Bronze"]));
@@ -356,7 +349,7 @@ describe("Current Norman production configurations",()=>{
   const result=repriceExactQuoteBuilderForServerDate(currentQuote("smartfold","SmartFold Shades","F1709",{smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:0}),"2026-09-19");
   expect(result).toMatchObject({backend:"v2"});
   if ("backend" in result && result.backend==="v2") {
-   noSite(result.designs[0].result); // catalog list was unitPrice:761,validationStatus:"blocked",productStatus:"restriction_source_incomplete",validationIssues:[];
+   expect(result.designs[0].result).toMatchObject({ok:true,unitPrice:761,validationStatus:"blocked",productStatus:"restriction_source_incomplete",validationIssues:[]});
    expect(result.designs[0].snapshot).toBeNull();
   }
  });
@@ -364,7 +357,7 @@ describe("Current Norman production configurations",()=>{
   const q=currentQuote("smartfold","SmartFold Shades","F1709",{smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:3,shim_quantity:999});
   const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
-  noSite(first.designs[0].result); // catalog list was unitPrice:824,validationStatus:"blocked",validationIssues:[],surchargeLines:expect.arrayContaining([expect.objectContaining({id:"shim",amount:63,detail:"7 x 9 units"])});
+  expect(first.designs[0].result).toMatchObject({ok:true,unitPrice:824,validationStatus:"blocked",validationIssues:[],surchargeLines:expect.arrayContaining([expect.objectContaining({id:"shim",amount:63,detail:"7 x 9 units"})])});
   expect(first.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({shimQuantity:9,finishedShadeWidth:35.875,mountingBracketCount:0});
   const reopened=JSON.parse(JSON.stringify(q));
   reopened.designs[0].options_json={...reopened.designs[0].options_json,...first.designs[0].selection.configuration};
@@ -375,7 +368,7 @@ describe("Current Norman production configurations",()=>{
   const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
   const priced=first.designs[0];
-  noSite(priced.result); // catalog list was base:606,unitPrice:941,validationStatus:"blocked",validationIssues:[],surchargeLines:expect.arrayContaining([expect.objectContaining({id:"magnetic_hold_down",amount:28,expect.objectContaining({id:"cordless_operating_pole",amount:89})])});
+  expect(priced.result).toMatchObject({ok:true,base:606,unitPrice:941,validationStatus:"blocked",validationIssues:[],surchargeLines:expect.arrayContaining([expect.objectContaining({id:"magnetic_hold_down",amount:28}),expect.objectContaining({id:"cordless_operating_pole",amount:89})])});
   expect(priced.selection.configuration.norman_order_record_v1).toMatchObject({orderQuantity:1,fulfillmentQuantity:1,retailCharge:0});
   const customer=customerConfigurationFromSelection(priced.selection);
   expect(v2CustomerConfigurationOptions(customer)).toEqual(expect.arrayContaining(["Mounting method: Top Mount with Raceway","Shim layers: 3","Hold-downs: Magnetic","Magnet catch color: Nickel-Plated","Additional pole per shade: 60-inch Cordless Operating Pole"]));
@@ -388,9 +381,9 @@ describe("Current Norman production configurations",()=>{
   q.designs[0].mount_type="Outside Mount";q.designs[0].lift_system=null;q.designs[0].valance="Linear";
   q.lines.push({...q.lines[0],id:"right",width_whole:48});q.designs.push({...q.designs[0],id:"right-A",line_item_id:"right",options_json:{...q.designs[0].options_json}});q.selectedVariantByLine.right="A";
   const batch=prepareSalesQuoteV2PricingBatch({lines:q.lines,selectedDesigns:q.designs,serverDate:"2026-09-19"});
-  for(const row of batch.prepared)expect(row.priceStatus,JSON.stringify(row)).toBe("blocked");
+  for(const row of batch.prepared)expect(row.priceStatus,JSON.stringify(row)).toBe("authoritative");
   const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in p)||p.backend!=="v2")throw new Error("Expected V2");
-  // Retired quote dollar: expect(p.designs[0].result.ok&&p.designs[0].result.total).toBe(784.5);
+  expect(p.designs[0].result.ok&&p.designs[0].result.total).toBe(784.5);
   expect(p.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({wandDrop:60,splitWand:false,components:[expect.objectContaining({brackets:2,shims:4,holdDowns:2,valance:expect.objectContaining({style:"Linear",width:37,returnConnectors:4})})]});
   expect(p.designs[0].selection.configuration.wood_matching_v1).toMatchObject({lineIds:["audit-line","right"]});
   const out=customerConfigurationFromSelection(p.designs[0].selection);expect(out.selections).toMatchObject({wood_wand_drop:60,wood_keystone_count:1,wood_matching_group:"1"});expect(out.selections).not.toHaveProperty("norman_assembly_v1");
@@ -402,12 +395,12 @@ describe("Current Norman production configurations",()=>{
   q.designs[0].lift_system="Cordless";q.designs[0].valance="Linear";
   q.lines.push({...q.lines[0],id:"right"});q.designs.push({...q.designs[0],id:"right-A",line_item_id:"right",options_json:{...q.designs[0].options_json,wood_common_position:2,wood_common_gap_after:0}});q.selectedVariantByLine.right="A";
   const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in p)||p.backend!=="v2")throw new Error("Expected V2");
-  for(const d of p.designs)noSite(d.result, JSON.stringify(d.result));
-  // Retired quote dollar: expect(p.designs[0].result.ok&&p.designs[0].result.total).toBe(877);
-  // Retired quote dollar: expect(p.designs[1].result.ok&&p.designs[1].result.total).toBe(535);
+  for(const d of p.designs)expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+  expect(p.designs[0].result.ok&&p.designs[0].result.total).toBe(877);
+  expect(p.designs[1].result.ok&&p.designs[1].result.total).toBe(535);
   expect(p.designs[0].selection.configuration.wood_common_valance_v1).toMatchObject({chargeSharedOptions:true,finishedWidth:73,pricingStatus:"dealer_reconciled"});
   const reopened=JSON.parse(JSON.stringify(q));p.designs.forEach((d,i)=>reopened.designs[i].options_json={...reopened.designs[i].options_json,...d.selection.configuration});expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(p);
-  const saved=prepareSalesQuoteV2PricingBatch({lines:q.lines,selectedDesigns:q.designs,serverDate:"2026-09-19"});expect(saved.prepared.every(p=>p.priceStatus==="blocked")).toBe(true);
+  const saved=prepareSalesQuoteV2PricingBatch({lines:q.lines,selectedDesigns:q.designs,serverDate:"2026-09-19"});expect(saved.prepared.every(p=>p.priceStatus==="authoritative")).toBe(true);
   q.designs[1].options_json={...q.designs[1].options_json,wood_common_group:null};const broken=prepareSalesQuoteV2PricingBatch({lines:q.lines,selectedDesigns:q.designs,serverDate:"2026-09-19"});expect(broken.prepared.some(p=>p.priceStatus==="blocked")).toBe(true);
  });
  it("retains measured wood cut-outs and derives their price after serialization",()=>{
@@ -416,8 +409,8 @@ describe("Current Norman production configurations",()=>{
   const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
   if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
   const priced=first.designs[0];
-  noSite(priced.result, JSON.stringify(priced.result));
-  // Retired quote dollar: if(priced.result.ok) expect(priced.result.surchargeLines).toContainEqual(expect.objectContaining({id:"cut_out",amount:99}));
+  expect(priced.result.ok,JSON.stringify(priced.result)).toBe(true);
+  if(priced.result.ok) expect(priced.result.surchargeLines).toContainEqual(expect.objectContaining({id:"cut_out",amount:99}));
   expect(priced.selection.configuration).toMatchObject({wood_cutout_left_type:"Corner (Bottom)",wood_cutout_left_width:1,wood_cutout_left_top:20});
   const output=customerConfigurationFromSelection({...priced.selection,configuration:{...priced.selection.configuration,wood_cutout_left_bottom:50,wood_cutout_right_width:4}});
   expect(output.selections).not.toHaveProperty("wood_cutout_left_bottom");

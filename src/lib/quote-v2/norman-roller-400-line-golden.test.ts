@@ -32,12 +32,10 @@ const MOTOR_GUIDE_SHA256 =
   "b095c105b4c35dfd803122b2a9143e5e7de2b847c8c182ee405ee66b1723780b";
 const QUOTE_COUNT = 20;
 const ITEMS_PER_QUOTE = 20;
-// Literal account factors. Standard cost is list × 0.30, the catalog
-// dealerFactor. The July portal fixture still records an observed 0.33; that
-// capture is not this oracle. The shutter lead-time numerator stays 0.297.
-// Keep both literals independent of the policy object so an implementation
-// change cannot silently rewrite the expected arithmetic.
-const STANDARD_FACTOR_NUMERATOR = 3_000;
+// Literal current-account values captured from the live, unsubmitted dealer
+// drafts. Keep these independent of the runtime policy object so changing the
+// implementation cannot silently rewrite the oracle's expected arithmetic.
+const STANDARD_FACTOR_NUMERATOR = 3_300;
 const SLOW_FACTOR_NUMERATOR = 2_970;
 const FACTOR_DENOMINATOR = 10_000;
 const PROCESSING_FEE_BASIS_POINTS = 200;
@@ -1337,30 +1335,258 @@ describe("Norman Roller 20-quote x 20-item source-grid acceptance", () => {
   });
 
   for (let quoteIndex = 0; quoteIndex < QUOTE_COUNT; quoteIndex += 1) {
-    it(`blocks quote ${quoteIndex + 1} until a Norman site price exists`, () => {
+    it(`progressively verifies quote ${quoteIndex + 1} across 20 different grid items`, () => {
+      const pricedStages = Object.fromEntries(
+        STAGES.map((stage) => [stage, priceQuote(quoteIndex, stage)]),
+      ) as Record<
+        PricingStage,
+        { quote: V2Quote; scenarios: readonly GoldenScenario[] }
+      >;
+
       for (const stage of STAGES) {
-        const { quote } = priceQuote(quoteIndex, stage);
-        expect(quote.designs).toHaveLength(ITEMS_PER_QUOTE);
-        for (const design of quote.designs) {
-          expect(design.result, design.designId).toMatchObject({
-            ok: false,
-            code: "NO_SITE_PRICE",
-            blocked: "no_site_price",
-          });
-          expect(design.result).not.toHaveProperty("unitPrice");
-          expect(JSON.stringify(design.result)).not.toMatch(/"effectiveDealerFactor":0\.3/);
-        }
+        verifyQuote(
+          quoteIndex,
+          stage,
+          pricedStages[stage].quote,
+          pricedStages[stage].scenarios,
+        );
       }
+
+      for (let lineIndex = 0; lineIndex < ITEMS_PER_QUOTE; lineIndex += 1) {
+        const scenario = pricedStages.operation.scenarios[lineIndex];
+        const designId = `golden-q${quoteIndex + 1}-line-${lineIndex + 1}-design-A`;
+        const result = (stage: PricingStage) => {
+          const found = pricedStages[stage].quote.designs.find(
+            (entry) => entry.designId === designId,
+          )?.result;
+          if (!found?.ok) {
+            throw new Error(`${designId} did not price during ${stage}.`);
+          }
+          return found;
+        };
+        const base = result("base");
+        const fabric = result("fabric");
+        const accessories = result("accessories");
+        const operation = result("operation");
+        const expectedBase = expectedForStage(scenario, "base");
+        const expectedFabric = expectedForStage(scenario, "fabric");
+        const expectedAccessories = expectedForStage(scenario, "accessories");
+        const expectedOperation = expectedForStage(scenario, "operation");
+
+        // Second route: reprice every stage as its own one-line quote. This
+        // proves Base -> Fabric -> Accessories -> Operating is invariant to
+        // the other 19 items, not only correct inside the aggregate quote.
+        for (const stage of STAGES) {
+          const staged = result(stage);
+          const standaloneQuote = priceLineAlone(
+            quoteIndex,
+            lineIndex,
+            stage,
+          );
+          const standalone = standaloneQuote.designs[0]?.result;
+          if (!standalone?.ok) {
+            throw new Error(
+              `${designId} failed the standalone ${stage} reconciliation.`,
+            );
+          }
+          expect(standalone.componentTotals, `${designId}/${stage}`).toEqual(
+            staged.componentTotals,
+          );
+          expect(
+            comparableComponentAmounts(standalone.components),
+            `${designId}/${stage}`,
+          ).toEqual(comparableComponentAmounts(staged.components));
+          expect(standalone.discountAmount, `${designId}/${stage}`).toBe(
+            staged.discountAmount,
+          );
+          expect(standalone.unitPrice, `${designId}/${stage}`).toBe(
+            staged.unitPrice,
+          );
+          expect(standalone.total, `${designId}/${stage}`).toBe(staged.total);
+          expect(
+            standalone.internalCost?.productCostUnit,
+            `${designId}/${stage}`,
+          ).toBe(staged.internalCost?.productCostUnit);
+          expect(
+            standalone.internalCost?.productCostTotal,
+            `${designId}/${stage}`,
+          ).toBe(staged.internalCost?.productCostTotal);
+          expect(
+            cents(standaloneQuote.customerQuote.total),
+            `${designId}/${stage}`,
+          ).toBe(cents(staged.total));
+        }
+
+        expect(
+          cents(fabric.componentTotals.catalogPerWindow) -
+            cents(base.componentTotals.catalogPerWindow),
+        ).toBe(
+          expectedFabric.catalogPerWindowCents -
+            expectedBase.catalogPerWindowCents,
+        );
+        expect(
+          cents(accessories.componentTotals.catalogPerWindow) -
+            cents(fabric.componentTotals.catalogPerWindow),
+        ).toBe(
+          expectedAccessories.catalogPerWindowCents -
+            expectedFabric.catalogPerWindowCents,
+        );
+        expect(
+          cents(operation.componentTotals.catalogPerWindow) -
+            cents(accessories.componentTotals.catalogPerWindow),
+        ).toBe(
+          expectedOperation.catalogPerWindowCents -
+            expectedAccessories.catalogPerWindowCents,
+        );
+        expect(cents(operation.total) - cents(accessories.total)).toBe(
+          expectedOperation.lineTotalCents -
+            expectedAccessories.lineTotalCents,
+        );
+      }
+
+      const expectedStageTotal = (stage: PricingStage) =>
+        pricedStages[stage].scenarios.reduce(
+          (sum, scenario) => sum + expectedForStage(scenario, stage).lineTotalCents,
+          0,
+        );
+      expect(
+        cents(pricedStages.fabric.quote.total) -
+          cents(pricedStages.base.quote.total),
+      ).toBe(expectedStageTotal("fabric") - expectedStageTotal("base"));
+      expect(
+        cents(pricedStages.accessories.quote.total) -
+          cents(pricedStages.fabric.quote.total),
+      ).toBe(
+        expectedStageTotal("accessories") - expectedStageTotal("fabric"),
+      );
+      expect(
+        cents(pricedStages.operation.quote.total) -
+          cents(pricedStages.accessories.quote.total),
+      ).toBe(
+        expectedStageTotal("operation") - expectedStageTotal("accessories"),
+      );
     });
   }
 
   it("repeats all 400 final lines as an independent aggregate reconciliation", () => {
+    const fingerprints = new Set<string>();
+    let checkedLines = 0;
+    let aggregateCatalogCents = 0;
+    let aggregateBaseCatalogCents = 0;
+    let aggregateFabricCatalogCents = 0;
+    let aggregateAccessoryCatalogCents = 0;
+    let aggregateOperatingCatalogCents = 0;
+    let aggregateCustomerCents = 0;
+    let aggregateWholesaleCents = 0;
+    let aggregateFreightCents = 0;
+    let aggregateProcessingFeeCents = 0;
+    let aggregateLandedCostCents = 0;
+
     for (let quoteIndex = 0; quoteIndex < QUOTE_COUNT; quoteIndex += 1) {
-      const { quote } = priceQuote(quoteIndex, "operation");
-      for (const priced of quote.designs) {
-        expect(priced.result).toMatchObject({ ok: false, code: "NO_SITE_PRICE", blocked: "no_site_price" });
-        expect(priced.result).not.toHaveProperty("unitPrice");
+      const { quote, scenarios } = priceQuote(quoteIndex, "operation");
+      verifyQuote(quoteIndex, "operation", quote, scenarios);
+      aggregateCustomerCents += cents(quote.total);
+      aggregateWholesaleCents += cents(quote.costSummary.productCost);
+      aggregateFreightCents += cents(quote.costSummary.freightHandling);
+      aggregateProcessingFeeCents += cents(quote.costSummary.processingFee);
+      aggregateLandedCostCents += cents(quote.costSummary.dealerCostTotal);
+      for (const [lineIndex, priced] of quote.designs.entries()) {
+        if (!priced.result.ok) {
+          throw new Error(`${priced.designId} failed the aggregate pass.`);
+        }
+        const standaloneQuote = priceLineAlone(
+          quoteIndex,
+          lineIndex,
+          "operation",
+        );
+        const standalone = standaloneQuote.designs[0]?.result;
+        if (!standalone?.ok) {
+          throw new Error(
+            `${priced.designId} failed the standalone reconciliation pass.`,
+          );
+        }
+
+        // This second route executes the same selection as its own one-line
+        // quote. Product and customer calculations must be invariant to the
+        // other 19 lines; order-level freight is deliberately excluded.
+        expect(standalone.componentTotals, priced.designId).toEqual(
+          priced.result.componentTotals,
+        );
+        expect(standalone.discountAmount, priced.designId).toBe(
+          priced.result.discountAmount,
+        );
+        expect(standalone.unitPrice, priced.designId).toBe(
+          priced.result.unitPrice,
+        );
+        expect(standalone.total, priced.designId).toBe(priced.result.total);
+        expect(
+          comparableComponentAmounts(standalone.components),
+          priced.designId,
+        ).toEqual(comparableComponentAmounts(priced.result.components));
+        expect(standalone.internalCost?.productCostUnit, priced.designId).toBe(
+          priced.result.internalCost?.productCostUnit,
+        );
+        expect(standalone.internalCost?.productCostTotal, priced.designId).toBe(
+          priced.result.internalCost?.productCostTotal,
+        );
+        expect(cents(standaloneQuote.customerQuote.total), priced.designId).toBe(
+          cents(priced.result.total),
+        );
+
+        aggregateCatalogCents += cents(
+          priced.result.componentTotals.catalogPerWindow,
+        );
+        for (const component of priced.result.components) {
+          const catalogCents = componentCents(component, "catalogAmount");
+          if (component.category === "base_grid") {
+            aggregateBaseCatalogCents += catalogCents;
+          } else if (component.category === "fabric_upgrade") {
+            aggregateFabricCatalogCents += catalogCents;
+          } else if (component.category === "accessory") {
+            aggregateAccessoryCatalogCents += catalogCents;
+          } else if (component.category === "operating_system") {
+            aggregateOperatingCatalogCents += catalogCents;
+          }
+        }
+        fingerprints.add(priced.result.selectionFingerprint);
+        checkedLines += 1;
       }
     }
+
+    expect(checkedLines).toBe(QUOTE_COUNT * ITEMS_PER_QUOTE);
+    expect(fingerprints.size).toBe(QUOTE_COUNT * ITEMS_PER_QUOTE);
+    expect(aggregateCatalogCents).toBe(
+      aggregateBaseCatalogCents +
+        aggregateFabricCatalogCents +
+        aggregateAccessoryCatalogCents +
+        aggregateOperatingCatalogCents,
+    );
+    // These component and quote checksums are intentionally literal. They make
+    // a one-cent mutation to any grid, option, motor, discount, quantity, or
+    // freight rule fail even if somebody accidentally changes the oracle
+    // alongside it.
+    expect({
+      base: aggregateBaseCatalogCents,
+      fabric: aggregateFabricCatalogCents,
+      accessories: aggregateAccessoryCatalogCents,
+      operating: aggregateOperatingCatalogCents,
+      total: aggregateCatalogCents,
+    }).toEqual({
+      base: 13_468_000,
+      fabric: 1_740_900,
+      accessories: 1_471_300,
+      operating: 4_088_500,
+      total: 20_768_700,
+    });
+    expect(aggregateCustomerCents).toBe(37_601_165);
+    expect(aggregateWholesaleCents).toBe(13_308_877);
+    expect(aggregateFreightCents).toBe(908_000);
+    expect(aggregateProcessingFeeCents).toBe(284_339);
+    expect(aggregateLandedCostCents).toBe(
+      aggregateWholesaleCents +
+        aggregateFreightCents +
+        aggregateProcessingFeeCents,
+    );
+    expect(aggregateLandedCostCents).toBe(14_501_216);
   });
 });
