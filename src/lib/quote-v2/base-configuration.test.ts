@@ -23,6 +23,18 @@ function fixture(id:string,programId?:string){
 function price(f:ReturnType<typeof fixture>){return repriceExactQuoteBuilderForServerDate({lines:[f.line],designs:[f.design],selectedVariantByLine:{[f.line.id]:'A'}},'2026-09-28').designs[0].result;}
 const amounts:Record<string,number>={roller:346,roman:861,honeycomb:415,perfectsheer:927,citylights_aluminum:303,smartprivacy_faux:206.18,faux_wood:228.62,wood_blinds:535,synchrony_vertical:261,smartdrape:842,norman_shutters:525,onyx_shutters:465};
 describe('native V2 base pricing',()=>{
+ it('retains the standard tilt when a Basswood shutter gains complete fit and color selections',()=>{
+  const f=fixture('onyx_shutters','painted_basswood');
+  f.line.height_whole=48;
+  Object.assign(f.design,{mount_type:'Inside Mount',louver_size:'3 1/2"',hinge_color:'White',panel_config:'LR'});
+  Object.assign(f.design.options_json,{shutter_type:'Regular',measurement_basis:'window_size',frame_type:'Z Fine',frame_sides:'4',color:'100_Pure White',split_tilt:'No'});
+  const original=structuredClone(f),result=price(f);
+  expect(result.ok,JSON.stringify(result)).toBe(true);
+  expect(f).toEqual(original);
+  const explicit=structuredClone(f);explicit.design.tilt_type='C - Front Center Tiltrod';
+  const exact=price(explicit);expect(exact.ok,JSON.stringify(exact)).toBe(true);
+  if(result.ok&&exact.ok)expect(result.total).toBe(exact.total);
+ });
  it.each(Object.keys(BASE_CONFIGURATIONS))('%s prices from dimensions, preserves blanks and survives serialization',id=>{
   const f=fixture(id),original=structuredClone(f),r=price(f);
   expect(r.ok,JSON.stringify(r)).toBe(true);if(r.ok)expect(r.unitPrice).toBe(amounts[id]);

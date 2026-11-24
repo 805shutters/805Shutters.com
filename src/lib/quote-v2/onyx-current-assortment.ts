@@ -31,7 +31,7 @@ export function validateOnyxCurrentAssortment(context: SelectionContext): Valida
   const currentFrame = frameAliases[frame] ?? frame;
   if (frame && !row.frames.includes(currentFrame)) add('frame',frame,`${row.material} does not offer this frame in the current dealer portal.`);
   const rawTilt = String(selected.tilt_source_code ?? selected.tilt_type ?? '');
-  const tilt = rawTilt.match(/^(H[123]|C|O)(?:$| - )/)?.[1] ?? ({standard:'C',offset:'O','Offset Tilt Rod':'O'} as Record<string,string>)[rawTilt];
+  const tilt = rawTilt.match(/^(H[123]|C|O)(?:$| - )/)?.[1] ?? ({standard:'C','Standard Tilt':'C',offset:'O','Offset Tilt':'O','Offset Tilt Rod':'O'} as Record<string,string>)[rawTilt];
   if (rawTilt && (!tilt || !row.tiltCodes.includes(tilt))) add('tilt',rawTilt,`${row.material} does not offer this tilt system in the current dealer portal.`);
   // Preserve the exact portal application label; generic old ByPass does not
   // distinguish current open/closed constructions and remains unresolved.

@@ -1211,8 +1211,9 @@ function dealerNetSourceBreakdown(priceInput: PriceInput): PriceResult {
  */
 function sourceCostPlusRetail(
   costResult: PriceBreakdown,
+  requestedDiscountPercent = 0,
   marginPerLine = DEFAULT_SOURCE_COST_PLUS_MARGIN_PER_LINE,
-): PriceBreakdown {
+): PriceResult {
   if (
     costResult.wholesaleBase == null ||
     costResult.wholesaleUnitPrice == null ||
@@ -1239,19 +1240,30 @@ function sourceCostPlusRetail(
     costResult.wholesaleUnitPrice,
     marginPerUnit,
   ]);
+  // Match ordinary catalog discounts: merchandise only, rounded per unit;
+  // fixed/once charges and manufacturer cost retain their original values.
+  const discountPercent = Math.min(100, Math.max(0, Number(requestedDiscountPercent) || 0));
+  const discountAmount = moneyFromCents(Math.round(moneyCents(unitPrice) * discountPercent / 100));
+  const discountedUnitPrice = roundMoney(unitPrice - discountAmount);
+  const total = roundMoney(costResult.wholesaleTotal + marginPerLine - discountAmount * quantity);
+  if (discountedUnitPrice < costResult.wholesaleUnitPrice || total < costResult.wholesaleTotal) {
+    return { ok: false, code: "CUSTOMER_PRICE_BELOW_COST",
+      error: "The requested discount would reduce the customer price below verified dealer cost.",
+      warnings: costResult.warnings };
+  }
   return {
     ...costResult,
     base,
     surchargeLines,
-    unitPrice,
-    discountPercent: 0,
-    discountAmount: 0,
+    unitPrice: discountedUnitPrice,
+    discountPercent,
+    discountAmount,
     // Allocate the indivisible margin cents once so saved unit × quantity +
     // once charges exactly equals the existing line selling-price policy.
     onceTotal: normanLine ? sumMoney([onceWholesale, moneyFromCents(
       moneyCents(marginPerLine) - moneyCents(marginPerUnit) * quantity,
     )]) : onceWholesale,
-    total: sumMoney([costResult.wholesaleTotal, marginPerLine]),
+    total,
     warnings: [
       ...costResult.warnings,
       "Draft customer retail uses the internal source-cost-plus policy for this line.",
@@ -1917,7 +1929,7 @@ function priceQuoteV2SelectionFromCatalog(request: QuoteV2PriceRequest): QuoteV2
   const result =
     scheduledCostResult.ok &&
     SOURCE_COST_PLUS_PRODUCTS.has(selection.productId)
-      ? sourceCostPlusRetail(scheduledCostResult)
+      ? sourceCostPlusRetail(scheduledCostResult, authoritativePriceInput.discountPercent)
       : scheduledCostResult;
   if (!result.ok) {
     return {

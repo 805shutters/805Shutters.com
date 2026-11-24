@@ -229,6 +229,32 @@ describe("Quote V2 authoritative pricing engine", () => {
     );
   });
 
+  it.each([1, 2, 3])("honors the selected SmartPrivacy discount for quantity %s without discounting installation or cost", (quantity) => {
+    const context = selection("smartprivacy_faux", "smartprivacy_faux_2in_and_2_1_2in_slats_cordless", {
+      mount_type: "Inside Mount", product_line: "SmartPrivacy", slat_size: '2"',
+      color: "Pure White", faux_configuration_version: "faux-wood-v2", faux_blind_count: 1,
+    }, { manufacturerId: "norman", widthInches: 30, heightInches: 48, quantity });
+    const price = (discountPercent: number) => priceQuoteV2Selection({
+      selection: { ...context, options: { discount_percent: discountPercent } },
+      priceInput: { productId: context.productId, programId: context.programId!, widthInches: 30, heightInches: 48, quantity, discountPercent },
+      includeInternalCost: true, applyCustomerCharges: true,
+    });
+    const original = price(0), discounted = price(10);
+    expect(original.ok).toBe(true);
+    expect(discounted.ok).toBe(true);
+    if (!original.ok || !discounted.ok) return;
+    const amount = Math.round((original.unitPrice - original.customerCharges!.perWindowTotal) * 10) / 100;
+    expect(discounted.discountPercent).toBe(10);
+    expect(discounted.discountAmount).toBe(amount);
+    expect(discounted.unitPrice).toBeCloseTo(original.unitPrice - amount, 2);
+    expect(discounted.total).toBeCloseTo(original.total - amount * quantity, 2);
+    expect(discounted.customerCharges).toEqual(original.customerCharges);
+    expect(discounted.internalCost).toEqual(original.internalCost);
+    expect(discounted.total).toBeCloseTo(discounted.unitPrice * quantity + discounted.onceTotal, 2);
+    expect(price(0)).toEqual(original);
+    expect(price(100)).toMatchObject({ ok: false, code: "CUSTOMER_PRICE_BELOW_COST" });
+  });
+
   it("sums three explicit SmartPrivacy blind grid cells and adds $125 only once", () => {
     const widths = [23, 48.125, 23];
     const context = selection(
