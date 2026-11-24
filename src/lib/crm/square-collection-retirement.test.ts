@@ -42,7 +42,7 @@ beforeEach(() => {
     if (path === "/v2/orders/order") return Response.json({ order });
     if (path === "/v2/payments/payment") return Response.json({ payment });
     if (path === "/v2/online-checkout/payment-links/link") {
-      if (init.method === "DELETE") { removed = true; return Response.json({ id: "link" }); }
+      if (init.method === "DELETE") { removed = true; if (!(order.tenders as unknown[])?.length) order.state = "CANCELED"; return Response.json({ id: "link" }); }
       return removed ? missing() : Response.json({ payment_link: { id: "link", order_id: "order" } });
     }
     throw new Error(`Unexpected provider path ${path}`);
@@ -53,7 +53,7 @@ it("retires the exact paid link only after receipt verification, then records re
   const db = database();
   await expect(retireLegacySquareRequests(db, target)).resolves.toEqual({ retired: 1 });
   expect(calls.indexOf("GET /v2/payments/payment")).toBeLessThan(calls.indexOf("DELETE /v2/online-checkout/payment-links/link"));
-  expect(calls.at(-1)).toBe("GET /v2/online-checkout/payment-links/link");
+  expect(calls.at(-1)).toBe("GET /v2/payments/payment");
   expect(db.rpc).toHaveBeenCalledWith("clear_stripe_migration_target", expect.objectContaining({ p_target: "quote", p_evidence: expect.stringContaining('"paymentIds":["payment"]') }));
   expect(calls.filter(c => c.startsWith("POST"))).toEqual(["POST /v2/subscriptions/search"]);
 });
@@ -92,4 +92,26 @@ it("does not claim clearance when evidence could not be saved", async () => {
 
 it("refuses production retirement from a preview deployment", async () => {
   vi.stubEnv("VERCEL_ENV", "preview"); await expect(retireLegacySquareRequests(database(), target)).rejects.toMatchObject({ status: 409 }); expect(fetch).not.toHaveBeenCalled();
+});
+
+it("accepts a fully paid OPEN order only with completed matched receipts and post-retirement readback", async () => {
+  order.state = "OPEN";
+  await expect(retireLegacySquareRequests(database(), target)).resolves.toEqual({ retired: 1 });
+  expect(calls.filter(c => c === "GET /v2/payments/payment")).toHaveLength(2);
+});
+it("does not clear a missing link whose unpaid order remains open", async () => {
+  removed = true; order.state = "OPEN"; order.tenders = [];
+  const db = database();
+  await expect(retireLegacySquareRequests(db, target)).rejects.toThrow("not been canceled");
+  expect(db.rpc).not.toHaveBeenCalled();
+});
+it("holds payment changes discovered after link retirement", async () => {
+  const original = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation(async (...args) => {
+    if (removed && new URL(String(args[0])).pathname === "/v2/payments/payment") payment.refunded_money = { amount: 1 };
+    return original(...args);
+  });
+  const db = database();
+  await expect(retireLegacySquareRequests(db, target)).rejects.toThrow("refunded");
+  expect(db.rpc).not.toHaveBeenCalled();
 });

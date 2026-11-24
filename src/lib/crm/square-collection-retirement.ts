@@ -66,7 +66,7 @@ export async function retireLegacySquareRequests(db: SupabaseClient, target: { q
   }
 
   const evidence: Record<string, unknown>[] = [];
-  for (const row of rows) {
+  async function verifyOrder(row: LegacyRequest, afterRetirement = false) {
     if (!row.order_id || !Number.isSafeInteger(Number(row.amount_cents)) || Number(row.amount_cents) <= 0) throw hold("An old link is missing its exact order identity.");
     const order = record((await provider(`/orders/${encodeURIComponent(row.order_id)}`))?.order);
     const metadata = record(order.metadata), total = record(order.total_money);
@@ -85,10 +85,17 @@ export async function retireLegacySquareRequests(db: SupabaseClient, target: { q
       if (ledger.error || ledger.data?.length !== 1 || Math.round(Number(ledger.data[0].amount) * 100) !== amount.amount) throw hold("An old receipt does not agree with the recorded CRM payment.");
       paymentIds.push(id); paid += Number(amount.amount);
     }
-    if ((order.state === "COMPLETED" && paid !== total.amount) || (order.state !== "COMPLETED" && paid !== 0)) throw hold("An old order has an unresolved payment balance.");
+    // Fulfilled payment links can retain an OPEN order after a completed payment.
+    // Payment status and the matched ledger, rather than order state alone, prove payment.
+    if ((paid !== 0 && paid !== total.amount) || (order.state === "COMPLETED" && paid !== total.amount)) throw hold("An old order has an unresolved payment balance.");
+    if (afterRetirement && paid === 0 && order.state !== "CANCELED") throw hold("The old unpaid order has not been canceled.");
+    return { orderState: order.state, paymentIds };
+  }
+  for (const row of rows) {
+    const verified = await verifyOrder(row);
     const link = record((await provider(`/online-checkout/payment-links/${encodeURIComponent(row.id)}`, "GET", undefined, true))?.payment_link);
     if (Object.keys(link).length && (link.id !== row.id || link.order_id !== row.order_id)) throw hold("An old payment link belongs to a different order.");
-    evidence.push({ linkId: row.id, orderId: row.order_id, orderState: order.state, paymentIds, existed: Boolean(link.id) });
+    evidence.push({ linkId: row.id, orderId: row.order_id, ...verified, existed: Boolean(link.id) });
   }
   // All preflight checks succeed before changing any provider link.
   for (const item of evidence) {
@@ -98,6 +105,9 @@ export async function retireLegacySquareRequests(db: SupabaseClient, target: { q
       if (deleted && deleted.id !== item.linkId) throw hold("The provider did not confirm the exact link retirement.");
     }
     if (await provider(path, "GET", undefined, true)) throw hold("The old payment link is still available.");
+    // Re-read order and every tender after retirement to catch a payment or refund
+    // that changed during preflight. An unpaid order must now be canceled.
+    Object.assign(item, await verifyOrder(rows.find(row => row.id === item.linkId)!, true));
   }
   if (JSON.stringify(await requests()) !== JSON.stringify(rows)) throw hold("Historical requests changed during verification.");
   const result = await db.rpc("clear_stripe_migration_target", {
