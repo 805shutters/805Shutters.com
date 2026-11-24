@@ -10,13 +10,15 @@ function fixture(options: { status?: string; error?: { code: string }; concurren
   const rpc = vi.fn(async () => { mutations(); attempted = true; return { data: [], error: options.error || null }; });
   const db = { rpc, from(table: string) {
     let writing = false;
+    let suppressionOnly = false;
     const result = () => {
+      if (suppressionOnly) return { data: [], error: null };
       if (writing) { attempted = true; return { data: [], error: options.error || null }; }
       return { data: table === "crm_quotes" ? (attempted && options.concurrent ? { ...quote, signed_at: "2026-09-23T00:00:00Z", customer_signature: "Original signer" } : quote)
         : table === "crm_quote_line_items" ? lines : [], error: null };
     };
     const builder = { select: () => builder, eq: () => builder, is: () => builder,
-      update: () => { writing = true; mutations(); return builder; },
+      update: (patch: Record<string, unknown>) => { suppressionOnly = !patch.signed_at; writing = true; mutations(); return builder; },
       maybeSingle: async () => result(),
       then(resolve: (r: ReturnType<typeof result>) => unknown) { return Promise.resolve(resolve(result())); },
     };

@@ -11,6 +11,7 @@ const STATUS_CALLBACK_RETRY_FRAGMENT = "#rc=2&rp=ct,rt,5xx";
 type NotificationSource =
   | "public_contract_accept"
   | "public_contract_retry"
+  | "signed_sms_retry"
   | "in_home_sold";
 
 export type SoldQuoteSmsRecipient = {
@@ -338,6 +339,7 @@ export async function sendSoldQuoteSmsNotifications(
       ...(recipient.role === "primary" ? { ownerAlert: true } : {}),
       body,
       statusCallback,
+      timeoutMs: 15_000,
     });
     const persisted = await finishDelivery(supabase, claim.row, result);
     const delivery: SoldQuoteSmsDelivery = {

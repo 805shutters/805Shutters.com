@@ -1922,6 +1922,15 @@ export async function acceptPublicQuote(
     throw new CrmAuthError(409, "This contract was updated since you opened it. Please refresh to review the new total before signing.");
   }
 
+  // Persist controlled-flow suppression before the signature transaction can
+  // enqueue its durable staff-alert retry.
+  if (input.notify === false) {
+    const { error: suppressionError } = await supabase.from("crm_quotes").update({
+      meta: { ...record(quote.meta), sold_sms_suppressed: true },
+    }).eq("id", quote.id).is("signed_at", null);
+    if (suppressionError) throw new CrmAuthError(502, "Notification suppression could not be saved.");
+    quote.meta = { ...record(quote.meta), sold_sms_suppressed: true };
+  }
   const claimToken = await claimTokenForResolvedQuote(supabase, quote, token);
 
   // Atomic claim: only the first request that flips signed_at from null wins
