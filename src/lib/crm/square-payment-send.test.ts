@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCrmUser } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
 import { ensureShareToken, loadPublicQuoteByToken, type PublicQuote } from "@/lib/crm/public-quote";
-import { createSquarePaymentLink, isSquareConfigured } from "@/lib/finance/square";
+import { isStripeConfigured } from "@/lib/finance/stripe";
 import { createStripePaymentLink } from "@/lib/crm/stripe-collection";
 import { buildSquareOrderPaymentEmail, sendEmail } from "@/lib/notify/email";
 import { sendSms } from "@/lib/notify/twilio";
@@ -15,7 +15,7 @@ vi.mock("@/lib/crm/square-payment-requests", () => ({ trackSquarePaymentRequest:
 vi.mock("@/lib/crm/backend", () => ({ recordCrmActivity: vi.fn() }));
 vi.mock("@/lib/crm/public-quote", () => ({ ensureShareToken: vi.fn(), loadPublicQuoteByToken: vi.fn() }));
 vi.mock("@/lib/finance/square", () => ({
-  isSquareConfigured: vi.fn(), createSquarePaymentLink: vi.fn(), dollarsToCents: (amount: number) => Math.round(amount * 100)
+  isStripeConfigured: vi.fn(), createSquarePaymentLink: vi.fn(), dollarsToCents: (amount: number) => Math.round(amount * 100)
 }));
 vi.mock("@/lib/finance/stripe", () => ({ isStripeConfigured: vi.fn(() => true) }));
 vi.mock("@/lib/crm/stripe-collection", () => ({ createStripePaymentLink: vi.fn() }));
@@ -31,13 +31,13 @@ const sendSquareOrderPaymentLink = (client: SupabaseClient, id: string, type: "d
 const quoteId = "22222222-2222-4222-8222-222222222222";
 const actor = { email: "staff@example.test", userId: "11111111-1111-4111-8111-111111111111" };
 const customerEmail = "customer@example.test";
-const link = { id: "square-test-link", url: "https://square.example.test/pay/test" };
+const link = { id: "cs_test_link", url: "https://checkout.stripe.com/c/pay/test", provider: "stripe" as const, requestId: "req-1" };
 const mail = { subject: "Your payment request", html: "<p>Test payment request</p>", text: "Test payment request" };
 type AmountRow = { amount: number; payment_label?: string };
 
 function quote(patch: Partial<PublicQuote> = {}): PublicQuote {
   return {
-    id: quoteId, token: "test-share-token", customerName: "Test customer", customerEmail,
+    signed: true, id: quoteId, token: "test-share-token", customerName: "Test customer", customerEmail,
     quoteNumber: "Q-TEST", total: 1000, depositDue: 500, balanceDue: 500, ...patch
   } as PublicQuote;
 }
@@ -68,18 +68,18 @@ function ledger(options: { payments?: AmountRow[]; creditsIn?: AmountRow[]; cred
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.stubEnv("CARD_PAYMENT_PROVIDER", "square");
-  vi.mocked(isSquareConfigured).mockReturnValue(true);
+  vi.stubEnv("CARD_PAYMENT_PROVIDER", "stripe");
+  vi.mocked(isStripeConfigured).mockReturnValue(true);
   vi.mocked(ensureShareToken).mockResolvedValue({ token: "test-share-token", url: "https://805.example.test/quote/test-share-token" });
   vi.mocked(loadPublicQuoteByToken).mockResolvedValue(quote());
-  vi.mocked(createSquarePaymentLink).mockResolvedValue(link);
+  vi.mocked(createStripePaymentLink).mockResolvedValue(link);
   vi.mocked(buildSquareOrderPaymentEmail).mockReturnValue(mail);
   vi.mocked(sendEmail).mockResolvedValue({ sent: true, id: "email-test-id" });
   vi.mocked(recordCrmActivity).mockResolvedValue({ recorded: true });
 });
 
 function expectNoExternalRequest() {
-  expect(createSquarePaymentLink).not.toHaveBeenCalled();
+  expect(createStripePaymentLink).not.toHaveBeenCalled();
   expect(createStripePaymentLink).not.toHaveBeenCalled();
   expect(sendEmail).not.toHaveBeenCalled();
   expect(recordCrmActivity).not.toHaveBeenCalled();
@@ -95,7 +95,7 @@ describe("Square payment send service safeguards", () => {
     });
     const result = await sendSquareOrderPaymentLink(db.client, quoteId, "balance", actor, { expectedAmount: 1850, expectedRecipient: customerEmail });
     expect(result.amount).toBe(1850);
-    expect(createSquarePaymentLink).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 185000 }));
+    expect(createStripePaymentLink).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ amountCents: 185000 }));
     expect(db.pages.filter((page) => page.key === "payments").map((page) => page.from)).toEqual([0, 250, 500, 750, 1000, 1250, 1251]);
     expect(db.pages.filter((page) => page.key === "creditsIn").map((page) => page.from)).toEqual([0, 250, 500, 750, 751]);
     expect(db.pages.filter((page) => page.key === "creditsOut").map((page) => page.from)).toEqual([0, 250, 500, 601]);
@@ -160,7 +160,6 @@ describe("Square payment send service safeguards", () => {
     const sent = await sendSquareOrderPaymentLink(ledger().client, quoteId, "deposit", actor, { expectedAmount: 500, expectedRecipient: customerEmail });
     expect(sent.url).toMatch(/^https:\/\/checkout\.stripe\.com\//);
     expect(createStripePaymentLink).toHaveBeenCalledOnce();
-    expect(createSquarePaymentLink).not.toHaveBeenCalled();
   });
 
   it("returns 503 from the payment-link route when the provider is unset", async () => {
@@ -175,7 +174,7 @@ describe("Square payment send service safeguards", () => {
   });
 
   it("does not load or mutate quote data when Square is unconfigured", async () => {
-    vi.mocked(isSquareConfigured).mockReturnValue(false);
+    vi.mocked(isStripeConfigured).mockReturnValue(false);
     await expect(sendSquareOrderPaymentLink(ledger().client, quoteId, "deposit", actor)).rejects.toMatchObject({ status: 503 });
     expect(ensureShareToken).not.toHaveBeenCalled();
     expectNoExternalRequest();
@@ -190,7 +189,7 @@ describe("Square payment send service safeguards", () => {
   });
 
   it("does not email or record sent when Square link creation fails", async () => {
-    vi.mocked(createSquarePaymentLink).mockRejectedValue(new Error("Square unavailable"));
+    vi.mocked(createStripePaymentLink).mockRejectedValue(new Error("Square unavailable"));
     await expect(sendSquareOrderPaymentLink(ledger().client, quoteId, "deposit", actor)).rejects.toThrow("Square unavailable");
     expect(sendEmail).not.toHaveBeenCalled();
     expect(recordCrmActivity).not.toHaveBeenCalled();
@@ -199,19 +198,19 @@ describe("Square payment send service safeguards", () => {
   it("sends the verified partial deposit amount from the fixed 805 account", async () => {
     const db = ledger({ payments: [{ amount: 100, payment_label: "Deposit payment" }] });
     const result = await sendSquareOrderPaymentLink(db.client, quoteId, "deposit", actor, { expectedAmount: 400, expectedRecipient: " CUSTOMER@EXAMPLE.TEST " });
-    expect(createSquarePaymentLink).toHaveBeenCalledExactlyOnceWith({ amountCents: 40000, title: "Deposit — 805 Shutters (Q-TEST)", quoteId, jobId: "job-1", idempotencyKey: undefined, paymentType: "deposit", buyerEmail: customerEmail });
-    expect(sendEmail).toHaveBeenCalledExactlyOnceWith({ to: customerEmail, from: "805 Shutters <805@805shutters.com>", idempotencyKey: undefined, ...mail });
+    expect(createStripePaymentLink).toHaveBeenCalledExactlyOnceWith(expect.anything(), { amountCents: 40000, title: "Deposit — 805 Shutters (Q-TEST)", quoteId, jobId: "job-1", idempotencyKey: undefined, paymentType: "deposit", buyerEmail: customerEmail });
+    expect(sendEmail).toHaveBeenCalledExactlyOnceWith({ to: customerEmail, from: "805 Shutters <805@805shutters.com>", idempotencyKey: "stripe-request-req-1", ...mail });
     expect(buildSquareOrderPaymentEmail).toHaveBeenCalledWith("Test customer", link.url, expect.objectContaining({ paymentType: "deposit", amount: 400, quoteNumber: "Q-TEST" }));
     expect(result).toMatchObject({ amount: 400, recipient: customerEmail, url: link.url, email: { sent: true, id: "email-test-id" }, deliveryState: "accepted", providerStatus: "accepted", providerMessageId: "email-test-id" });
     expect(result).toMatchObject({ auditRecorded: true, warning: null });
-    expect(recordCrmActivity).toHaveBeenCalledWith(db.client, actor, expect.objectContaining({ action: "square_deposit_link.send", metadata: expect.objectContaining({ amount: 400, recipient: customerEmail, emailSent: true, squarePaymentLinkId: link.id }) }));
+    expect(recordCrmActivity).toHaveBeenCalledWith(db.client, actor, expect.objectContaining({ action: "stripe_deposit_link.send", metadata: expect.objectContaining({ amount: 400, recipient: customerEmail, emailSent: true, cardPaymentLinkId: link.id }) }));
   });
 
   it("sends only the balance portion after recorded payments and credits", async () => {
     const db = ledger({ payments: [{ amount: 100, payment_label: "Deposit" }], creditsIn: [{ amount: 250 }], creditsOut: [{ amount: 50 }] });
     const result = await sendSquareOrderPaymentLink(db.client, quoteId, "balance", actor, { expectedAmount: 300, expectedRecipient: customerEmail });
     expect(result).toMatchObject({ paymentType: "balance", amount: 300, email: { sent: true } });
-    expect(createSquarePaymentLink).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 30000, paymentType: "balance" }));
+    expect(createStripePaymentLink).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ amountCents: 30000, paymentType: "balance" }));
   });
 
   it.each([{ sent: false, error: "Mail provider rejected delivery" }, { sent: false, skipped: "resend not configured" }])("keeps email failure distinct from link creation: %j", async (emailResult) => {
@@ -257,7 +256,7 @@ describe("Square payment send service safeguards", () => {
     expect(result.warning).toContain("activity log");
     expect(result.warning).toContain("before retrying");
     expect(sendEmail).toHaveBeenCalledTimes(1);
-    expect(createSquarePaymentLink).toHaveBeenCalledTimes(1);
+    expect(createStripePaymentLink).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -270,7 +269,7 @@ describe("custom Square payment requests", () => {
       expectedAmount: 937, expectedRecipient: customerEmail, customAmount: 937,
     });
     expect(result.amount).toBe(937);
-    expect(createSquarePaymentLink).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+    expect(createStripePaymentLink).toHaveBeenCalledExactlyOnceWith(expect.anything(), expect.objectContaining({
       amountCents: 93700, quoteId, jobId: "job-1", paymentType: "balance", buyerEmail: customerEmail,
       title: "Order payment — 805 Shutters (Q-TEST)",
     }));
@@ -309,7 +308,7 @@ describe("custom Square payment requests", () => {
     await sendSquareOrderPaymentLink(ledger().client, quoteId, "deposit", actor, {
       customAmount: 123.45, expectedAmount: 123.45, expectedRecipient: customerEmail,
     });
-    expect(createSquarePaymentLink).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 12345, paymentType: "deposit" }));
+    expect(createStripePaymentLink).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ amountCents: 12345, paymentType: "deposit" }));
   });
 });
 
@@ -331,7 +330,7 @@ describe("mobile text confirmation", () => {
   ])("rejects a stale amount or phone before link creation or texting", async confirmation => {
     await expect(sendCurrentSquareOrderPaymentLink(ledger({}).client, quoteId, "deposit", actor, null,
       { channel: "text", phone: "+18055551212" }, confirmation)).rejects.toMatchObject({ status: 409 });
-    expect(createSquarePaymentLink).not.toHaveBeenCalled();
+    expect(createStripePaymentLink).not.toHaveBeenCalled();
     expect(sendSms).not.toHaveBeenCalled();
   });
 });
@@ -345,20 +344,20 @@ describe("mobile full and partial balance collection", () => {
       collectionMode: "full", expectedOutstanding: 1001.2, expectedAmount: 1001.2, expectedRecipient: customerEmail,
     });
     expect(result).toMatchObject({ amount: 1001.2, remainingAfterPayment: 0 });
-    expect(createSquarePaymentLink).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 100120, paymentType: "balance" }));
+    expect(createStripePaymentLink).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ amountCents: 100120, paymentType: "balance" }));
   });
   it("collects 400 now and can collect the exact 601.20 remainder after recording the first payment", async () => {
     const first = await sendSquareOrderPaymentLink(ledger({ payments: originalPayments }).client, quoteId, "balance", actor, {
       collectionMode: "partial", customAmount: 400, expectedOutstanding: 1001.2, expectedAmount: 400, expectedRecipient: customerEmail,
     });
     expect(first).toMatchObject({ amount: 400, remainingAfterPayment: 601.2 });
-    expect(createSquarePaymentLink).toHaveBeenCalledTimes(1);
+    expect(createStripePaymentLink).toHaveBeenCalledTimes(1);
     expect(recordCrmActivity).toHaveBeenCalledWith(expect.anything(), actor, expect.objectContaining({ metadata: expect.objectContaining({ collectionMode: "partial", outstandingBeforeRequest: 1001.2, remainingAfterPayment: 601.2 }) }));
     const second = await sendSquareOrderPaymentLink(ledger({ payments: [...originalPayments, { amount: 400, payment_label: "Balance payment" }] }).client, quoteId, "balance", actor, {
       collectionMode: "full", expectedOutstanding: 601.2, expectedAmount: 601.2, expectedRecipient: customerEmail,
     });
     expect(second).toMatchObject({ amount: 601.2, remainingAfterPayment: 0 });
-    expect(createSquarePaymentLink).toHaveBeenLastCalledWith(expect.objectContaining({ amountCents: 60120 }));
+    expect(createStripePaymentLink).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ amountCents: 60120 }));
   });
   it("allows a partial collection larger than the old balance-only portion", async () => {
     const result = await sendSquareOrderPaymentLink(ledger({ payments: originalPayments }).client, quoteId, "balance", actor, {
@@ -387,7 +386,7 @@ describe('Payment Hub full and custom requests', () => {
       { channel: 'email', idempotencyKey: 'full-key' },
       { requestKind: 'full', expectedAmount: 875, expectedRecipient: customerEmail });
     expect(result.amount).toBe(875);
-    expect(createSquarePaymentLink).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 87500, paymentType: 'balance' }));
+    expect(createStripePaymentLink).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ amountCents: 87500, paymentType: 'balance' }));
     expect(buildSquareOrderPaymentEmail).toHaveBeenCalledWith(expect.anything(), link.url, expect.objectContaining({ fullAmount: true }));
   });
   it('permits a specific amount spanning both deposit and balance and texts only that amount', async () => {
@@ -396,7 +395,7 @@ describe('Payment Hub full and custom requests', () => {
       { channel: 'text', phone: '+18055551212', idempotencyKey: 'custom-key' },
       { requestKind: 'custom', customAmount: 750.25, expectedAmount: 750.25, expectedRecipient: '+18055551212' });
     expect(result.amount).toBe(750.25);
-    expect(createSquarePaymentLink).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 75025 }));
+    expect(createStripePaymentLink).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ amountCents: 75025 }));
     expect(sendSms).toHaveBeenCalledWith(expect.objectContaining({ to: '+18055551212', body: expect.stringContaining('$750.25') }));
     expect(sendEmail).not.toHaveBeenCalled();
   });

@@ -14,7 +14,7 @@ let from: ReturnType<typeof vi.fn>;
 let insert: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.stubEnv("CARD_PAYMENT_PROVIDER", "square");
+  vi.stubEnv("CARD_PAYMENT_PROVIDER", "stripe");
   insert = vi.fn().mockResolvedValue({ error: null });
   from = vi.fn(table => {
     const data = table === "crm_quotes" ? { id: "q1", job_id: "j1", customer_phone: "8055551212" } : table === "crm_jobs" ? { id: "j1", phone: "8055551212", meta: {} } : null;

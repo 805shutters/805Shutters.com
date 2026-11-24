@@ -16,7 +16,7 @@ describe("card provider selection", () => {
     process.env.CARD_PAYMENT_PROVIDER = "stripe";
     expect(cardProvider()).toBe("stripe");
     process.env.CARD_PAYMENT_PROVIDER = "square";
-    expect(cardProvider()).toBe("square");
+    expect(() => cardProvider()).toThrow("Square collection is retired");
   });
 
   it("treats blank and invalid values as a 503 refusal", () => {
@@ -26,17 +26,17 @@ describe("card provider selection", () => {
       expect(() => cardProvider()).toThrow(expect.objectContaining({ status: 503 }));
     }
     process.env.CARD_PAYMENT_PROVIDER = "paypal";
-    expect(() => cardProvider()).toThrow("Unsupported card payment provider.");
+    expect(() => cardProvider()).toThrow("Card collection requires Stripe. Square collection is retired.");
   });
 
   it("does not ask Square for a wallet application id unless Square is explicit", async () => {
     const resolve = vi.fn(async () => "sq0idp-test");
     delete process.env.CARD_PAYMENT_PROVIDER;
-    await expect(squareWalletApplicationId(resolve)).rejects.toBeInstanceOf(CardProviderConfigError);
+    await expect(squareWalletApplicationId(resolve)).resolves.toBeNull();
     process.env.CARD_PAYMENT_PROVIDER = "stripe";
     await expect(squareWalletApplicationId(resolve)).resolves.toBeNull();
     process.env.CARD_PAYMENT_PROVIDER = "square";
-    await expect(squareWalletApplicationId(resolve)).resolves.toBe("sq0idp-test");
-    expect(resolve).toHaveBeenCalledOnce();
+    await expect(squareWalletApplicationId(resolve)).resolves.toBeNull();
+    expect(resolve).not.toHaveBeenCalled();
   });
 });

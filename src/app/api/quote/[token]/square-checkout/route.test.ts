@@ -45,7 +45,7 @@ describe("public card checkout provider gate", () => {
     process.env.CARD_PAYMENT_PROVIDER = "paypal";
     const invalid = await post();
     expect(invalid.status).toBe(503);
-    expect(await invalid.json()).toMatchObject({ message: "Unsupported card payment provider." });
+    expect(await invalid.json()).toMatchObject({ message: "Card collection requires Stripe. Square collection is retired." });
 
     expect(createSquarePaymentLink).not.toHaveBeenCalled();
     expect(createStripePaymentLink).not.toHaveBeenCalled();

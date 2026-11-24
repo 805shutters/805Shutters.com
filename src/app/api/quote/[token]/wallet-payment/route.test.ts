@@ -32,25 +32,13 @@ beforeEach(() => {
   vi.mocked(isSquareConfigured).mockReturnValue(true);
 });
 
-describe("wallet payment provider gate", () => {
-  it("refuses an unset provider before any Square call", async () => {
+describe("retired Square endpoint", () => {
+  it.each(["", "stripe", "square"])("rejects old tokens with provider %s", async (provider) => {
+    process.env.CARD_PAYMENT_PROVIDER = provider;
     const response = await post();
-    expect(response.status).toBe(503);
-    expect(await response.json()).toMatchObject({ message: "Card payment provider is not configured." });
+    expect(response.status).toBe(410);
+    expect(JSON.stringify(await response.json())).toContain("retired");
     expect(createSquareWalletPayment).not.toHaveBeenCalled();
     expect(loadPublicQuoteByToken).not.toHaveBeenCalled();
-  });
-
-  it("keeps Stripe on card checkout and still recognizes explicit Square", async () => {
-    process.env.CARD_PAYMENT_PROVIDER = "stripe";
-    expect((await post()).status).toBe(409);
-    expect(createSquareWalletPayment).not.toHaveBeenCalled();
-
-    process.env.CARD_PAYMENT_PROVIDER = "square";
-    vi.mocked(isSquareConfigured).mockReturnValue(false);
-    const response = await post();
-    expect(response.status).toBe(503);
-    expect(await response.json()).toMatchObject({ message: "Wallet payments are not enabled yet." });
-    expect(createSquareWalletPayment).not.toHaveBeenCalled();
   });
 });

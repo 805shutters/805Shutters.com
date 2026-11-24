@@ -1,6 +1,6 @@
 import { CrmAuthError } from "@/lib/crm/auth";
 
-/** Server-only selection. Exactly "square" or "stripe"; anything else fails closed. */
+/** Historical records retain their provider. All new card collection is Stripe-only. */
 export type CardProvider = "square" | "stripe";
 
 export class CardProviderConfigError extends CrmAuthError {
@@ -12,19 +12,17 @@ export class CardProviderConfigError extends CrmAuthError {
 
 export function cardProvider(): CardProvider {
   const value = process.env.CARD_PAYMENT_PROVIDER;
-  if (value === "square" || value === "stripe") return value;
-  const missing = value === undefined || value.trim() === "";
+  if (value === "stripe") return "stripe";
   throw new CardProviderConfigError(
-    missing
+    value === undefined || value.trim() === ""
       ? "Card payment provider is not configured."
-      : "Unsupported card payment provider.",
+      : "Card collection requires Stripe. Square collection is retired.",
   );
 }
 
-/** Square wallet application id only when Square is the explicit provider. */
+/** Compatibility shim: legacy embedded Square wallets are permanently retired. */
 export async function squareWalletApplicationId(
   resolve: () => Promise<string>,
 ): Promise<string | null> {
-  if (cardProvider() !== "square") return null;
-  return resolve();
+  return null;
 }

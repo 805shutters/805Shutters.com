@@ -3,6 +3,7 @@ import {
   createStripePaymentLink,
   retireStripePaymentLink,
   synchronizeStripeRequest,
+  stripeReservationError,
   type RequestRow,
 } from "./stripe-collection";
 import { stripeRequest, verifyStripeAccount } from "@/lib/finance/stripe";
@@ -12,6 +13,8 @@ vi.mock("@/lib/finance/stripe", async () => ({
   stripeRequest: vi.fn(),
   verifyStripeAccount: vi.fn(),
 }));
+vi.mock("./square-collection-retirement", () => ({ retireLegacySquareRequests: vi.fn() }));
+import { retireLegacySquareRequests } from "./square-collection-retirement";
 const input = {
   amountCents: 50000,
   title: "Deposit",
@@ -106,6 +109,31 @@ it("fails closed if reservation cannot be saved", async () => {
   await expect(createStripePaymentLink(db, input)).rejects.toThrow("reserved");
   expect(stripeRequest).not.toHaveBeenCalled();
 });
+it.each([
+  ["Existing Square requests require verified retirement or resolution before Stripe collection.", "Square clearance review"],
+  ["Amount exceeds current balance.", "exceeds the current balance"],
+  ["Existing card request must be reconciled and expired before replacement.", "reconciled and expired"],
+  ["Exact active job ledger is required.", "active customer order"],
+])("reports reservation rejection before any checkout is created: %s", async (message, expected) => {
+  const db = database();
+  vi.mocked(db.rpc).mockResolvedValue({ data: null, error: { code: "P0001", message } } as never);
+  await expect(createStripePaymentLink(db, input)).rejects.toMatchObject({
+    status: 409, message: expect.stringContaining(expected),
+  });
+  expect(stripeRequest).not.toHaveBeenCalled();
+});
+it("does not expose unexpected database messages or classify infrastructure errors as business conflicts", () => {
+  for (const error of [
+    { code: "XX000", message: "private database details" },
+    { code: "P0001", message: "unrecognized internal error" },
+    { code: "08006", message: "Amount exceeds current balance." },
+  ]) {
+    const result = stripeReservationError(error);
+    expect(result.status).toBe(502);
+    expect(result.message).toContain("Payment link was not sent.");
+    expect(result.message).not.toContain(error.message);
+  }
+});
 it("does not expire a paid or mismatched checkout", async () => {
   const existing = { ...row, session_id: "cs_test_1" };
   vi.mocked(stripeRequest).mockResolvedValue({
@@ -195,4 +223,24 @@ it("expires an open checkout when another receipt reduced the shared balance", a
     "/v1/checkout/sessions/cs_test/expire",
     expect.anything(),
   );
+});
+
+it("verifies legacy retirement and reserves the current balance again before live Stripe checkout", async () => {
+  vi.mocked(verifyStripeAccount).mockResolvedValue({ account: "acct_fixture", livemode: true, key: "fixture", environment: "live" });
+  vi.mocked(stripeRequest).mockResolvedValue({ id: "cs_live_fixture", url: "https://checkout.stripe.com/c/pay/fixture", livemode: true, expires_at: Math.floor(Date.now()/1000)+3600 });
+  vi.mocked(retireLegacySquareRequests).mockResolvedValue({ retired: 1 });
+  const db = database({ ...row, livemode: true });
+  vi.mocked(db.rpc).mockResolvedValueOnce({ data: null, error: { code: "P0001", message: "Existing Square requests require verified retirement or resolution before Stripe collection." } } as never);
+  await expect(createStripePaymentLink(db, input)).resolves.toMatchObject({ provider: "stripe" });
+  expect(retireLegacySquareRequests).toHaveBeenCalledWith(db, { quoteId: "quote", bookkeepingEntryId: undefined, jobId: "job" });
+  expect(db.rpc).toHaveBeenCalledTimes(2);
+  expect(vi.mocked(retireLegacySquareRequests).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(stripeRequest).mock.invocationCallOrder[0]);
+});
+it("never creates Stripe checkout when historical retirement is unresolved", async () => {
+  vi.mocked(verifyStripeAccount).mockResolvedValue({ account: "acct_fixture", livemode: true, key: "fixture", environment: "live" });
+  vi.mocked(retireLegacySquareRequests).mockRejectedValueOnce(new Error("retirement unresolved"));
+  const db = database();
+  vi.mocked(db.rpc).mockResolvedValue({ data: null, error: { code: "P0001", message: "Existing Square requests require verified retirement or resolution before Stripe collection." } } as never);
+  await expect(createStripePaymentLink(db, input)).rejects.toThrow("retirement unresolved");
+  expect(stripeRequest).not.toHaveBeenCalled(); expect(db.rpc).toHaveBeenCalledTimes(1);
 });

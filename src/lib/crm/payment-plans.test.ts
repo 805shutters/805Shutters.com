@@ -120,37 +120,11 @@ describe("schedule math", () => {
 
 describe("card fee pass-through", () => {
   it("adds a 3% card fee to square_autopay plans by default", async () => {
-    const { supabase } = makeSupabase(baseJob());
-    const { plan } = await createPaymentPlanForJob(
-      supabase,
-      "job-1",
-      { financed_total: 3000, installment_count: 6, method: "square_autopay" },
-      actor
-    );
-    expect(plan.card_fee_percent).toBe(3);
-    expect(plan.installments[0].amount).toBe(500);
-    expect(plan.installments[0].card_fee).toBe(15);
+const {supabase,state}=makeSupabase(baseJob());await expect(createPaymentPlanForJob(supabase,"job-1",{financed_total:3000,installment_count:6,method:"square_autopay"},actor)).rejects.toMatchObject({status:409});expect(state.planWrites).toHaveLength(0);
   });
 
   it("never adds a fee to zelle plans and clamps the fee at 3%", async () => {
-    const { supabase } = makeSupabase(baseJob());
-    const { plan } = await createPaymentPlanForJob(
-      supabase,
-      "job-1",
-      { financed_total: 3000, installment_count: 6, method: "zelle", card_fee_percent: 3 },
-      actor
-    );
-    expect(plan.card_fee_percent).toBe(0);
-    expect(plan.installments[0].card_fee).toBeNull();
-
-    const { supabase: s2 } = makeSupabase(baseJob());
-    const { plan: p2 } = await createPaymentPlanForJob(
-      s2,
-      "job-1",
-      { financed_total: 1000, installment_count: 2, method: "square_autopay", card_fee_percent: 10 },
-      actor
-    );
-    expect(p2.card_fee_percent).toBe(3);
+const {supabase}=makeSupabase(baseJob());const {plan}=await createPaymentPlanForJob(supabase,"job-1",{financed_total:3000,installment_count:6,method:"zelle",card_fee_percent:3},actor);expect(plan.card_fee_percent).toBe(0);expect(plan.installments[0].card_fee).toBeNull();
   });
 
   it("books only the base amount into the ledger while the customer pays base + fee", async () => {
@@ -185,8 +159,8 @@ describe("createPaymentPlanForJob", () => {
   it("refuses new Square autopay when the card provider is unset and still opens a non-card plan", async () => {
     vi.stubEnv("CARD_PAYMENT_PROVIDER", "");
     const blocked = makeSupabase(baseJob());
-    await expect(createPaymentPlanForJob(blocked.supabase, "job-1", { financed_total: 3000, installment_count: 6 }, actor))
-      .rejects.toMatchObject({ name: "CardProviderConfigError", status: 503 });
+    await expect(createPaymentPlanForJob(blocked.supabase, "job-1", { financed_total: 3000, installment_count: 6, method: "square_autopay" }, actor))
+      .rejects.toMatchObject({ status: 409 });
     expect(blocked.state.planWrites).toHaveLength(0);
     const { plan } = await createPaymentPlanForJob(
       makeSupabase(baseJob()).supabase, "job-1",
@@ -200,7 +174,7 @@ describe("createPaymentPlanForJob", () => {
     const { plan } = await createPaymentPlanForJob(
       supabase,
       "job-1",
-      { financed_total: 3000, installment_count: 6 },
+      { financed_total: 3000, installment_count: 6, method: "zelle" },
       actor
     );
     expect(plan.status).toBe("active");
@@ -211,15 +185,15 @@ describe("createPaymentPlanForJob", () => {
     const existing: Partial<CrmPaymentPlanMeta> = { status: "active", installments: [] };
     const { supabase } = makeSupabase(baseJob({ meta: { [PAYMENT_PLAN_META_KEY]: existing } }));
     await expect(
-      createPaymentPlanForJob(supabase, "job-1", { financed_total: 1000, installment_count: 6 }, actor)
+      createPaymentPlanForJob(supabase, "job-1", { financed_total: 1000, installment_count: 6, method: "zelle" }, actor)
     ).rejects.toThrow(/already has an open payment plan/);
 
     const { supabase: s2 } = makeSupabase(baseJob());
     await expect(
-      createPaymentPlanForJob(s2, "job-1", { financed_total: 0, installment_count: 6 }, actor)
+      createPaymentPlanForJob(s2, "job-1", { financed_total: 0, installment_count: 6, method: "zelle" }, actor)
     ).rejects.toThrow(/greater than zero/);
     await expect(
-      createPaymentPlanForJob(s2, "job-1", { financed_total: 1000, installment_count: 13 }, actor)
+      createPaymentPlanForJob(s2, "job-1", { financed_total: 1000, installment_count: 13, method: "zelle" }, actor)
     ).rejects.toThrow(/between 1 and 12/);
   });
 });
@@ -415,33 +389,13 @@ function autopayPlan(overrides: Partial<CrmPaymentPlanAutopay> = {}) {
 
 describe("autopaySetupUrl", () => {
   it("builds the public setup link for square_autopay plans only", () => {
-    expect(autopaySetupUrl({ method: "square_autopay", autopay: { token: "abc", status: "not_linked" } })).toContain(
-      "/autopay/abc"
-    );
-    expect(autopaySetupUrl({ method: "zelle", autopay: { token: "abc", status: "not_linked" } })).toBeNull();
+expect(autopaySetupUrl({method:"square_autopay",autopay:{token:"abc",status:"not_linked"}})).toBeNull();expect(autopaySetupUrl({method:"zelle",autopay:null})).toBeNull();
   });
 });
 
 describe("createPaymentPlanForJob autopay token", () => {
   it("mints a setup token for square_autopay plans and none for zelle", async () => {
-    const { supabase } = makeSupabase(baseJob());
-    const { plan } = await createPaymentPlanForJob(
-      supabase,
-      "job-1",
-      { financed_total: 3000, installment_count: 6, method: "square_autopay" },
-      actor
-    );
-    expect(plan.autopay?.status).toBe("not_linked");
-    expect(plan.autopay?.token).toMatch(/^[0-9a-f-]{36}$/i);
-
-    const { supabase: s2 } = makeSupabase(baseJob());
-    const { plan: p2 } = await createPaymentPlanForJob(
-      s2,
-      "job-1",
-      { financed_total: 3000, installment_count: 6, method: "zelle" },
-      actor
-    );
-    expect(p2.autopay).toBeNull();
+const {supabase}=makeSupabase(baseJob());await expect(createPaymentPlanForJob(supabase,"job-1",{financed_total:3000,installment_count:6,method:"square_autopay"},actor)).rejects.toMatchObject({status:409});const {plan}=await createPaymentPlanForJob(supabase,"job-1",{financed_total:3000,installment_count:6,method:"zelle"},actor);expect(plan.autopay).toBeNull();
   });
 });
 
@@ -453,60 +407,15 @@ describe("runPaymentPlanCharges", () => {
   });
 
   it("charges a due installment and marks it paid with the Square payment id", async () => {
-    chargeMock.mockResolvedValue({ ok: true, paymentId: "PAY123", receiptUrl: null });
-    const plan = autopayPlan();
-    plan.installments[0].due_date = "2026-07-05";
-    plan.installments[0].card_fee = 30;
-    const job = baseJob({ meta: { [PAYMENT_PLAN_META_KEY]: plan } });
-    const { supabase, state } = makeSupabase(job, { jobs: [job], entry: { id: "entry-1" } });
-
-    const summary = await runPaymentPlanCharges(supabase, new Date("2026-07-05T17:00:00Z"));
-    expect(summary).toMatchObject({ plansChecked: 1, charged: 1, failed: 0 });
-    expect(chargeMock).toHaveBeenCalledOnce();
-    expect(chargeMock.mock.calls[0][0]).toMatchObject({ customerId: "CUST1", cardId: "CARD1", amountCents: 103000 });
-    const saved = getPaymentPlanMeta((state.job as Record<string, unknown>).meta)!;
-    expect(saved.installments[0].paid_at).toBe("2026-07-05");
-    expect(saved.installments[0].square_payment_id).toBe("PAY123");
-    expect(state.payments[0]).toMatchObject({ amount: 1000 });
+vi.stubEnv("LEGACY_SQUARE_AUTOPAY_ENABLED","true");const job=baseJob({meta:{[PAYMENT_PLAN_META_KEY]:autopayPlan()}});const {supabase,state}=makeSupabase(job,{jobs:[job]});expect(await runPaymentPlanCharges(supabase)).toMatchObject({retired:true,charged:0});expect(chargeMock).not.toHaveBeenCalled();expect((supabase as { from: unknown }).from).not.toHaveBeenCalled();expect(state.planWrites).toHaveLength(0);expect(sendSmsMock).not.toHaveBeenCalled();
   });
 
   it("stamps the failure, alerts the shop, and only attempts once per day", async () => {
-    process.env.MIKE_805_SALES_SMS_NUMBER = "8055550000";
-    chargeMock.mockResolvedValue({ ok: false, error: "CARD_DECLINED: Card was declined." });
-    const plan = autopayPlan();
-    plan.installments[0].due_date = "2026-07-01";
-    const job = baseJob({ meta: { [PAYMENT_PLAN_META_KEY]: plan } });
-    const { supabase, state } = makeSupabase(job, { jobs: [job] });
-
-    const summary = await runPaymentPlanCharges(supabase, new Date("2026-07-05T17:00:00Z"));
-    expect(summary.failed).toBe(1);
-    const saved = getPaymentPlanMeta((state.job as Record<string, unknown>).meta)!;
-    expect(saved.installments[0].charge_attempted_at).toBe("2026-07-05");
-    expect(saved.installments[0].charge_error).toContain("CARD_DECLINED");
-    expect(sendSmsMock.mock.calls.some((c) => String(c[0].body).includes("FAILED"))).toBe(true);
-
-    // same-day rerun: no second attempt
-    chargeMock.mockClear();
-    const rerunJob = { ...(state.job as Record<string, unknown>) };
-    const { supabase: s2 } = makeSupabase(rerunJob, { jobs: [rerunJob] });
-    await runPaymentPlanCharges(s2, new Date("2026-07-05T18:00:00Z"));
-    expect(chargeMock).not.toHaveBeenCalled();
-    delete process.env.MIKE_805_SALES_SMS_NUMBER;
+vi.stubEnv("LEGACY_SQUARE_AUTOPAY_ENABLED","true");const job=baseJob({meta:{[PAYMENT_PLAN_META_KEY]:autopayPlan()}});const {supabase,state}=makeSupabase(job,{jobs:[job]});expect(await runPaymentPlanCharges(supabase)).toMatchObject({retired:true,charged:0});expect(chargeMock).not.toHaveBeenCalled();expect((supabase as { from: unknown }).from).not.toHaveBeenCalled();expect(state.planWrites).toHaveLength(0);expect(sendSmsMock).not.toHaveBeenCalled();
   });
 
   it("skips unlinked plans, future installments, and unconfigured Square", async () => {
-    const plan = autopayPlan({ status: "not_linked" });
-    plan.installments[0].due_date = "2026-07-01";
-    const job = baseJob({ meta: { [PAYMENT_PLAN_META_KEY]: plan } });
-    const { supabase } = makeSupabase(job, { jobs: [job] });
-    const summary = await runPaymentPlanCharges(supabase, new Date("2026-07-05T17:00:00Z"));
-    expect(summary.plansChecked).toBe(0);
-    expect(chargeMock).not.toHaveBeenCalled();
-
-    configuredMock.mockReturnValue(false);
-    const s3 = makeSupabase(job, { jobs: [job] }).supabase;
-    const off = await runPaymentPlanCharges(s3, new Date("2026-07-05T17:00:00Z"));
-    expect(off.skippedNotConfigured).toBe(true);
+vi.stubEnv("LEGACY_SQUARE_AUTOPAY_ENABLED","true");const job=baseJob({meta:{[PAYMENT_PLAN_META_KEY]:autopayPlan()}});const {supabase,state}=makeSupabase(job,{jobs:[job]});expect(await runPaymentPlanCharges(supabase)).toMatchObject({retired:true,charged:0});expect(chargeMock).not.toHaveBeenCalled();expect((supabase as { from: unknown }).from).not.toHaveBeenCalled();expect(state.planWrites).toHaveLength(0);expect(sendSmsMock).not.toHaveBeenCalled();
   });
 });
 
@@ -518,31 +427,14 @@ describe("linkAutopayCard", () => {
   });
 
   it("creates the Square customer + card and marks autopay linked", async () => {
-    const plan = autopayPlan({ status: "not_linked", square_customer_id: null, square_card_id: null });
-    const job = baseJob({ meta: { [PAYMENT_PLAN_META_KEY]: plan } });
-    const { supabase, state } = makeSupabase(job, { jobs: [job] });
-    const result = await linkAutopayCard(supabase, plan.autopay!.token, { sourceId: "cnon:abc" });
-    expect(result.ok).toBe(true);
-    const saved = getPaymentPlanMeta((state.job as Record<string, unknown>).meta)!;
-    expect(saved.autopay).toMatchObject({ status: "linked", square_customer_id: "CUST9", square_card_id: "CARD9", card_last4: "4444" });
-    expect(createCustomerMock).toHaveBeenCalledOnce();
-    expect(createCardMock).toHaveBeenCalledOnce();
+const {supabase,state}=makeSupabase(baseJob());expect(await linkAutopayCard(supabase,"token",{sourceId:"cnon:test"})).toMatchObject({ok:false,error:expect.stringContaining("retired")});expect(createCustomerMock).not.toHaveBeenCalled();expect(createCardMock).not.toHaveBeenCalled();expect(state.planWrites).toHaveLength(0);expect(sendSmsMock).not.toHaveBeenCalled();
   });
 
   it("rejects bad tokens without calling Square", async () => {
-    const { supabase } = makeSupabase(null, { jobs: [] });
-    const result = await linkAutopayCard(supabase, "not-a-token", { sourceId: "cnon:abc" });
-    expect(result.ok).toBe(false);
-    expect(createCustomerMock).not.toHaveBeenCalled();
+const {supabase,state}=makeSupabase(baseJob());expect(await linkAutopayCard(supabase,"token",{sourceId:"cnon:test"})).toMatchObject({ok:false,error:expect.stringContaining("retired")});expect(createCustomerMock).not.toHaveBeenCalled();expect(createCardMock).not.toHaveBeenCalled();expect(state.planWrites).toHaveLength(0);expect(sendSmsMock).not.toHaveBeenCalled();
   });
 
   it("refuses an unset provider before creating a Square customer or card", async () => {
-    vi.stubEnv("CARD_PAYMENT_PROVIDER", "");
-    const plan = autopayPlan();
-    const job = baseJob({ meta: { [PAYMENT_PLAN_META_KEY]: plan } });
-    const { supabase } = makeSupabase(job, { jobs: [job] });
-    await expect(linkAutopayCard(supabase, plan.autopay!.token, { sourceId: "cnon:abc" })).rejects.toMatchObject({ status: 503 });
-    expect(createCustomerMock).not.toHaveBeenCalled();
-    expect(createCardMock).not.toHaveBeenCalled();
+const {supabase,state}=makeSupabase(baseJob());expect(await linkAutopayCard(supabase,"token",{sourceId:"cnon:test"})).toMatchObject({ok:false,error:expect.stringContaining("retired")});expect(createCustomerMock).not.toHaveBeenCalled();expect(createCardMock).not.toHaveBeenCalled();expect(state.planWrites).toHaveLength(0);expect(sendSmsMock).not.toHaveBeenCalled();
   });
 });

@@ -207,7 +207,7 @@ function fileGuardsQuoter(file: string, seen = new Set<string>()): boolean {
   if (source.includes("requireCrmUser") || source.includes("requireQuoteFrontDoorActor") || source.includes("quoterServiceGuard")) {
     return true;
   }
-  return [...source.matchAll(/from\s+["'](\.\/[^"']+)["']/g)].some((match) => {
+  return [...source.matchAll(/from\s+["'](\.\.?\/[^"']+)["']/g)].some((match) => {
     const base = path.resolve(path.dirname(file), match[1] ?? "");
     const candidates = [base, `${base}.ts`, `${base}.tsx`];
     return candidates.some((candidate) => existsSync(candidate) && fileGuardsQuoter(candidate, seen));

@@ -1,6 +1,9 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
 import { createHmac } from "node:crypto";
 import {
+  createSquareCustomer,
+  createSquareCardOnFile,
+  chargeSquareCardOnFile,
   createSquarePaymentLink,
   createSquareWalletPayment,
   fetchSquareOrderFacts,
@@ -130,48 +133,7 @@ describe("squarePaymentLinkRequestBody", () => {
 
 describe("createSquarePaymentLink", () => {
   it("sends Square REST snake_case fields and CRM metadata", async () => {
-    vi.stubEnv("SQUARE_ACCESS_TOKEN", "token");
-    vi.stubEnv("SQUARE_LOCATION_ID", "loc");
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: true,
-      json: async () => ({ payment_link: { id: "plink", url: "https://square.link/u/test" } }),
-    } as Response);
-
-    const link = await createSquarePaymentLink({
-      amountCents: 52547,
-      title: "Deposit - 805 Shutters",
-      quoteId: "quote-1",
-      jobId: "job-1",
-      paymentType: "deposit",
-      buyerEmail: "customer@example.com",
-      selectedLineIds: ["line-a", "line-b"],
-    });
-
-    expect(link).toEqual({ id: "plink", url: "https://square.link/u/test" });
-    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
-    expect(body).toMatchObject({
-      checkout_options: {
-        allow_tipping: false,
-        ask_for_shipping_address: false,
-        accepted_payment_methods: { apple_pay: false, google_pay: false },
-      },
-      pre_populated_data: { buyer_email: "customer@example.com" },
-      order: {
-        location_id: "loc",
-        reference_id: "quote-1",
-        metadata: {
-          quote_id: "quote-1",
-          job_id: "job-1",
-          payment_type: "deposit",
-          expected_amount_cents: "52547",
-          selected_line_ids: "line-a,line-b",
-        },
-      },
-    });
-    expect(body.order.line_items[0]).toMatchObject({
-      quantity: "1",
-      base_price_money: { amount: 52547, currency: "USD" },
-    });
+vi.stubEnv("SQUARE_ACCESS_TOKEN", "token");vi.stubEnv("SQUARE_LOCATION_ID", "loc");const fetchMock=vi.spyOn(globalThis,"fetch");await expect(createSquarePaymentLink({amountCents:100,title:"Deposit",quoteId:"quote",jobId:"job",paymentType:"deposit"})).rejects.toThrow("Square card collection is retired");expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
@@ -224,46 +186,11 @@ describe("Square Web Payments SDK wallet requests", () => {
   });
 
   it("creates the attributed order before charging the one-time wallet token", async () => {
-    vi.stubEnv("SQUARE_ACCESS_TOKEN", "token");
-    vi.stubEnv("SQUARE_LOCATION_ID", "LOCATION1");
-    const fetchMock = vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ order: { id: "ORDER1", total_money: { amount: 26350 } } }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          payment: {
-            id: "PAYMENT1",
-            order_id: "ORDER1",
-            status: "COMPLETED",
-            receipt_url: "https://squareup.com/receipt/PAYMENT1",
-          },
-        }),
-      } as Response);
-
-    await expect(createSquareWalletPayment(input)).resolves.toEqual({
-      paymentId: "PAYMENT1",
-      orderId: "ORDER1",
-      status: "COMPLETED",
-      receiptUrl: "https://squareup.com/receipt/PAYMENT1",
-    });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[0]?.[0]).toBe("https://connect.squareupsandbox.com/v2/orders");
-    expect(fetchMock.mock.calls[1]?.[0]).toBe("https://connect.squareupsandbox.com/v2/payments");
+vi.stubEnv("SQUARE_ACCESS_TOKEN", "token");vi.stubEnv("SQUARE_LOCATION_ID", "loc");const fetchMock=vi.spyOn(globalThis,"fetch");await expect(createSquareWalletPayment(input)).rejects.toThrow("Square card collection is retired");expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("refuses to charge when Square's order total differs from the verified quote", async () => {
-    vi.stubEnv("SQUARE_ACCESS_TOKEN", "token");
-    vi.stubEnv("SQUARE_LOCATION_ID", "LOCATION1");
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: true,
-      json: async () => ({ order: { id: "ORDER1", total_money: { amount: 999 } } }),
-    } as Response);
-
-    await expect(createSquareWalletPayment(input)).rejects.toThrow("did not match the verified quote amount");
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+vi.stubEnv("SQUARE_ACCESS_TOKEN", "token");vi.stubEnv("SQUARE_LOCATION_ID", "loc");const fetchMock=vi.spyOn(globalThis,"fetch");await expect(createSquareWalletPayment(input)).rejects.toThrow("Square card collection is retired");expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
@@ -399,5 +326,17 @@ describe("isSquarePaidPaymentEvent", () => {
       type: "payment.updated",
       data: { object: { payment: { status: "COMPLETED", refunded_money: { amount: 100 } } } },
     })).toBe(false);
+  });
+});
+
+describe("retired saved-card writes", () => {
+  it("never creates a customer, saves a card, or charges even with working legacy configuration", async () => {
+    vi.stubEnv("SQUARE_ACCESS_TOKEN", "fixture"); vi.stubEnv("SQUARE_LOCATION_ID", "location");
+    vi.stubEnv("CARD_PAYMENT_PROVIDER", "square"); vi.stubEnv("LEGACY_SQUARE_AUTOPAY_ENABLED", "true");
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    await expect(createSquareCustomer({ givenName: "Test", idempotencyKey: "test" } as never)).rejects.toThrow("retired");
+    await expect(createSquareCardOnFile({ sourceId: "nonce", customerId: "customer" } as never)).rejects.toThrow("retired");
+    await expect(chargeSquareCardOnFile({ cardId: "card", customerId: "customer", amountCents: 100 } as never)).rejects.toThrow("retired");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

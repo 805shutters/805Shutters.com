@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "./handler";
+import { stripeReservationError } from "@/lib/crm/stripe-collection";
 const mocks = vi.hoisted(() => ({ auth: vi.fn(), send: vi.fn(), insert: vi.fn(), update: vi.fn(), prior: null as Record<string, unknown> | null }));
 vi.mock("@/lib/crm/auth", async original => ({ ...await original<typeof import("@/lib/crm/auth")>(), requireCrmUser: mocks.auth }));
 vi.mock("@/lib/crm/square-payment-links", async original => ({ ...await original<typeof import("@/lib/crm/square-payment-links")>(), sendSquareOrderPaymentLink: mocks.send }));
@@ -8,7 +9,7 @@ const body = { quoteId: "quote-1", jobId: "job-1", paymentType: "balance", chann
 const post = (patch: Record<string, unknown> = {}) => POST(new NextRequest("http://localhost/api/crm/mobile/customers", { method: "POST", body: JSON.stringify({ ...body, ...patch }) }));
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.stubEnv("CARD_PAYMENT_PROVIDER", "square");
+  vi.stubEnv("CARD_PAYMENT_PROVIDER", "stripe");
   mocks.prior = null;
   mocks.insert.mockResolvedValue({ error: null });
   mocks.update.mockImplementation(() => { const result = { eq: () => result, then: (resolve: (value: unknown) => unknown) => Promise.resolve({ error: null }).then(resolve) }; return result; });
@@ -20,6 +21,31 @@ beforeEach(() => {
   mocks.send.mockResolvedValue({ amount: 400, remainingAfterPayment: 601.2, paymentType: "balance", linkId: "fixture", url: "https://example.test/pay", providerStatus: "accepted" });
 });
 describe("mobile amount selection POST", () => {
+  it("shows the Square clearance blocker, saves not-sent status, and never resends the same rejected request", async () => {
+    vi.stubEnv("CARD_PAYMENT_PROVIDER", "stripe");
+    const error = stripeReservationError({ code: "P0001", message: "Existing Square requests require verified retirement or resolution before Stripe collection." });
+    mocks.send.mockRejectedValueOnce(error);
+    const response = await post();
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ message: error.message });
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({
+      status: "failed", error_message: error.message, provider_message_id: null,
+    }));
+    mocks.insert.mockResolvedValue({ error: { code: "23505" } });
+    mocks.prior = { quote_id: "quote-1", job_id: "job-1", payment_type: "balance", channel: "email", recipient: "customer@example.test", amount: 400, status: "failed", error_message: error.message };
+    const replay = await post();
+    expect(replay.status).toBe(409);
+    expect(await replay.json()).toEqual({ message: error.message });
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+  });
+  it("keeps an ambiguous provider failure unknown", async () => {
+    mocks.send.mockRejectedValueOnce(new Error("Provider acknowledgement unavailable"));
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect((await post()).status).toBe(500);
+      expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: "unknown" }));
+    } finally { log.mockRestore(); }
+  });
   it("passes the reviewed split through to the Square service and reserves its exact amount", async () => {
     const response = await post();
     expect(response.status).toBe(200);

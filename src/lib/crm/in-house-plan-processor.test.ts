@@ -124,7 +124,7 @@ function io(outcome = "accepted"): PlanProviders {
   };
 }
 beforeEach(() => {
-  vi.stubEnv("CARD_PAYMENT_PROVIDER", "square");
+  vi.stubEnv("CARD_PAYMENT_PROVIDER", "stripe");
   vi.stubEnv("MIKE_805_SALES_SMS_NUMBER", "+18055550101");
   state.optout = false;
   state.changed = false;
@@ -181,6 +181,7 @@ beforeEach(() => {
       installment_id: `i${n}`,
       amount_cents: 3000,
       status: "active",
+      provider: "stripe",
       square_link_id: `provider-link${n}`,
       url: `https://square.example.test/payment${n}`,
     })),
@@ -343,6 +344,7 @@ it("creates checkout for the exact unpaid deposit with stable provider identity,
   const provider = io(),
     db = dbMock();
   vi.mocked(provider.createLink).mockResolvedValue({
+    provider: "stripe",
     id: "square-id",
     orderId: "square-order",
     url: "https://square.example.test/deposit",
@@ -361,7 +363,7 @@ it("creates checkout for the exact unpaid deposit with stable provider identity,
       inHouseInstallmentId: "i1",
       idempotencyKey: saved.id,
     }),
-    "square",
+    "stripe",
   );
   await installmentLink(db, state.plan, installment, provider);
   expect(provider.createLink).toHaveBeenCalledTimes(1);
@@ -390,8 +392,8 @@ it("refuses a new installment link when the card provider is unset and still rec
   await expect(installmentLink(dbMock(), state.plan, installment, provider)).rejects.toMatchObject({ status: 503 });
   expect(provider.createLink).not.toHaveBeenCalled();
   state.plan.status = "cancelled";
-  await retireObsoletePlanLinks(dbMock(), state.plan, provider);
-  expect(provider.createLink).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: "recover-unset" }), "square");
+  await expect(retireObsoletePlanLinks(dbMock(), state.plan, provider)).rejects.toThrow("identity requires review");
+  expect(provider.createLink).not.toHaveBeenCalled();
 });
 
 it("holds an old provider installment after cutover but retains its identity for retirement", async () => {
@@ -421,12 +423,9 @@ it("holds an old provider installment after cutover but retains its identity for
     ).rejects.toThrow("prior processor");
     expect(provider.createLink).not.toHaveBeenCalled();
     state.plan.status = "cancelled";
-    await retireObsoletePlanLinks(dbMock(), state.plan, provider);
-    expect(provider.createLink).toHaveBeenCalledWith(
-      expect.objectContaining({ idempotencyKey: "recover" }),
-      "square",
-    );
-    expect(provider.retireLink).toHaveBeenCalledWith("old-square");
+    await expect(retireObsoletePlanLinks(dbMock(), state.plan, provider)).rejects.toThrow("identity requires review");
+    expect(provider.createLink).not.toHaveBeenCalled();
+    expect(provider.retireLink).not.toHaveBeenCalled();
   } finally {
     delete process.env.CARD_PAYMENT_PROVIDER;
   }

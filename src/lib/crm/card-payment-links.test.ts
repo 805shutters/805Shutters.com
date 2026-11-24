@@ -55,12 +55,12 @@ describe("createCardPaymentLink provider gate", () => {
     noProviderCalls();
   });
 
-  it("sends an explicit square request only to Square", async () => {
+  it("refuses Square even with the old switch or an explicit historical provider", async () => {
     process.env.CARD_PAYMENT_PROVIDER = "square";
-    expect(isCardConfigured()).toBe(true);
-    await createCardPaymentLink(db, input);
-    expect(createSquarePaymentLink).toHaveBeenCalledOnce();
-    expect(createStripePaymentLink).not.toHaveBeenCalled();
+    await expect(createCardPaymentLink(db, input)).rejects.toMatchObject({ status: 503 });
+    process.env.CARD_PAYMENT_PROVIDER = "stripe";
+    await expect(createCardPaymentLink(db, input, "square")).rejects.toMatchObject({ status: 409 });
+    noProviderCalls();
   });
 
   it("sends an explicit stripe request only to Stripe", async () => {

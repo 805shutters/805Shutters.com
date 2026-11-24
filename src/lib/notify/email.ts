@@ -195,7 +195,7 @@ export function buildFinancingOptionsSection(details: {
   const balanceDue = Number(details.balanceDue) || 0;
   const financeAmount =
     balanceDue > 0 ? balanceDue : total > 0 && depositDue > 0 ? Math.max(0, total - depositDue) : total > 0 ? total / 2 : 0;
-  const monthly = financeAmount > 0 ? Math.round((financeAmount / 3) * 1.03 * 100) / 100 : 0;
+  const monthly = financeAmount > 0 ? Math.round((financeAmount / 2) * 100) / 100 : 0;
   const quoteRef = details.quoteNumber ? ` for quote ${details.quoteNumber}` : "";
   const origin = siteOriginFromLogo(details.logoUrl);
   const housePlanSms = smsHref(`Hi! I'd like to set up the 805 in-house payment plan${quoteRef}.`);
@@ -224,21 +224,21 @@ export function buildFinancingOptionsSection(details: {
       bar: "805 In-House Plan",
       logo: `<img src="${escapeAttr(`${origin}/brand/805-shutters-logo-exact-transparent.png`)}" alt="805 Shutters" height="78" style="height:78px;width:auto;vertical-align:middle;border:0">`,
       big: monthly > 0 ? `${money(monthly)}<span style="font-size:13px;font-weight:400">/mo</span>` : "0% Interest",
-      bigsub: monthly > 0 ? "on this quote &middot; 3 payments &middot; 0% interest" : "up to 3 monthly payments",
+      bigsub: monthly > 0 ? "after 50% deposit &middot; two balance payments &middot; 0% interest" : "Three payments",
       checks: [
         "No credit application &mdash; ever",
-        "50% deposit today, the rest over 3 monthly payments",
-        "Auto-charged to your card, starting install day",
-        "Set it up once &mdash; nothing to remember"
+        "50% deposit, then two payments of 25%",
+        "Balance payments due one and two months after the full deposit",
+        "Pay securely through Stripe checkout"
       ],
       ctaLabel: "Reply or text 805-806-9344",
       ctaHref: housePlanSms
     })}
   </div>
-  <p style="font-size:10.5px;line-height:1.5;color:#6b6b66;margin:8px 0 0 0">In-house plan collected by automatic card payment through Square; 3 monthly payments shown include a 3% card processing fee (credit cards).</p>
+  <p style="font-size:10.5px;line-height:1.5;color:#6b6b66;margin:8px 0 0 0">In-house card payments use secure Stripe checkout. Payment amounts and dates are shown on your signed contract.</p>
 </div>`;
 
-  const text = `\n\nIN-HOUSE PAYMENT PLAN\n\n805 In-House Plan: 0% interest, no credit application.${monthly > 0 ? ` On this quote: 50% deposit, then 3 monthly payments of ${money(monthly)} auto-charged to your card, starting the day of installation.` : " 50% deposit, then up to 3 monthly card payments starting the day of installation."} Reply or text 805-806-9344 to set it up.\n\nIn-house monthly amount includes a 3% card processing fee.`;
+  const text = `\n\nIN-HOUSE PAYMENT PLAN\n\n805 In-House Plan: 0% interest, no credit application. 50% deposit, then two payments of 25%, due one and two calendar months after the full deposit. Card payments use Stripe checkout. Amounts and dates are shown on your signed contract. Reply or text 805-806-9344 to set it up.`;
 
   return { html, text };
 }

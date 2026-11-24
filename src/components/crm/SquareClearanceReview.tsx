@@ -65,6 +65,26 @@ export function SquareClearanceReview() {
     setError("");
   }
 
+  async function retireLegacy(quoteId: string) {
+    if (!session || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/crm/stripe/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ action: "retire-legacy", targetId: quoteId }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.message || "The old payment links could not be retired.");
+      await load(session.access_token);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "The old payment links could not be retired.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function recordClearance(quoteId: string) {
     if (!session || !confirmed || evidence.trim().length < 20) return;
     setBusy(true);
@@ -102,7 +122,7 @@ export function SquareClearanceReview() {
       <h1>Square clearance review</h1>
       <p>
         Signed quotes with an open balance and a stored production Square request stay blocked from Stripe until you record a clearance for that quote.
-        This list only reads CRM records. It does not contact Square or Stripe, and it does not change a quote until you submit that quote&apos;s own clearance.
+        Verify and retire checks the old provider and recorded receipts, retires this quote&apos;s old links, and saves the evidence. It does not charge a card or send a customer message. Unresolved payments remain on hold.
       </p>
       {error ? <p role="alert">{error}</p> : null}
       {sessionReady && !session ? <p>Sign in to the CRM to review Square clearances.</p> : null}
@@ -148,6 +168,9 @@ export function SquareClearanceReview() {
                   </td>
                   <td>
                     {clearanceLabel(row)}
+                    <button type="button" disabled={busy} onClick={() => void retireLegacy(row.quoteId)}>
+                      {busy ? "Verifying…" : "Verify and retire old links"}
+                    </button>
                     <button type="button" onClick={() => openClearance(row.quoteId)}>
                       Record clearance for this quote
                     </button>

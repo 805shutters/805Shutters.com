@@ -1106,7 +1106,7 @@ export function CrmApp({
     try {
       const result = await crmFetch<SquarePaymentLinkResult>(
         session,
-        `/api/crm/quotes/${quoteId}/square-payment-link`,
+        `/api/crm/quotes/${quoteId}/card-payment-link`,
         { method: "POST", body: JSON.stringify({ paymentType, recipientEmail: recipientEmail?.trim() || undefined, ...confirmation }) },
       );
       if (!result.email.sent) {
@@ -1235,7 +1235,7 @@ export function CrmApp({
     if (!session) throw new Error("Sign in again before sending a payment link.");
     setBusy(true);
     try {
-      const result = await crmFetch<SquarePaymentLinkResult>(session, `/api/crm/bookkeeping/${item.row!.id}/square-payment-link`, {
+      const result = await crmFetch<SquarePaymentLinkResult>(session, `/api/crm/bookkeeping/${item.row!.id}/card-payment-link`, {
         method: "POST", body: JSON.stringify({ paymentType, ...confirmation }),
       });
       if (!result.email.sent) throw new Error(result.email.error || result.email.skipped || "Card payment link was created, but the email was not sent.");
@@ -14766,9 +14766,8 @@ function PaymentPlanSection({
   const defaultTotal = suggestedTotal > 0 ? suggestedTotal : Math.round(((Number(job.estimated_total) || 0) / 2) * 100) / 100;
   const [amount, setAmount] = useState<string>(defaultTotal ? String(defaultTotal) : "");
   const [count, setCount] = useState<string>("6");
-  const [method, setMethod] = useState<CrmPaymentPlanMethod>("square_autopay");
-  const [passCardFee, setPassCardFee] = useState(true);
-  const cardFeeActive = method === "square_autopay" && passCardFee;
+  const [method, setMethod] = useState<CrmPaymentPlanMethod>("zelle");
+  const cardFeeActive = false;
   const perMonthBase = Number(amount) > 0 && Number(count) > 0 ? Number(amount) / Number(count) : 0;
   const perMonthCharge = cardFeeActive ? perMonthBase * 1.03 : perMonthBase;
 
@@ -14805,29 +14804,8 @@ function PaymentPlanSection({
             </div>
             {openPlan.method === "square_autopay" ? (
               <div className="crm-drill-line-item crm-payment-plan-autopay">
-                <strong>
-                  {openPlan.autopay?.status === "linked"
-                    ? `Autopay ON - ${(openPlan.autopay.card_brand || "card").toUpperCase()} ending ${openPlan.autopay.card_last4 || "????"}`
-                    : "Autopay: customer has not saved a card yet"}
-                </strong>
-                {openPlan.autopay?.status === "linked" ? (
-                  <span>Each due installment is charged automatically by the daily sweep.</span>
-                ) : (
-                  <span>Send them the secure card setup link (it is also texted automatically on install day).</span>
-                )}
-                {openPlan.autopay?.token ? (
-                  <button
-                    type="button"
-                    className="crm-ghost-button"
-                    onClick={() => {
-                      const link = `${window.location.origin}/autopay/${openPlan.autopay?.token}`;
-                      void navigator.clipboard?.writeText(link);
-                      window.alert(`Card setup link copied:\n${link}`);
-                    }}
-                  >
-                    Copy card setup link
-                  </button>
-                ) : null}
+                <strong>Legacy saved-card collection is retired</strong>
+                <span>Review this schedule before issuing a Stripe payment link. The old saved card will not be charged.</span>
               </div>
             ) : null}
             {openPlan.installments.map((inst) => (
@@ -14905,21 +14883,11 @@ function PaymentPlanSection({
             <label>
               Collected by
               <select value={method} onChange={(event) => setMethod(event.target.value as CrmPaymentPlanMethod)}>
-                <option value="square_autopay">Square autopay (card on file)</option>
                 <option value="zelle">Zelle</option>
                 <option value="other">Other</option>
               </select>
             </label>
-            {method === "square_autopay" ? (
-              <label className="crm-payment-plan-fee-toggle">
-                <input
-                  type="checkbox"
-                  checked={passCardFee}
-                  onChange={(event) => setPassCardFee(event.target.checked)}
-                />
-                Customer pays the 3% card processing fee (credit cards only - waive it if they use a debit card)
-              </label>
-            ) : null}
+            <p className="crm-payment-plan-hint">For card installments, select the three-payment schedule on the quote. Each card payment uses Stripe checkout.</p>
             <button
               type="button"
               className="crm-ghost-button"

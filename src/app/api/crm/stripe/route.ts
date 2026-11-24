@@ -1,3 +1,4 @@
+import { retireLegacySquareRequests } from "@/lib/crm/square-collection-retirement";
 import { NextRequest, NextResponse } from "next/server";
 import {
   CrmAuthError,
@@ -79,6 +80,13 @@ export async function POST(request: NextRequest) {
     if (body.action === "expire" && typeof body.sessionId === "string") {
       await retireStripePaymentLink(supabase, body.sessionId);
       return NextResponse.json({ expired: true });
+    }
+    if (body.action === "retire-legacy") {
+      if (typeof body.targetId !== "string" || !/^[0-9a-f-]{36}$/i.test(body.targetId))
+        throw new CrmAuthError(400, "Choose an exact quote to retire its old payment links.");
+      const quote = await supabase.from("crm_quotes").select("id,job_id").eq("id", body.targetId).maybeSingle();
+      if (quote.error || !quote.data?.job_id) throw new CrmAuthError(409, "The exact quote and job could not be verified.");
+      return NextResponse.json(await retireLegacySquareRequests(supabase, { quoteId: quote.data.id, jobId: quote.data.job_id }));
     }
     if (body.action === "clearance") {
       if (

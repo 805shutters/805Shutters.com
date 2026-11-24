@@ -1,10 +1,8 @@
-import {CardProviderConfigError, squareWalletApplicationId} from '@/lib/finance/card-provider';
 import { notFound } from "next/navigation";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { loadPublicQuoteByToken, loadPublicQuoteOptions } from "@/lib/crm/public-quote";
 import { ZELLE_DESTINATION } from "@/lib/finance/payment-options";
 import { privatePageMetadata } from "@/lib/private-page-metadata";
-import { resolveSquareApplicationId, squareLocationId, squareWebSdkUrl } from "@/lib/finance/square";
 import { CustomerContractDocument } from "./CustomerContractDocument";
 
 export const runtime = "nodejs";
@@ -41,20 +39,10 @@ export default async function PublicQuotePage({
   const quote = await loadPublicQuoteByToken(supabase, token);
   if (!quote) notFound();
   quote.versions = crmContractPreview ? [] : await loadPublicQuoteOptions(supabase, quote);
-  let applicationId: string | null = null;
-  try {
-    applicationId = await squareWalletApplicationId(resolveSquareApplicationId);
-  } catch (error) {
-    if (!(error instanceof CardProviderConfigError)) throw error;
-  }
-  const locationId = squareLocationId();
-  const walletConfig = applicationId && locationId
-    ? { applicationId, locationId, sdkUrl: squareWebSdkUrl() }
-    : null;
 
   return <CustomerContractDocument quote={quote} embedded={crmContractPreview}
     paymentOptions={{ zelleDestination: ZELLE_DESTINATION }}
-    walletConfig={walletConfig} />;
+    walletConfig={null} />;
 }
 
 const wrap = { maxWidth: 760, margin: "0 auto", padding: "40px 20px", fontFamily: 'var(--font-body, "Helvetica Neue", Arial, sans-serif)', color: "#0b0b0b" } as const;

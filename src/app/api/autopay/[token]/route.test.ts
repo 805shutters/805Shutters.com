@@ -27,20 +27,12 @@ beforeEach(() => {
   delete process.env.CARD_PAYMENT_PROVIDER;
 });
 
-describe("saved-card setup provider gate", () => {
-  it("refuses an unset provider before saving a Square card", async () => {
+describe("retired Square endpoint", () => {
+  it.each(["", "stripe", "square"])("rejects old tokens with provider %s", async (provider) => {
+    process.env.CARD_PAYMENT_PROVIDER = provider;
     const response = await post();
-    expect(response.status).toBe(503);
-    expect(await response.json()).toMatchObject({ ok: false, error: "Card payment provider is not configured." });
-    expect(createSquareCustomer).not.toHaveBeenCalled();
-    expect(createSquareCardOnFile).not.toHaveBeenCalled();
-  });
-
-  it("keeps explicit Stripe from saving a Square card", async () => {
-    process.env.CARD_PAYMENT_PROVIDER = "stripe";
-    const response = await post();
-    expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({ ok: false, error: expect.stringContaining("cannot be moved to Stripe") });
+    expect(response.status).toBe(410);
+    expect(JSON.stringify(await response.json())).toContain("retired");
     expect(createSquareCustomer).not.toHaveBeenCalled();
     expect(createSquareCardOnFile).not.toHaveBeenCalled();
   });

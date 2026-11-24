@@ -1,3 +1,11 @@
+# November 24 Stripe-only completion
+
+Mike requested that every CRM card collection path use Stripe and asked to complete setup. New checkout is permanently Stripe-only: `CARD_PAYMENT_PROVIDER=stripe` is required, and Square cannot be selected. All direct Square checkout, wallet, saved-card creation and charging functions refuse. Old Square data, receipt intake, disputes and reconciliation remain available.
+
+For a legacy request blocking a Stripe reservation, the new verifier checks the exact production location, order, target, amount, completed tender and matching CRM receipt; requires no open provider invoice/subscription and no active CRM Square mandate; retires only those exact checkout links; verifies their absence; and records its machine evidence before repeating the normal live-balance reservation. A failure holds collection. It never charges, refunds, sends a customer message, or credits a ledger. The owner-only clearance page also exposes this exact-quote operation. Manual clearance remains available for obligations requiring human review. Do not fabricate manual clearance to bypass a failed provider check.
+
+The original release record below is historical. Its Square selector and legacy-autopay enabling instructions are superseded by this permanent cutoff. Stop Stripe creation to pause collection; do not revert to Square.
+
 # Stripe / Mercury migration — implementation and release handoff
 
 Reviewed November 20, 2026. Local branch `codex/stripe-mercury-migration`, base `15ff3f173e512dfbc8aa3c3a043beabb20059f1f`, isolated worktree `/Users/michaelshepard/Documents/805-stripe-mercury-migration`. Owner authorized release/configuration. Dedicated805 migration20261120203721 is applied; real isolated Stripe test Checkout/webhook passed. Production flags keep Square selected and Stripe collection/sync/alerts disabled. Code d72cead9 is pushed to main and verified live on www.805shutters.com (deployment dpl_E1SqYCMfCCMoZbFzDYbu7QeEEfSQ). Live credentials/webhook and provider cutover remain pending. No real customer sends or money movement. See current migration handoff for the latest state.

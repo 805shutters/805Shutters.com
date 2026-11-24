@@ -219,9 +219,9 @@ describe("financing options section", () => {
     expect(mail.html).not.toMatch(/wisetack|application link|Option [12]/i);
     expect(mail.text).not.toMatch(/wisetack|application link|Option [12]/i);
     expect(mail.html).toContain("805 In-House Plan");
-    // 3087 / 3 * 1.03 = 1059.87 -> $1,059.87/mo
-    expect(mail.html).toContain("$1,059.87");
-    expect(mail.html).toContain("3 payments");
+    // 3087 / 3 * 1.03 = 1059.87 -> $1,543.50/mo
+    expect(mail.html).toContain("$1,543.50");
+    expect(mail.html).toContain("two balance payments");
     expect(mail.html).not.toContain("6 payments");
     expect(mail.html).not.toContain("6 monthly");
     expect(mail.html).toContain("/brand/805-shutters-logo-exact-transparent.png");
@@ -229,8 +229,8 @@ describe("financing options section", () => {
     expect(mail.html).toContain("Q-1042");
     expect(mail.html).not.toContain("subject to credit approval");
     expect(mail.text).toContain("IN-HOUSE PAYMENT PLAN");
-    expect(mail.text).toContain("$1,059.87");
-    expect(mail.text).toContain("3 monthly payments");
+    expect(mail.text).toContain("Stripe checkout");
+    expect(mail.text).toContain("two payments of 25%");
   });
 
   it("appears in the payment-link email and omits the monthly figure when no amounts are known", () => {
@@ -240,14 +240,14 @@ describe("financing options section", () => {
       depositDue: 3087
     });
     expect(withAmounts.html).toContain("In-House Payment Plan");
-    expect(withAmounts.html).toContain("$1,059.87");
-    expect(withAmounts.html).toContain("3 payments");
+    expect(withAmounts.html).toContain("$1,543.50");
+    expect(withAmounts.html).toContain("two balance payments");
     expect(withAmounts.html + withAmounts.text).not.toMatch(/wisetack|Option [12]/i);
 
     const noAmounts = buildQuoteEmail("Susan", "https://example.com/q/abc", 0, {});
     expect(noAmounts.html).toContain("In-House Payment Plan");
     expect(noAmounts.html).toContain("0% Interest");
-    expect(noAmounts.html).toContain("up to 3 monthly payments");
+    expect(noAmounts.html).toContain("Three payments");
     expect(noAmounts.html).not.toContain("/mo</span>");
   });
 });
@@ -345,7 +345,7 @@ describe("contract communication payment options", () => {
       expect(body).toContain("https://x/quote/abc");
       expect(body).toContain("$4,250.00");
       expect(body).toContain("Roller Shades");
-      expect(body).toContain("3 monthly payments");
+      expect(body).toContain("two payments of 25%");
     }
     expect(mail.html).toContain("$2,125.00");
   });

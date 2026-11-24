@@ -137,7 +137,7 @@ describe("QuoteSelection", () => {
     expect(html).toContain("Pay deposit with card");
     expect(html).not.toMatch(/wisetack|Two Financing Options|Option [12] (?:&middot;|·)/i);
     expect(html).toContain("805 In-House Plan");
-    expect(html).toContain("Pay deposit with Google Pay");
+    expect(html).not.toContain("Pay deposit with Google Pay");
     expect(html).toContain("$254.70");
     expect(html).toContain("$509.40");
     expect(html).toContain("Roller Shades");
@@ -282,8 +282,8 @@ describe("QuoteSelection", () => {
     expect(html).not.toContain("card or Google Pay");
     expect(html).not.toContain("Pay deposit with Apple Pay");
     expect(html).not.toContain("Buy with");
-    expect(html).toContain("Pay deposit with Google Pay");
-    expect(html).toContain("quote-google-pay-");
+    expect(html).not.toContain("Pay deposit with Google Pay");
+    expect(html).not.toContain("quote-google-pay-");
     expect(quoteSelectionCss).toContain("-webkit-appearance: -apple-pay-button");
     expect(quoteSelectionCss).toContain("-apple-pay-button-type: buy");
     expect(quoteSelectionCss).not.toMatch(/\.applePayButton\s*{[^}]*appearance:\s*none;/s);

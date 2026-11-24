@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { retireLegacySquareRequests } from "./square-collection-retirement";
+import { CrmAuthError } from "@/lib/crm/auth";
 import type {
   SquarePaymentLinkInput,
   SquarePaymentLink,
@@ -27,6 +29,25 @@ export type RequestRow = {
   url: string | null;
   created_at: string;
 };
+
+/** Reservation happens before checkout creation or delivery. Expose only known business errors. */
+export function stripeReservationError(error: { code?: string; message?: string }) {
+  const reasons: Record<string, string> = {
+    "Existing Square requests require verified retirement or resolution before Stripe collection.":
+      "This order has a historical Square payment request. Review it in Stripe payments / Square clearance review before requesting a Stripe payment.",
+    "Amount exceeds current balance.":
+      "The requested amount exceeds the current balance. Close this request, refresh, and review the amount.",
+    "Existing card request must be reconciled and expired before replacement.":
+      "An existing Stripe payment request must be reconciled and expired before it can be replaced. Review it in Stripe payments.",
+    "Exact active job ledger is required.":
+      "The active customer order could not be verified. Close this request, refresh, and review the order.",
+  };
+  const reason = error.code === "P0001" ? reasons[error.message || ""] : undefined;
+  return new CrmAuthError(
+    reason ? 409 : 502,
+    `Payment link was not sent. ${reason || "The payment request could not be reserved. Review the current balance and existing card requests before trying again."}`,
+  );
+}
 async function save(
   db: SupabaseClient,
   table: string,
@@ -207,7 +228,7 @@ export async function createStripePaymentLink(
       }),
     )
     .digest("hex");
-  const reserved = await db.rpc("reserve_stripe_request", {
+  const reservation = {
     p_account: config.account,
     p_live: config.livemode,
     p_quote: input.quoteId || null,
@@ -217,11 +238,16 @@ export async function createStripePaymentLink(
     p_purpose: input.paymentType,
     p_amount: input.amountCents,
     p_fingerprint: fingerprint,
-  });
+  };
+  let reserved = await db.rpc("reserve_stripe_request", reservation);
+  if (config.livemode && reserved.error?.code === "P0001" && reserved.error.message === "Existing Square requests require verified retirement or resolution before Stripe collection.") {
+    await retireLegacySquareRequests(db, { quoteId: input.quoteId, bookkeepingEntryId: input.bookkeepingEntryId, jobId: input.jobId });
+    // Re-read the live ledger and acquire the normal reservation after retirement.
+    reserved = await db.rpc("reserve_stripe_request", reservation);
+  }
+
   if (reserved.error)
-    throw new Error(
-      "Payment request could not be reserved. Review the current balance and any existing card requests.",
-    );
+    throw stripeReservationError(reserved.error);
   let row = reserved.data as RequestRow;
   if (row.session_id) {
     row = await synchronizeStripeRequest(db, row);

@@ -1,5 +1,4 @@
 import {CrmAuthError} from './auth';
-import {cardProvider} from '@/lib/finance/card-provider';
 import { isMikeAlertRecipient } from "@/lib/notify/owner-alert-routing";
 // In-house payment plan ("805 House Plan"): 0% interest, 50% deposit up front,
 // balance split into equal monthly installments. The first installment is due
@@ -11,11 +10,9 @@ import { isMikeAlertRecipient } from "@/lib/notify/owner-alert-routing";
 // into the bookkeeping payments ledger when the job has a ledger entry, so
 // Customer Files balances stay true.
 
-import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendSms } from "@/lib/notify/twilio";
 import { objectMeta } from "@/lib/crm/measure-needed-state";
-import { chargeSquareCardOnFile, dollarsToCents, isSquareConfigured } from "@/lib/finance/square";
 import type { CrmJob } from "@/lib/crm/types";
 import {
   PAYMENT_PLAN_META_KEY,
@@ -51,17 +48,13 @@ function round2(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-function siteOrigin() {
-  return (process.env.NEXT_PUBLIC_SITE_URL || "https://www.805shutters.com").replace(/\/$/, "");
-}
-
-/** Public card-setup URL for a square_autopay plan; null for other methods. */
+/** Legacy setup links can no longer be issued. Retain history for reconciliation. */
 export function autopaySetupUrl(plan: Pick<CrmPaymentPlanMeta, "method" | "autopay">) {
-  return plan.method === "square_autopay" && plan.autopay?.token ? `${siteOrigin()}/autopay/${plan.autopay.token}` : null;
+  return null;
 }
 
 function autopayLinked(plan: Pick<CrmPaymentPlanMeta, "method" | "autopay">) {
-  return plan.method === "square_autopay" && plan.autopay?.status === "linked";
+  return false;
 }
 
 /** Split a total into `count` equal cent-safe amounts; the last one absorbs the remainder. */
@@ -166,10 +159,9 @@ export async function createPaymentPlanForJob(
   }
 
   const method = input.method || "square_autopay";
-  if (method === "square_autopay" && cardProvider() === "stripe") throw new CrmAuthError(409,"Use the current in-house installment schedule; new Square autopay enrollment is closed after Stripe cutover.");
-  // Card-network rules cap credit-card surcharges at 3%; only card plans carry a fee.
-  const rawFeePercent = input.card_fee_percent ?? (method === "square_autopay" ? 3 : 0);
-  const cardFeePercent = method === "square_autopay" ? Math.min(3, Math.max(0, Number(rawFeePercent) || 0)) : 0;
+  if (method === "square_autopay") throw new CrmAuthError(409,"Use the current in-house installment schedule; new Square autopay enrollment is closed after Stripe cutover.");
+  // New plans here are non-card only; Stripe installments use the signed quote schedule.
+  const cardFeePercent = 0;
 
   const job = await fetchJob(supabase, jobId);
   if (hasOpenPaymentPlan(job.meta)) {
@@ -188,7 +180,7 @@ export async function createPaymentPlanForJob(
     installment_count: count,
     card_fee_percent: cardFeePercent,
     method,
-    autopay: method === "square_autopay" ? { token: randomUUID(), status: "not_linked" } : null,
+    autopay: null,
     installments: amounts.map((amount, i) => ({
       seq: i + 1,
       amount,
@@ -478,170 +470,16 @@ export async function findJobByAutopayToken(
   return { job: data as CrmJob, plan };
 }
 
-/**
- * Save the customer's card on file with Square and mark the plan's autopay as
- * linked. Called by the public card-setup page with a one-time Web Payments
- * SDK token (never a raw card number).
- */
+/** Compatibility refusal for the retired Square card-enrollment API. */
 export async function linkAutopayCard(
   supabase: CrmSupabaseClient,
   token: string,
   input: { sourceId: string; cardholderName?: string | null }
 ): Promise<{ ok: true; cardBrand: string | null; cardLast4: string | null } | { ok: false; error: string }> {
-  if(cardProvider() === 'stripe')return {ok:false,error:'Saved Square cards cannot be moved to Stripe. Contact 805 Shutters for a reviewed payment schedule.'};
-  const found = await findJobByAutopayToken(supabase, token);
-  if (!found) return { ok: false, error: "This payment setup link is no longer valid." };
-  const { job, plan } = found;
-  if (plan.status !== "active" && plan.status !== "pending_install") {
-    return { ok: false, error: "This payment plan is no longer open." };
-  }
-  if (!input.sourceId) return { ok: false, error: "Card details did not come through. Please try again." };
-
-  try {
-    const { createSquareCustomer, createSquareCardOnFile } = await import("@/lib/finance/square");
-    const nameParts = String(job.customer_name || "").trim().split(/\s+/);
-    let customerId = plan.autopay?.square_customer_id || null;
-    if (!customerId) {
-      const created = await createSquareCustomer({
-        givenName: nameParts[0] || null,
-        familyName: nameParts.slice(1).join(" ") || null,
-        emailAddress: job.email || null,
-        phoneNumber: job.phone || null,
-        referenceId: job.id,
-        note: "805 Shutters in-house payment plan"
-      });
-      customerId = created.customerId;
-    }
-
-    const card = await createSquareCardOnFile({
-      customerId,
-      sourceId: input.sourceId,
-      cardholderName: input.cardholderName || job.customer_name || null,
-      referenceId: job.id.slice(0, 40),
-      idempotencyKey: `805-pp-card-${plan.autopay!.token}-${Date.now()}`
-    });
-
-    const updated: CrmPaymentPlanMeta = {
-      ...plan,
-      autopay: {
-        ...plan.autopay!,
-        status: "linked",
-        square_customer_id: customerId,
-        square_card_id: card.cardId,
-        card_brand: card.brand,
-        card_last4: card.last4,
-        linked_at: new Date().toISOString()
-      }
-    };
-    await savePlan(supabase, job, updated);
-    await recordActivity(supabase, { email: "autopay-setup" }, job.id, "payment_plan.autopay_linked", {
-      card_brand: card.brand,
-      card_last4: card.last4
-    });
-
-    const alert = `805 Shutters: ${job.customer_name || "customer"} saved a card for their payment plan autopay (${card.brand || "card"} ending ${card.last4 || "????"}).`;
-    for (const num of shopSmsNumbers()) {
-      await sendSms({ to: num, body: alert, ...(isMikeAlertRecipient(num) ? { ownerAlert: true } : {}) });
-    }
-
-    return { ok: true, cardBrand: card.brand, cardLast4: card.last4 };
-  } catch (error) {
-    console.error("autopay card link failed", error);
-    return { ok: false, error: "We could not save this card. Please double-check the details or call 805-806-9344." };
-  }
+  return { ok: false, error: "This saved-card setup is retired. Use a new Stripe payment link from 805 Shutters." };
 }
 
-/**
- * Daily autopay sweep: charge the saved card for every active-plan installment
- * that is due (or past due), unpaid, and not already attempted today. Success
- * marks the installment paid (which also mirrors it into the bookkeeping
- * ledger); failure stamps the error and alerts the shop. One attempt per day
- * per installment - the idempotency key includes the attempt date.
- */
+/** No scheduler or direct caller may resume legacy Square charging. */
 export async function runPaymentPlanCharges(supabase: CrmSupabaseClient, now: Date = new Date()) {
-  const summary = { plansChecked: 0, charged: 0, failed: 0, skippedNotConfigured: false };
-  if (!isSquareConfigured()) {
-    summary.skippedNotConfigured = true;
-    return summary;
-  }
-
-  const today = todayIso(now);
-  const { data: jobs, error } = await supabase
-    .from("crm_jobs")
-    .select("*")
-    .not("meta->payment_plan", "is", null)
-    .limit(2000);
-  if (error) throw new Error(`Payment-plan charge sweep failed: ${error.message}`);
-
-  const shopNumbers = shopSmsNumbers();
-
-  for (const jobRow of (jobs as CrmJob[]) || []) {
-    const plan = getPaymentPlanMeta(jobRow.meta);
-    if (!plan || plan.status !== "active" || plan.method !== "square_autopay") continue;
-    const autopay = plan.autopay;
-    if (!autopay || autopay.status !== "linked" || !autopay.square_customer_id || !autopay.square_card_id) continue;
-    summary.plansChecked += 1;
-
-    let currentPlan = plan;
-    for (const inst of plan.installments) {
-      if (inst.paid_at || !inst.due_date || inst.due_date > today) continue;
-      if (inst.charge_attempted_at === today) continue;
-
-      const chargeTotal = installmentChargeAmount(inst);
-      const result = await chargeSquareCardOnFile({
-        customerId: autopay.square_customer_id,
-        cardId: autopay.square_card_id,
-        amountCents: dollarsToCents(chargeTotal),
-        note: `805 Shutters payment plan ${inst.seq}/${currentPlan.installment_count} - ${jobRow.customer_name || jobRow.id}`,
-        referenceId: `pp-${jobRow.id.slice(0, 30)}-${inst.seq}`,
-        idempotencyKey: `805-pp-${jobRow.id}-${inst.seq}-${today}`
-      });
-
-      if (result.ok) {
-        try {
-          const marked = await markInstallmentPaid(
-            supabase,
-            jobRow.id,
-            inst.seq,
-            { amount: chargeTotal, payment_type: "credit_card", paid_at: today, square_payment_id: result.paymentId },
-            { email: "square-autopay" }
-          );
-          currentPlan = marked.plan;
-          summary.charged += 1;
-        } catch (markError) {
-          console.error("autopay charge succeeded but mark-paid failed", markError);
-          for (const num of shopNumbers) {
-            await sendSms({
-              to: num,
-              ...(isMikeAlertRecipient(num) ? { ownerAlert: true } : {}),
-              body: `805 Shutters: autopay charged ${formatMoney(chargeTotal)} for ${jobRow.customer_name || "customer"} (payment ${inst.seq}) but the CRM could not record it - please mark it paid manually.`
-            });
-          }
-        }
-      } else {
-        summary.failed += 1;
-        const failedPlan: CrmPaymentPlanMeta = {
-          ...currentPlan,
-          installments: currentPlan.installments.map((item) =>
-            item.seq === inst.seq ? { ...item, charge_attempted_at: today, charge_error: result.error } : item
-          )
-        };
-        try {
-          const savedJob = await savePlan(supabase, { ...jobRow, meta: { ...objectMeta(jobRow.meta) } } as CrmJob, failedPlan);
-          currentPlan = getPaymentPlanMeta(savedJob.meta) || failedPlan;
-        } catch (saveError) {
-          console.error("autopay failure stamp could not be saved", saveError);
-        }
-        for (const num of shopNumbers) {
-          await sendSms({
-            to: num,
-            ...(isMikeAlertRecipient(num) ? { ownerAlert: true } : {}),
-            body: `805 Shutters: autopay charge FAILED - ${jobRow.customer_name || "customer"}, payment ${inst.seq}/${currentPlan.installment_count} (${formatMoney(chargeTotal)}). ${result.error}`
-          });
-        }
-      }
-    }
-  }
-
-  return summary;
+  return { plansChecked: 0, charged: 0, failed: 0, skippedNotConfigured: false, retired: true };
 }

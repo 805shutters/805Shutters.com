@@ -149,6 +149,9 @@ export async function retireObsoletePlanLinks(
       continue;
     // Recover a link whose provider response was lost using the original immutable idempotency key.
     if (!link.square_link_id) {
+      if (link.provider !== "stripe") {
+        throw new Error("Historical Square checkout identity requires review; a new Square link cannot be created for recovery.");
+      }
       const made = await io.createLink(
         {
           quoteId: plan.quote_id!,
