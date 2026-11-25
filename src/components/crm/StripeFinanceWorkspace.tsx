@@ -59,7 +59,7 @@ export function StripeFinanceWorkspace({ session }: { session: Session }) {
   useEffect(() => {
     load().catch((e) => setError(e.message));
   }, [load]);
-  async function sync() {
+  async function updateStripe(action: { action: "sync" } | { action: "expire"; sessionId: string }) {
     setBusy(true);
     setError("");
     try {
@@ -69,9 +69,12 @@ export function StripeFinanceWorkspace({ session }: { session: Session }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ action: "sync" }),
+        body: JSON.stringify(action),
       });
-      if (!r.ok) throw new Error("Reconciliation needs attention.");
+      if (!r.ok) {
+        const result = await r.json().catch(() => null);
+        throw new Error(result?.message || result?.error || "Stripe request needs review.");
+      }
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to reconcile.");
@@ -198,7 +201,7 @@ export function StripeFinanceWorkspace({ session }: { session: Session }) {
           </button>
           {data.canReview && (
             <button
-              onClick={sync}
+              onClick={() => updateStripe({ action: "sync" })}
               disabled={busy}
               className="my-4 rounded bg-slate-900 px-4 py-2 text-white"
             >
@@ -236,7 +239,25 @@ export function StripeFinanceWorkspace({ session }: { session: Session }) {
                     </td>
                     <td>{money(r.amount_cents)}</td>
                     <td>{r.status}</td>
-                    <td>{r.error || "—"}</td>
+                    <td>
+                      {r.error}
+                      {data.canReview && r.status === "open" && r.session_id ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          className="block underline"
+                          onClick={() => {
+                            if (r.session_id && window.confirm(
+                              `Expire the ${money(r.amount_cents)} checkout for request ${r.id}? The current link will stop accepting payment.`,
+                            )) {
+                              void updateStripe({ action: "expire", sessionId: r.session_id });
+                            }
+                          }}
+                        >
+                          Expire checkout
+                        </button>
+                      ) : r.error ? null : "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
