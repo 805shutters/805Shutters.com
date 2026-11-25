@@ -10,20 +10,9 @@ import {
 export const COMPANY_CALENDAR_ID = "805@805shutters.com";
 export const JESSICA_CALENDAR_ID = "jessica@805shutters.com";
 
-/**
- * Jessica and unassigned visits are also copied onto Jessica's calendar.
- * Every other assignee, including Mike, stays on the master calendar only.
- * The master calendar is not chosen here, so a branch cannot drop it.
- */
-function extraCalendarsForAssignee(assignedTo: string | null | undefined): string[] {
-  const name = (assignedTo ?? "").trim().toLowerCase();
-  if (name === "jessica" || !name || name === "unassigned") return [JESSICA_CALENDAR_ID];
-  return [];
-}
-
-/** 805@805shutters.com is the master calendar and is present for every assignee. */
-export function googleCalendarsForAssignee(assignedTo: string | null | undefined): string[] {
-  return [COMPANY_CALENDAR_ID, ...extraCalendarsForAssignee(assignedTo)];
+/** Jessica oversees every appointment, regardless of who performs the visit. */
+export function googleCalendarsForAssignee(_assignedTo: string | null | undefined): string[] {
+  return [COMPANY_CALENDAR_ID, JESSICA_CALENDAR_ID];
 }
 
 export function googleCalendarIdMap(value: unknown): Record<string, string> {
@@ -72,9 +61,11 @@ function queuedAfterStart(startAt: string, enqueuedAt: unknown) {
 }
 
 function eventInput(event: CalendarSyncRow): GoogleCalendarEventInput {
+  const assignee = event.assigned_to?.trim() || "Unassigned";
+  const assignment = `Assigned to: ${assignee}`;
   return {
-    summary: event.title,
-    description: event.notes?.trim() || undefined,
+    summary: `${event.title} — ${assignment}`,
+    description: [assignment, event.notes?.trim()].filter(Boolean).join("\n\n"),
     location: event.location?.trim() || undefined,
     startAt: new Date(event.start_at).toISOString(),
     endAt: new Date(event.end_at).toISOString(),

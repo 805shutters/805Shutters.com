@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { bookingDatabaseFixture } from "@/lib/booking/database-fixture";
 import { candidateVisit } from "@/lib/booking/scheduling";
 import { eventSignature } from "@/lib/booking/travel";
@@ -56,6 +57,40 @@ async function outbox() {
 }
 
 describe("crm calendar google sync trigger", () => {
+  it("refreshes existing Google effects without touching assignments or customer messages", async () => {
+    const refresh = readFileSync("scripts/sql/refresh-jessica-calendar-sync.sql", "utf8");
+    await expect(db.exec(refresh)).rejects.toThrow("Set crm.jessica_calendar_refresh=apply");
+    const mikeId = await addEvent({ title: "Mike visit", eventType: "sales_consult", assignedTo: "Mike", meta: { googleCalendarEventIds: { "805@805shutters.com": "existing-805" } } });
+    const jessicaId = await addEvent({ title: "Jessica visit", eventType: "install", assignedTo: "Jessica" });
+    const missingId = await addEvent({ title: "No outbox yet", eventType: "install", assignedTo: "Unassigned" });
+    const canceledId = await addEvent({ title: "Canceled visit", eventType: "install", assignedTo: "Mike" });
+    await db.query("update crm_calendar_events set status='canceled' where id=$1", [canceledId]);
+    const pastId = await addEvent({ title: "Past visit", eventType: "install", assignedTo: "Mike", start: "2020-01-02 18:00Z", end: "2020-01-02 19:00Z" });
+    await db.query("delete from booking_outbox where calendar_event_id=$1", [missingId]);
+    await db.exec("update booking_outbox set status='sent'");
+    // Legacy booking effects may only have the event id in their payload.
+    const bookingKey = randomUUID();
+    await db.query("insert into booking_requests(key,request_hash,response) values ($1,'test',$2::jsonb)", [bookingKey, JSON.stringify({ calendarEventId: mikeId })]);
+    await db.query("update booking_outbox set calendar_event_id=null,booking_key=$2 where calendar_event_id=$1", [mikeId, bookingKey]);
+    await db.query("update booking_outbox set status='processing',claimed_at=now() where calendar_event_id=$1", [jessicaId]);
+    await db.query("insert into booking_outbox(calendar_event_id,kind,payload,status) values ($1,'customer_sms','{}','sent')", [mikeId]);
+    const before = await outbox();
+    const eventsBefore = await db.query("select id,title,assigned_to,status,meta,updated_at from crm_calendar_events order by id");
+    await db.exec("begin; select set_config('crm.jessica_calendar_refresh','apply',true);");
+    await db.exec(refresh);
+    await db.exec(refresh);
+    await db.exec("commit;");
+    const after = await outbox();
+    expect(after).toHaveLength(before.length + 1);
+    expect(after.find(row => row.kind === "customer_sms")).toEqual(before.find(row => row.kind === "customer_sms"));
+    expect(after.find(row => row.calendar_event_id === canceledId)).toEqual(before.find(row => row.calendar_event_id === canceledId));
+    expect(after.some(row => row.calendar_event_id === pastId)).toBe(false);
+    expect(after.find(row => row.calendar_event_id === mikeId && row.kind === "google_calendar")).toMatchObject({ status: "pending", payload: { sync: "reconcile", googleCalendarEventIds: { "805@805shutters.com": "existing-805" } } });
+    expect(after.find(row => row.calendar_event_id === jessicaId)).toMatchObject({ status: "processing" });
+    expect(after.find(row => row.calendar_event_id === missingId)).toMatchObject({ status: "pending", payload: { sync: "reconcile" } });
+    expect((await db.query("select id,title,assigned_to,status,meta,updated_at from crm_calendar_events order by id")).rows).toEqual(eventsBefore.rows);
+  });
+
   it("is deferred, not executable by public roles, and queues future block and install rows", async () => {
     const privileges = await db.query<{ anon: boolean; authenticated: boolean; service_role: boolean }>(
       "select has_function_privilege('anon','booking_private.enqueue_google_calendar_sync()','execute') anon, has_function_privilege('authenticated','booking_private.enqueue_google_calendar_sync()','execute') authenticated, has_function_privilege('service_role','booking_private.enqueue_google_calendar_sync()','execute') service_role",

@@ -143,20 +143,16 @@ afterEach(() => {
 });
 
 describe("googleCalendarsForAssignee", () => {
-  it("keeps 805@ on every assignee and adds Jessica only for Jessica and unassigned", () => {
-    for (const assignedTo of ["Jessica", "Mike", "Unassigned", "Eddie Hurtado", "", null]) {
-      expect(googleCalendarsForAssignee(assignedTo)[0]).toBe(COMPANY_CALENDAR_ID);
-    }
-    expect(googleCalendarsForAssignee("Jessica")).toEqual([COMPANY_CALENDAR_ID, JESSICA_CALENDAR_ID]);
-    expect(googleCalendarsForAssignee("Unassigned")).toEqual([COMPANY_CALENDAR_ID, JESSICA_CALENDAR_ID]);
-    expect(googleCalendarsForAssignee("")).toEqual([COMPANY_CALENDAR_ID, JESSICA_CALENDAR_ID]);
-    expect(googleCalendarsForAssignee("Mike")).toEqual([COMPANY_CALENDAR_ID]);
-    expect(googleCalendarsForAssignee("Eddie Hurtado")).toEqual([COMPANY_CALENDAR_ID]);
-  });
+  it.each(["Jessica", "Mike", "Unassigned", "Eddie Hurtado", "", "  ", null, undefined])(
+    "keeps both company and Jessica calendars for assignee %s",
+    (assignedTo) => {
+      expect(googleCalendarsForAssignee(assignedTo)).toEqual([COMPANY_CALENDAR_ID, JESSICA_CALENDAR_ID]);
+    },
+  );
 });
 
 describe("applyQueuedGoogleCalendarSync", () => {
-  it("puts a new block for an installer on the master calendar only", async () => {
+  it("puts a new block for an installer on both calendars with the assignee", async () => {
     const event = calendarEvent({
       title: "Shop block",
       event_type: "block",
@@ -168,12 +164,12 @@ describe("applyQueuedGoogleCalendarSync", () => {
     const { supabase } = memoryClient(event);
     const result = await applyQueuedGoogleCalendarSync(supabase, queuePayload(event));
     expect(result.status).toBe("sent");
-    expect(calendars(calls, "POST")).toEqual([COMPANY_CALENDAR_ID]);
+    expect(calendars(calls, "POST")).toEqual([COMPANY_CALENDAR_ID, JESSICA_CALENDAR_ID]);
     expect(calendars(calls, "PATCH")).toEqual([]);
     expectNoInvites(calls);
     const body = JSON.parse(String(calendarWrites(calls)[0].init.body));
-    expect(body.summary).toBe("Shop block");
-    expect(body.description).toBe("No customer on this block");
+    expect(body.summary).toBe("Shop block — Assigned to: Eddie Hurtado");
+    expect(body.description).toBe("Assigned to: Eddie Hurtado\n\nNo customer on this block");
   });
 
   it("puts a new install on 805@ and Jessica's calendar when Jessica is assigned", async () => {
@@ -204,10 +200,11 @@ describe("applyQueuedGoogleCalendarSync", () => {
       expect(result.status).toBe("sent");
       expect(calendars(calls, "POST")).toContain(COMPANY_CALENDAR_ID);
       expect(result.eventIds[COMPANY_CALENDAR_ID]).toBeTruthy();
-      if (assignedTo === "Jessica" || assignedTo === "Unassigned") {
-        expect(calendars(calls, "POST")).toContain(JESSICA_CALENDAR_ID);
-      } else {
-        expect(calendars(calls, "POST")).not.toContain(JESSICA_CALENDAR_ID);
+      expect(calendars(calls, "POST")).toContain(JESSICA_CALENDAR_ID);
+      for (const call of calendarWrites(calls)) {
+        const body = JSON.parse(String(call.init.body));
+        expect(body.summary).toBe(`${assignedTo} visit — Assigned to: ${assignedTo}`);
+        expect(body.description).toBe(`Assigned to: ${assignedTo}\n\n${event.notes}`);
       }
       expectNoInvites(calls);
     },
@@ -218,7 +215,7 @@ describe("applyQueuedGoogleCalendarSync", () => {
       assigned_to: "Mike",
       start_at: "2035-11-02T18:00:00.000Z",
       end_at: "2035-11-02T20:00:00.000Z",
-      meta: { googleCalendarEventIds: { [COMPANY_CALENDAR_ID]: "existing-805" } },
+      meta: { googleCalendarEventIds: { [COMPANY_CALENDAR_ID]: "existing-805", [JESSICA_CALENDAR_ID]: "existing-jessica" } },
     });
     const calls = installGoogle();
     const { supabase } = memoryClient(event);
@@ -227,9 +224,9 @@ describe("applyQueuedGoogleCalendarSync", () => {
     }));
     expect(result.status).toBe("sent");
     expect(calendars(calls, "POST")).toEqual([]);
-    expect(calendars(calls, "PATCH")).toEqual([COMPANY_CALENDAR_ID]);
+    expect(calendars(calls, "PATCH")).toEqual([COMPANY_CALENDAR_ID, JESSICA_CALENDAR_ID]);
     expect(calendarWrites(calls)[0].url).toContain("/events/existing-805?sendUpdates=none");
-    expect(result.eventIds).toEqual({ [COMPANY_CALENDAR_ID]: "existing-805" });
+    expect(result.eventIds).toEqual({ [COMPANY_CALENDAR_ID]: "existing-805", [JESSICA_CALENDAR_ID]: "existing-jessica" });
     const body = JSON.parse(String(calendarWrites(calls)[0].init.body));
     expect(body.start.dateTime).toBe("2035-11-02T18:00:00.000Z");
     expect(body).not.toHaveProperty("attendees");
@@ -258,14 +255,14 @@ describe("applyQueuedGoogleCalendarSync", () => {
   it("does not create a replacement when an update fails", async () => {
     const event = calendarEvent({
       assigned_to: "Mike",
-      meta: { googleCalendarEventIds: { [COMPANY_CALENDAR_ID]: "existing-805" } },
+      meta: { googleCalendarEventIds: { [COMPANY_CALENDAR_ID]: "existing-805", [JESSICA_CALENDAR_ID]: "existing-jessica" } },
     });
     const calls = installGoogle({ patchStatus: 500 });
     const { supabase } = memoryClient(event);
     const result = await applyQueuedGoogleCalendarSync(supabase, queuePayload(event));
     expect(result.status).toBe("pending");
     expect(calendars(calls, "POST")).toEqual([]);
-    expect(calendars(calls, "PATCH")).toEqual([COMPANY_CALENDAR_ID]);
+    expect(calendars(calls, "PATCH")).toEqual([COMPANY_CALENDAR_ID, JESSICA_CALENDAR_ID]);
     expect(result.eventIds[COMPANY_CALENDAR_ID]).toBe("existing-805");
   });
 
@@ -291,7 +288,7 @@ describe("applyQueuedGoogleCalendarSync", () => {
     expect(result.eventIds).toEqual({});
   });
 
-  it("drops Jessica's calendar when the visit is reassigned to an installer and keeps 805@", async () => {
+  it("keeps Jessica's event when reassigned to an installer and updates the assignee", async () => {
     const event = calendarEvent({
       assigned_to: "Eddie Hurtado",
       event_type: "install",
@@ -306,10 +303,45 @@ describe("applyQueuedGoogleCalendarSync", () => {
     const { supabase } = memoryClient(event);
     const result = await applyQueuedGoogleCalendarSync(supabase, queuePayload(event));
     expect(result.status).toBe("sent");
-    expect(calendars(calls, "DELETE")).toEqual([JESSICA_CALENDAR_ID]);
-    expect(calendars(calls, "PATCH")).toEqual([COMPANY_CALENDAR_ID]);
+    expect(calendars(calls, "DELETE")).toEqual([]);
+    expect(calendars(calls, "PATCH")).toEqual([COMPANY_CALENDAR_ID, JESSICA_CALENDAR_ID]);
     expect(calendars(calls, "POST")).toEqual([]);
-    expect(result.eventIds).toEqual({ [COMPANY_CALENDAR_ID]: "existing-805" });
+    expect(result.eventIds).toEqual({ [COMPANY_CALENDAR_ID]: "existing-805", [JESSICA_CALENDAR_ID]: "existing-jessica" });
+    for (const call of calendarWrites(calls)) {
+      const body = JSON.parse(String(call.init.body));
+      expect(body.summary).toBe("Install at Oak Street — Assigned to: Eddie Hurtado");
+      expect(body.description).toContain("Assigned to: Eddie Hurtado");
+      expect(body.description).not.toContain("Assigned to: Jessica");
+    }
+  });
+
+  it("adds Jessica's missing copy while preserving the existing company event", async () => {
+    const event = calendarEvent({
+      assigned_to: "Mike",
+      meta: { googleCalendarEventIds: { [COMPANY_CALENDAR_ID]: "existing-805" } },
+    });
+    const calls = installGoogle();
+    const { supabase } = memoryClient(event);
+    const result = await applyQueuedGoogleCalendarSync(supabase, queuePayload(event));
+    expect(result.status).toBe("sent");
+    expect(calendars(calls, "POST")).toEqual([JESSICA_CALENDAR_ID]);
+    expect(calendars(calls, "PATCH")).toEqual([COMPANY_CALENDAR_ID]);
+    expect(calendars(calls, "DELETE")).toEqual([]);
+    expect(result.eventIds[COMPANY_CALENDAR_ID]).toBe("existing-805");
+    expect(result.eventIds[JESSICA_CALENDAR_ID]).toBeTruthy();
+    expectNoInvites(calls);
+  });
+
+  it.each([null, "", "  "])("labels a missing assignee as Unassigned (%s)", async (assignedTo) => {
+    const event = calendarEvent({ assigned_to: assignedTo, notes: null });
+    const calls = installGoogle();
+    const { supabase } = memoryClient(event);
+    await applyQueuedGoogleCalendarSync(supabase, queuePayload(event));
+    for (const call of calendarWrites(calls)) {
+      const body = JSON.parse(String(call.init.body));
+      expect(body.summary).toBe("Install at Oak Street — Assigned to: Unassigned");
+      expect(body.description).toBe("Assigned to: Unassigned");
+    }
   });
 });
 
@@ -342,7 +374,7 @@ it("the booking worker syncs a queued block without inviting anyone", async () =
       : { error: null }
   ));
   await processBookingOutbox({ from, rpc } as unknown as SupabaseClient);
-  expect(calendars(calls, "POST")).toEqual([COMPANY_CALENDAR_ID]);
+  expect(calendars(calls, "POST")).toEqual([COMPANY_CALENDAR_ID, JESSICA_CALENDAR_ID]);
   expectNoInvites(calls);
   expect(updates).toContainEqual(expect.objectContaining({ status: "sent" }));
   expect(rpc).toHaveBeenCalledWith("booking_merge_event_metadata", expect.objectContaining({
