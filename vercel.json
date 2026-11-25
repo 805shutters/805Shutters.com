@@ -4,6 +4,7 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "crons": [
+    { "path": "/api/cron/stripe-payment-alerts/", "schedule": "*/2 * * * *" },
     { "path": "/api/cron/signed-quote-sms/", "schedule": "*/2 * * * *" },
     {
       "path": "/api/cron/appointment-reminders/",

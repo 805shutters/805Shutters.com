@@ -1,4 +1,3 @@
-import { deliverStripePaymentAlerts } from "@/lib/crm/stripe-payment-alerts";
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { syncStripeFinance } from "@/lib/crm/stripe-finance";
@@ -16,8 +15,7 @@ export async function GET(request: NextRequest) {
     const db = getSupabaseServiceClient();
     if (!db) throw new CrmAuthError(503, "Database unavailable.");
     const result = await syncStripeFinance(db);
-    const alerts = await deliverStripePaymentAlerts(db);
-    return NextResponse.json({ ...result, alerts });
+    return NextResponse.json(result);
   } catch (error) {
     return crmAuthErrorResponse(error);
   }

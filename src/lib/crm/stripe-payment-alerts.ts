@@ -1,8 +1,27 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isTwilioConfigured, sendSms } from "@/lib/notify/twilio";
+import { toE164 } from "@/lib/notify/phone";
+import { OWNER_ALERT_FROM_PHONE } from "@/lib/notify/owner-alert-routing";
 import { stripeConfig } from "@/lib/finance/stripe";
 export const STRIPE_OWNER_ALERT_CALLBACK =
   "https://www.805shutters.com/api/webhooks/twilio/stripe-payment-alert/";
+const clean = (value: unknown, max = 180) =>
+  typeof value === "string" ? value.replace(/[\r\n\t]+/g, " ").trim().slice(0, max) : "";
+
+export function buildStripePaymentAlert(input: {
+  amountCents: number; purpose: string; name: string; phone?: string | null;
+  address?: string | null; quoteNumber?: string | null;
+}) {
+  const amount = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(input.amountCents / 100);
+  const purpose = ({ deposit: "Deposit", balance: "Balance", installment: "Installment" } as Record<string, string>)[input.purpose] || "Payment";
+  return ["805 Shutters: Stripe payment received", `${purpose}: ${amount}`,
+    `Customer: ${clean(input.name, 100) || "Not recorded"}`,
+    `Address: ${clean(input.address) || "Not recorded"}`,
+    `Phone: ${clean(input.phone, 40) || "Not recorded"}`,
+    ...(input.quoteNumber ? [`Quote: ${clean(input.quoteNumber, 40)}`] : []),
+    "Recorded in CRM."].join("\n");
+}
+
 export async function deliverStripePaymentAlerts(
   db: SupabaseClient,
   sender: typeof sendSms = sendSms,
@@ -12,12 +31,16 @@ export async function deliverStripePaymentAlerts(
     !isTwilioConfigured()
   )
     return { status: "disabled", attempted: 0 };
+  const recipient = toE164(process.env.STRIPE_PAYMENT_ALERT_TO);
+  if (!recipient || recipient === OWNER_ALERT_FROM_PHONE)
+    return { status: "invalid_recipient", attempted: 0 };
   const config = stripeConfig();
   if (!config.livemode) return { status: "test_mode", attempted: 0 };
   const pending = await db
     .from("crm_stripe_alerts")
     .select("*")
     .eq("account_id", config.account)
+    .eq("livemode", true)
     .eq("status", "queued")
     .order("created_at")
     .limit(3);
@@ -26,27 +49,31 @@ export async function deliverStripePaymentAlerts(
   for (const alert of pending.data || []) {
     const request = await db
       .from("crm_stripe_requests")
-      .select("job_id,amount_cents,status")
+      .select("job_id,quote_id,amount_cents,status,purpose,payment_intent_id")
       .eq("account_id", config.account)
       .eq("livemode", true)
       .eq("id", alert.request_id)
       .single();
     if (request.error) throw new Error("Stripe alert request unavailable.");
-    if (request.data.status !== "paid") continue;
+    if (request.data.status !== "paid" || request.data.payment_intent_id !== alert.payment_intent_id) continue;
     const job = await db
       .from("crm_jobs")
-      .select("customer_name")
+      .select("customer_name,phone,address")
       .eq("id", request.data.job_id)
       .single();
     if (job.error) throw new Error("Stripe alert customer unavailable.");
-    const name = String(job.data.customer_name || "the customer")
-      .replace(/[\r\n]+/g, " ")
-      .slice(0, 100);
-    const amount = new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(Number(request.data.amount_cents) / 100);
-    const body = `805 Shutters: Stripe received ${amount} from ${name}. Recorded against the job balance.`;
+    const quote = request.data.quote_id
+      ? await db.from("crm_quotes").select("quote_number,customer_name,customer_phone,customer_address")
+        .eq("id", request.data.quote_id).eq("job_id", request.data.job_id).single()
+      : { data: null, error: null };
+    if (quote.error) throw new Error("Stripe alert quote unavailable.");
+    const body = buildStripePaymentAlert({
+      amountCents: Number(request.data.amount_cents), purpose: request.data.purpose,
+      name: quote.data?.customer_name || job.data.customer_name,
+      phone: quote.data?.customer_phone || job.data.phone,
+      address: quote.data?.customer_address || job.data.address,
+      quoteNumber: quote.data?.quote_number,
+    });
     const claim = await db
       .from("crm_stripe_alerts")
       .update({
@@ -62,7 +89,7 @@ export async function deliverStripePaymentAlerts(
     attempted++;
     // A thrown/ambiguous send stays held. Never automatically resubmit it.
     const result = await sender({
-      to: "+18052985555",
+      to: recipient,
       ownerAlert: true,
       body,
       statusCallback: `${STRIPE_OWNER_ALERT_CALLBACK}?alert=${encodeURIComponent(alert.id)}`,
