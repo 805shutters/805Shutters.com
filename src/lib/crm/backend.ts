@@ -2781,12 +2781,17 @@ export async function rescheduleCrmCalendarEvent(
   if (!["scheduled", "rescheduled"].includes(String(existing.status || ""))) {
     throw new CrmAuthError(409, "Only scheduled appointments can be rescheduled.");
   }
+  const assignedTo = payload.assigned_to === undefined ? existing.assigned_to : payload.assigned_to;
+  if (assignedTo !== existing.assigned_to && !["Mike", "Jessica", "Unassigned"].includes(assignedTo as string)) {
+    throw new CrmAuthError(400, "Select a valid appointment assignee.");
+  }
   const rescheduleMeta = {
     ...metadataWithActor({ meta: existing.meta }, actor, "rescheduledBy"),
     adminScheduleOverride: {
       actorEmail: actor.email,
       actorUserId: actor.userId,
       reason: "staff_manual_reschedule",
+      assignedTo,
       affectedStartAt: startAt,
       affectedEndAt: endAt,
       requestedAt: new Date().toISOString(),
@@ -2814,7 +2819,7 @@ export async function rescheduleCrmCalendarEvent(
 
   const rescheduledSalespersonSms = await sendCalendarAssignmentSms({
     action: "rescheduled",
-    assignedTo: existing.assigned_to,
+    assignedTo: data.assigned_to,
     title: existing.title,
     startAt,
     endAt,

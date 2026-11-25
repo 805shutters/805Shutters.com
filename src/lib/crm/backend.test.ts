@@ -2354,6 +2354,16 @@ describe("rescheduleCrmCalendarEvent admin override", () => {
     });
   });
 
+  it("accepts a reassignment at the existing time and rejects unknown assignees", async () => {
+    const { supabase, rpcCalls } = calendarCancelRecorder({ event });
+    const request = { id: event.id, start_at: event.start_at, end_at: event.end_at };
+    await expect(rescheduleCrmCalendarEvent(supabase, { ...request, assigned_to: "Unknown" }, actor))
+      .rejects.toThrow(/valid appointment assignee/);
+    await rescheduleCrmCalendarEvent(supabase, { ...request, assigned_to: "Mike" }, actor);
+    expect(rpcCalls).toHaveLength(1);
+    expect(rpcCalls[0].args.p_meta).toMatchObject({ adminScheduleOverride: { assignedTo: "Mike" } });
+  });
+
   it("reschedules every assignee and blocks without availability or route checks", async () => {
     for (const appointment of [event, { ...event, assigned_to: "Mike" }, { ...event, event_type: "block" as const }]) {
       const { supabase, rpcCalls } = calendarCancelRecorder({ event: appointment });

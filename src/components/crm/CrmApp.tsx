@@ -2627,6 +2627,7 @@ export function CrmApp({
   async function rescheduleCalendarEvent(
     calendarEvent: CrmCalendarEvent,
     slot: CalendarSlotSelection,
+    assignedTo: string,
   ) {
     if (!session || busy) return;
 
@@ -2638,6 +2639,7 @@ export function CrmApp({
         method: "PATCH",
         body: JSON.stringify({
           id: calendarEvent.id,
+          assigned_to: assignedTo,
           expected_updated_at: calendarEvent.updated_at,
           start_at: slot.startAt,
           end_at: slot.endAt
@@ -2665,7 +2667,7 @@ export function CrmApp({
     const currentDurationMinutes = calendarEventDurationMinutes(reschedulingCalendarEvent);
     const durationMinutes = calendarAppointmentDurationMinutes(formData.get("duration"), currentDurationMinutes);
     const slot = calendarSlotSelection(date, time, durationMinutes);
-    await rescheduleCalendarEvent(reschedulingCalendarEvent, slot);
+    await rescheduleCalendarEvent(reschedulingCalendarEvent, slot, formString(formData, "assigned_to"));
   }
 
   async function cancelCalendarEvent(calendarEvent: CrmCalendarEvent) {
@@ -14629,6 +14631,14 @@ function CalendarRescheduleModal({
                 ))}
               </select>
             </label>
+            <label>
+              Assigned to
+              <select name="assigned_to" defaultValue={event.assigned_to} required>
+                {Array.from(new Set([event.assigned_to, ...ownerOptions])).map((owner) => (
+                  <option key={owner} value={owner}>{owner}</option>
+                ))}
+              </select>
+            </label>
           </div>
           <p className="crm-muted">
             Admin rescheduling allows overlapping appointments and overrides travel time and availability restrictions.
@@ -14639,7 +14649,7 @@ function CalendarRescheduleModal({
               Cancel
             </button>
             <button type="submit" disabled={busy}>
-              {busy ? "Saving..." : "Save New Time"}
+              {busy ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>
