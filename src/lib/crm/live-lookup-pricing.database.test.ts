@@ -2,6 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { prepareV2CustomerSendPayload } from "@/lib/crm/sales-quote-v2-send";
 import { acceptOnyxPriceRecord, acceptSundancePriceRecord, buildNormanPriceRecord, buildPriceRecord, ONYX_PRICE_SITE, quoteLineSpecHash } from "./price-record";
 
 const db = new PGlite({ extensions: { pgcrypto } });
@@ -11,7 +12,7 @@ let request = 800;
 beforeAll(async () => {
   await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
     create table sales_quotes(id uuid primary key, quote_v2_backend boolean default false, quote_v2_revision bigint default 1, quote_v2_status text, quote_v2_catalog_version text, status text default 'draft', installer_notes text, total_amount numeric default 0);
-    create table sales_quote_line_items(id uuid primary key, quote_id uuid references sales_quotes, product_type text, quantity int default 1, selected_design_id uuid);
+    create table sales_quote_line_items(id uuid primary key, quote_id uuid references sales_quotes, product_type text, quantity int default 1, selected_design_id uuid, archived_at timestamptz);
     create table sales_quote_designs(id uuid primary key default gen_random_uuid(), line_item_id uuid references sales_quote_line_items on delete cascade, variant text, product_type text, unit_price numeric default 0, options_json jsonb default '{}', quote_v2_price_status text, quote_v2_selection_fingerprint text, quote_v2_priced_catalog_version text, quote_v2_priced_at timestamptz, current_v2_snapshot_id uuid, unique(line_item_id, variant));
     create table sales_quote_v2_price_snapshots(id uuid primary key default gen_random_uuid(), quote_id uuid, line_item_id uuid, design_id uuid, quote_revision bigint, selection_fingerprint text, catalog_version text, retail_total numeric, internal_landed_cost_total numeric, retail_snapshot jsonb, internal_cost_snapshot jsonb, validation_snapshot jsonb, provenance_snapshot jsonb, created_by uuid);
     create function save_quote_v2_pricing_batch(uuid, bigint, text, uuid, jsonb) returns table(quote_id uuid, new_revision bigint, quote_status text, quote_total numeric, priced_design_count integer, blocked_design_count integer) language plpgsql as $$ begin
@@ -46,6 +47,7 @@ beforeAll(async () => {
     alter table sales_quotes add column if not exists quote_letter text;`);
   await db.exec(readFileSync("supabase/migrations/20261122004500_current_live_price_readers.sql", "utf8"));
   await db.exec(readFileSync("supabase/migrations/20261122044500_live_price_authenticated_apply.sql", "utf8"));
+  await db.exec(readFileSync("supabase/migrations/20261122190000_live_price_v2_catalog_snapshot.sql", "utf8"));
   // Production already has these checks. The migrations do not create the
   // components check, line_total >= 0, or product_cost >= 0. Install the
   // production expression when it is absent. Do not weaken it.
@@ -1211,6 +1213,370 @@ it("keeps Onyx and Sundance closed and still prices Norman after the follow-up m
     "select enabled from crm_live_lookup_switch where vendor in ('onyx', 'sundance') order by vendor",
   );
   expect(switches.rows.map((row) => row.enabled)).toEqual([false, false]);
+});
+
+const LIVE_CATALOG = "custom-override-v1";
+
+async function snapshotCount(quote: number, line?: number) {
+  const row = await db.query<{ count: string }>(
+    `select count(*) from sales_quote_v2_price_snapshots
+     where quote_id = $1 and ($2::uuid is null or line_item_id = $2::uuid)`,
+    [id(quote), line == null ? null : id(line)],
+  );
+  return Number(row.rows[0].count);
+}
+
+async function liveQuoteMoney(quote: number) {
+  const row = await db.query<{
+    total_amount: string;
+    quote_v2_catalog_version: string | null;
+    quote_v2_status: string;
+    quote_v2_revision: string;
+    unit_price: string;
+    catalog_version: string | null;
+    fingerprint: string | null;
+    snapshot_id: string | null;
+    retail_total: string | null;
+    retail_unit: number | null;
+    retail_line: number | null;
+  }>(
+    `select q.total_amount::text, q.quote_v2_catalog_version, q.quote_v2_status, q.quote_v2_revision::text,
+            d.unit_price::text, d.quote_v2_priced_catalog_version as catalog_version,
+            d.quote_v2_selection_fingerprint as fingerprint, d.current_v2_snapshot_id::text as snapshot_id,
+            s.retail_total::text,
+            (s.retail_snapshot #>> '{retail,unitPrice}')::numeric as retail_unit,
+            (s.retail_snapshot #>> '{retail,total}')::numeric as retail_line
+     from sales_quotes q
+     join sales_quote_line_items li on li.quote_id = q.id
+     join sales_quote_designs d on d.id = li.selected_design_id
+     left join sales_quote_v2_price_snapshots s on s.id = d.current_v2_snapshot_id
+     where q.id = $1`,
+    [id(quote)],
+  );
+  return row.rows[0];
+}
+
+async function sendLiveQuote(quote: number) {
+  const quoteRow = (await db.query(
+    `select id, status, total_amount, installer_notes, quote_v2_backend, quote_v2_status,
+            quote_v2_catalog_version, quote_v2_revision
+     from sales_quotes where id = $1`,
+    [id(quote)],
+  )).rows[0] as Record<string, unknown>;
+  const lineItems = (await db.query(
+    `select id, quote_id, quantity, selected_design_id, room_name, product_type,
+            width_whole, width_fraction, height_whole, height_fraction
+     from sales_quote_line_items where quote_id = $1 and archived_at is null`,
+    [id(quote)],
+  )).rows;
+  const designs = (await db.query(
+    `select d.id, d.line_item_id, d.variant, d.product_type, d.unit_price, d.options_json,
+            d.quote_v2_price_status, d.quote_v2_selection_fingerprint,
+            d.quote_v2_priced_catalog_version, d.current_v2_snapshot_id
+     from sales_quote_designs d
+     join sales_quote_line_items li on li.id = d.line_item_id
+     where li.quote_id = $1 and li.archived_at is null and d.id = li.selected_design_id`,
+    [id(quote)],
+  )).rows;
+  const snapshots = (await db.query(
+    `select id, quote_id, line_item_id, design_id, quote_revision, selection_fingerprint,
+            catalog_version, retail_total, retail_snapshot, provenance_snapshot
+     from sales_quote_v2_price_snapshots where quote_id = $1`,
+    [id(quote)],
+  )).rows;
+  return prepareV2CustomerSendPayload({
+    quote: quoteRow,
+    lineItems: lineItems as never,
+    designs: designs as never,
+    snapshots: snapshots as never,
+    serverDate: "2026-11-22",
+  });
+}
+
+it("saves the V2 catalog identity and snapshot for a Norman live price and passes send", async () => {
+  const migration = readFileSync("supabase/migrations/20261122190000_live_price_v2_catalog_snapshot.sql", "utf8");
+  expect(migration.match(/create or replace function public\.\w+/g)).toEqual([
+    "create or replace function public.price_line_from_receipt",
+  ]);
+  expect(migration).not.toContain("backfill_current_live_price_fields");
+  expect(migration).not.toMatch(/\b(drop|delete\s+from|truncate)\b/i);
+  await db.query("update crm_live_lookup_switch set enabled = true where vendor = 'norman'");
+  try {
+    await seed(80, 801, "Roller Shades");
+    await db.query(
+      `update sales_quote_line_items
+       set room_name = 'Office', width_whole = 36, width_fraction = '0', height_whole = 48, height_fraction = '0'
+       where id = $1`,
+      [id(801)],
+    );
+    const recordId = await record(80, 801, 76.2);
+    await db.query("select set_quote_live_margin($1, 2.5, 'mike', 1)", [id(80)]);
+    const priced = await db.query<{ result: { unitPrice: number; total: number; quoteStatus: string } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4) as result",
+      [id(80), id(801), recordId, id(++request)],
+    );
+    expect(priced.rows[0].result).toMatchObject({ unitPrice: 190.5, total: 229.5, quoteStatus: "priced" });
+    const saved = await liveQuoteMoney(80);
+    expect(saved.quote_v2_catalog_version).toBe(LIVE_CATALOG);
+    expect(saved.catalog_version).toBe(LIVE_CATALOG);
+    expect(saved.fingerprint).toMatch(/^[0-9a-f]{64}$/);
+    expect(saved.snapshot_id).toBeTruthy();
+    expect(Number(saved.unit_price)).toBe(190.5);
+    expect(Number(saved.retail_unit)).toBe(190.5);
+    expect(Number(saved.retail_line)).toBe(229.5);
+    expect(Number(saved.retail_total)).toBe(229.5);
+    expect(Number(saved.total_amount)).toBe(229.5);
+    expect(await snapshotCount(80)).toBe(1);
+    const payload = await sendLiveQuote(80);
+    expect(payload.total).toBe(229.5);
+    expect(payload.lines[0].price.unitPrice).toBe(190.5);
+    expect(payload.lines[0].price.total).toBe(229.5);
+  } finally {
+    await db.query("update crm_live_lookup_switch set enabled = false where vendor = 'norman'");
+  }
+});
+
+it("keeps the sell price and quote total when the live snapshot is written", async () => {
+  await db.query("update crm_live_lookup_switch set enabled = true where vendor = 'norman'");
+  try {
+    await seed(85, 851, "Shutters");
+    const recordId = await record(85, 851, 210);
+    await db.query("select set_quote_live_margin($1, 2, 'jessica', 1)", [id(85)]);
+    const priced = await db.query<{ result: { unitPrice: number; total: number; installation: number; shipping: number } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4) as result",
+      [id(85), id(851), recordId, id(++request)],
+    );
+    expect(priced.rows[0].result).toMatchObject({ unitPrice: 420, installation: 0, shipping: 0, total: 420 });
+    const saved = await liveQuoteMoney(85);
+    expect(Number(saved.unit_price)).toBe(priced.rows[0].result.unitPrice);
+    expect(Number(saved.total_amount)).toBe(priced.rows[0].result.total);
+    expect(Number(saved.retail_unit)).toBe(priced.rows[0].result.unitPrice);
+    expect(Number(saved.retail_line)).toBe(priced.rows[0].result.total);
+  } finally {
+    await db.query("update crm_live_lookup_switch set enabled = false where vendor = 'norman'");
+  }
+});
+
+it("writes no snapshot for no_site_price or an unpriced blocked line", async () => {
+  await db.query("update crm_live_lookup_switch set enabled = true where vendor = 'norman'");
+  try {
+    await seed(81, 811, "Roller Shades");
+    await db.query("select set_quote_live_margin($1, 2.5, 'mike', 1)", [id(81)]);
+    const recordId = await record(81, 811, 76.2);
+    await expect(db.query(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4)",
+      [id(81), id(811), id(91), id(++request)],
+    )).rejects.toThrow(/no_site_price/);
+    expect(await snapshotCount(81)).toBe(0);
+    const untouched = await db.query<{ quote_v2_catalog_version: string | null; quote_v2_status: string }>(
+      "select quote_v2_catalog_version, quote_v2_status from sales_quotes where id = $1",
+      [id(81)],
+    );
+    expect(untouched.rows[0].quote_v2_catalog_version).toBeNull();
+    expect(untouched.rows[0].quote_v2_status).toBe("draft");
+
+    await db.query("select price_line_from_receipt($1, $2, 'A', $3, 1, $4)", [id(81), id(811), recordId, id(++request)]);
+    expect(await snapshotCount(81, 811)).toBe(1);
+    await db.query(
+      "insert into sales_quote_line_items (id, quote_id, product_type, quantity) values ($1, $2, 'Roller Shades', 1)",
+      [id(812), id(81)],
+    );
+    const revision = await db.query<{ quote_v2_revision: string }>(
+      "select quote_v2_revision::text from sales_quotes where id = $1",
+      [id(81)],
+    );
+    const again = await db.query<{ result: { quoteStatus: string } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, $4, $5) as result",
+      [id(81), id(811), recordId, revision.rows[0].quote_v2_revision, id(++request)],
+    );
+    expect(again.rows[0].result.quoteStatus).toBe("blocked");
+    expect(await snapshotCount(81, 812)).toBe(0);
+    const blockedRevision = await db.query<{ quote_v2_revision: string }>(
+      "select quote_v2_revision::text from sales_quotes where id = $1",
+      [id(81)],
+    );
+    await expect(db.query(
+      "select price_line_from_receipt($1, $2, 'A', $3, $4, $5)",
+      [id(81), id(812), id(92), blockedRevision.rows[0].quote_v2_revision, id(++request)],
+    )).rejects.toThrow(/no_site_price/);
+    expect(await snapshotCount(81, 812)).toBe(0);
+  } finally {
+    await db.query("update crm_live_lookup_switch set enabled = false where vendor = 'norman'");
+  }
+});
+
+it("updates the current live snapshot when a line is priced again", async () => {
+  await db.query("update crm_live_lookup_switch set enabled = true where vendor = 'norman'");
+  try {
+    await seed(82, 821, "Roller Shades");
+    const firstRecord = await record(82, 821, 76.2);
+    await db.query("select set_quote_live_margin($1, 2.5, 'mike', 1)", [id(82)]);
+    const requestId = id(++request);
+    const first = await db.query<{ result: { unitPrice: number; total: number; revision: number } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4) as result",
+      [id(82), id(821), firstRecord, requestId],
+    );
+    const firstSaved = await liveQuoteMoney(82);
+    const replay = await db.query<{ result: { unitPrice: number; total: number } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4) as result",
+      [id(82), id(821), firstRecord, requestId],
+    );
+    expect(replay.rows[0].result).toMatchObject({ unitPrice: first.rows[0].result.unitPrice, total: first.rows[0].result.total });
+    expect(await snapshotCount(82)).toBe(1);
+    expect((await liveQuoteMoney(82)).snapshot_id).toBe(firstSaved.snapshot_id);
+
+    const sameAgain = await db.query<{ result: { unitPrice: number; total: number } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, $4, $5) as result",
+      [id(82), id(821), firstRecord, first.rows[0].result.revision, id(++request)],
+    );
+    expect(sameAgain.rows[0].result).toMatchObject({ unitPrice: 190.5, total: 229.5 });
+    expect(await snapshotCount(82)).toBe(2);
+    const sameSaved = await liveQuoteMoney(82);
+    expect(sameSaved.snapshot_id).not.toBe(firstSaved.snapshot_id);
+    expect(Number(sameSaved.unit_price)).toBe(190.5);
+    expect(Number(sameSaved.total_amount)).toBe(229.5);
+    expect(Number(sameSaved.retail_unit)).toBe(190.5);
+    expect(sameSaved.quote_v2_catalog_version).toBe(LIVE_CATALOG);
+
+    const revision = await db.query<{ quote_v2_revision: string }>(
+      "select quote_v2_revision::text from sales_quotes where id = $1",
+      [id(82)],
+    );
+    const secondHash = await hash(821);
+    const secondRecorded = await db.query<{ result: { records: { record_id: string }[] } }>(
+      "select record_vendor_price_receipt($1, $2, $3::jsonb, 'mike') as result",
+      [id(82), revision.rows[0].quote_v2_revision, JSON.stringify(receipt(821, secondHash, 100))],
+    );
+    const secondRecord = secondRecorded.rows[0].result.records[0].record_id;
+    const repriced = await db.query<{ result: { unitPrice: number; total: number } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, $4, $5) as result",
+      [id(82), id(821), secondRecord, revision.rows[0].quote_v2_revision, id(++request)],
+    );
+    expect(repriced.rows[0].result).toMatchObject({ unitPrice: 250, total: 289 });
+    expect(await snapshotCount(82)).toBe(3);
+    const next = await liveQuoteMoney(82);
+    expect(next.snapshot_id).not.toBe(sameSaved.snapshot_id);
+    expect(Number(next.unit_price)).toBe(250);
+    expect(Number(next.total_amount)).toBe(289);
+    expect(Number(next.retail_unit)).toBe(250);
+    expect(Number(next.retail_line)).toBe(289);
+    expect(next.catalog_version).toBe(LIVE_CATALOG);
+  } finally {
+    await db.query("update crm_live_lookup_switch set enabled = false where vendor = 'norman'");
+  }
+});
+
+it("gives Onyx and Sundance live prices the same catalog snapshot", async () => {
+  await db.query(
+    `insert into crm_vendor_accounts (vendor, account_label, account_number, site, active)
+     values
+       ('onyx', 'snapshot test', 'snapshot-onyx', 'https://admin.onyxshutters.com/Login.aspx', true),
+       ('sundance', 'snapshot test', 'snapshot-sundance', 'https://sundance.blindata.app', true)`,
+  );
+  await db.query("update crm_live_lookup_switch set enabled = true where vendor in ('onyx', 'sundance')");
+  try {
+    await seed(86, 861, "Shutters");
+    await db.query(
+      `update sales_quote_line_items
+       set room_name = 'Hall', width_whole = 36, width_fraction = '0', height_whole = 48, height_fraction = '0'
+       where id = $1`,
+      [id(861)],
+    );
+    await db.query(
+      "insert into sales_quote_designs (line_item_id, variant, product_type, options_json) values ($1, 'A', 'Shutters', $2::jsonb)",
+      [id(861), JSON.stringify({ manufacturer: "onyx", product: "Sycamore", color: "100_Pure White" })],
+    );
+    const onyxHash = await hash(861);
+    const onyxRecorded = await db.query<{ result: { records: { record_id: string }[] } }>(
+      "select record_vendor_price_receipt($1, 1, $2::jsonb, 'mike') as result",
+      [id(86), JSON.stringify(manufacturerReceipt("onyx", 861, onyxHash, 210, "snapshot-onyx"))],
+    );
+    await db.query("select set_quote_live_margin($1, 2, 'mike', 1)", [id(86)]);
+    const onyxPriced = await db.query<{ result: { unitPrice: number; total: number; installation: number } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4) as result",
+      [id(86), id(861), onyxRecorded.rows[0].result.records[0].record_id, id(++request)],
+    );
+    expect(onyxPriced.rows[0].result).toMatchObject({ unitPrice: 420, installation: 0, total: 420 });
+    expect((await liveQuoteMoney(86)).quote_v2_catalog_version).toBe(LIVE_CATALOG);
+    expect((await sendLiveQuote(86)).total).toBe(420);
+
+    await seed(87, 871, "Sheer Shades");
+    await db.query(
+      `update sales_quote_line_items
+       set room_name = 'Den', width_whole = 24, width_fraction = '0', height_whole = 36, height_fraction = '0'
+       where id = $1`,
+      [id(871)],
+    );
+    await db.query(
+      "insert into sales_quote_designs (line_item_id, variant, product_type, options_json) values ($1, 'A', 'Sheer Shades', $2::jsonb)",
+      [id(871), JSON.stringify({ manufacturer: "sundance", product: "sundance_sheerview" })],
+    );
+    const sundanceHash = await hash(871);
+    const sundanceRecorded = await db.query<{ result: { records: { record_id: string }[] } }>(
+      "select record_vendor_price_receipt($1, 1, $2::jsonb, 'jessica') as result",
+      [id(87), JSON.stringify(manufacturerReceipt("sundance", 871, sundanceHash, 80, "snapshot-sundance"))],
+    );
+    await db.query("select set_quote_live_margin($1, 2.5, 'jessica', 1)", [id(87)]);
+    const sundancePriced = await db.query<{ result: { unitPrice: number; total: number; installation: number; shipping: number } }>(
+      "select price_line_from_receipt($1, $2, 'A', $3, 1, $4) as result",
+      [id(87), id(871), sundanceRecorded.rows[0].result.records[0].record_id, id(++request)],
+    );
+    expect(sundancePriced.rows[0].result).toMatchObject({ unitPrice: 200, installation: 25, shipping: 14, total: 239 });
+    const saved = await liveQuoteMoney(87);
+    expect(saved.quote_v2_catalog_version).toBe(LIVE_CATALOG);
+    expect(Number(saved.unit_price)).toBe(200);
+    expect(Number(saved.total_amount)).toBe(239);
+    expect(Number(saved.retail_unit)).toBe(200);
+    expect(Number(saved.retail_line)).toBe(239);
+    expect((await sendLiveQuote(87)).total).toBe(239);
+  } finally {
+    await db.query("update crm_live_lookup_switch set enabled = false where vendor in ('onyx', 'sundance')");
+    await db.query(
+      "update crm_vendor_accounts set active = false where account_number in ('snapshot-onyx', 'snapshot-sundance')",
+    );
+  }
+});
+
+it("leaves a manual price and a catalog batch price unchanged", async () => {
+  await db.query("update crm_live_lookup_switch set enabled = false");
+  await seed(83, 831, "Roller Shades");
+  const manual = await db.query<{ result: { unitPrice: number; total: number } }>(
+    "select set_sales_quote_line_price($1, $2, 'A', 500, $3, 1, $4) as result",
+    [id(83), id(831), id(50), id(++request)],
+  );
+  expect(manual.rows[0].result.unitPrice).toBe(539);
+  const before = await liveQuoteMoney(83);
+  const revision = await db.query<{ quote_v2_revision: string }>(
+    "select quote_v2_revision::text from sales_quotes where id = $1",
+    [id(83)],
+  );
+  await expect(db.query(
+    "select price_line_from_receipt($1, $2, 'A', $3, $4, $5)",
+    [id(83), id(831), id(93), revision.rows[0].quote_v2_revision, id(++request)],
+  )).rejects.toThrow(/switch_off/);
+  expect(await liveQuoteMoney(83)).toEqual(before);
+
+  await seed(84, 841, "Roller Shades");
+  await db.query(
+    "insert into sales_quote_designs (line_item_id, variant, product_type, unit_price, quote_v2_priced_catalog_version) values ($1, 'A', 'Roller Shades', 10, 'catalog-before')",
+    [id(841)],
+  );
+  await db.query("select save_quote_v2_pricing_batch($1, 1, 'catalog', $2, '[]'::jsonb)", [id(84), id(50)]);
+  const catalog = await db.query<{ unit_price: string; catalog_version: string; snapshots: string }>(
+    `select d.unit_price::text, d.quote_v2_priced_catalog_version as catalog_version,
+            (select count(*) from sales_quote_v2_price_snapshots s where s.quote_id = $1) as snapshots
+     from sales_quote_designs d
+     join sales_quote_line_items li on li.id = d.line_item_id
+     where li.quote_id = $1`,
+    [id(84)],
+  );
+  expect(catalog.rows[0].unit_price).toBe("999");
+  expect(catalog.rows[0].catalog_version).toBe("catalog");
+  expect(Number(catalog.rows[0].snapshots)).toBe(0);
+  const manualDefinition = await db.query<{ definition: string }>(
+    "select pg_get_functiondef('public.set_sales_quote_line_price(uuid,uuid,text,numeric,uuid,bigint,uuid,boolean)'::regprocedure) as definition",
+  );
+  expect(manualDefinition.rows[0].definition).not.toContain("live_site");
 });
 
 it("applies the live price migrations while auth.role() is authenticated and the v2 trigger is present", async () => {
