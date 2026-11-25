@@ -1,4 +1,5 @@
 'use client';
+import { contractSketchProduct } from '@/lib/quote/contract-product-family';
 import { flushSync } from 'react-dom';
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { contractAnatomyLabels, anatomySelectionGroup, ANATOMY_SELECTION_GROUPS, isFinishDetail } from '@/lib/quote/contract-anatomy';
@@ -15,7 +16,8 @@ export type AnatomyLayout = 'compact' | 'centered' | 'bordered' | 'classic' | 'g
 export type AnatomySummaryStyle = 'current' | 'recap' | 'numbered' | 'cards' | 'strip' | 'grid' | 'legend';
 export type ContractAnatomyProps = { productType: string; room: string; options: readonly string[]; styleName?: string; width?: number; height?: number; quantity?: number; valanceArtId?: string | null; frameProfileId?: string | null; layout?: AnatomyLayout; lineRouting?:AnatomyLineRouting; summaryStyle?:AnatomySummaryStyle; illustrationGeometry?: ShutterIllustrationGeometry; showHeader?: boolean; afterIllustration?: ReactNode };
 /** Shared, read-only presentation. The caller owns selections and order validity. */
-export function ContractAnatomy({ productType, room, options, styleName, width, height, quantity = 1, valanceArtId, frameProfileId, illustrationGeometry, layout = 'centered', lineRouting='around',summaryStyle='current', showHeader=true, afterIllustration }: ContractAnatomyProps) {
+export function ContractAnatomy({ productType: savedProductType, room, options, styleName, width, height, quantity = 1, valanceArtId, frameProfileId, illustrationGeometry, layout = 'centered', lineRouting='around',summaryStyle='current', showHeader=true, afterIllustration }: ContractAnatomyProps) {
+  const productType = contractSketchProduct(savedProductType, options);
   const model = useMemo(() => contractAnatomyLabels(productType, options, styleName, layout), [productType, options, styleName, layout]);
   const frameProfile = frameProfileId === undefined ? shutterFrameProfile(productType, options, styleName) : shutterFrameArtwork(frameProfileId);
   const finishDetails = model.specifications.filter(isFinishDetail);

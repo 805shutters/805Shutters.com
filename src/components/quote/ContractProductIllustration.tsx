@@ -1,3 +1,4 @@
+import { contractSketchProduct } from '@/lib/quote/contract-product-family';
 import { CONTRACT_ART_ROOT, contractIllustration } from "@/lib/quote/contract-illustrations";
 import { valanceArtwork, valanceIllustration, rollerTopTreatmentSelected, rollerValanceLayout } from "@/lib/quote/valance-illustrations";
 import { temporaryShadeSelected } from "@/lib/quote/temporary-shades";
@@ -16,7 +17,8 @@ import { contractProductFamily, contractProductType, contractReferenceProduct } 
 import { ShutterAssembly } from './ShutterAssembly';
 import type { CSSProperties } from 'react';
 
-export function ContractProductIllustration({ productType, options = [], frameProfile: selectedFrameProfile, valanceArtId, showTemporaryShade = true, illustrationGeometry, size = "compact" }: { productType: string; options?: readonly string[]; frameProfile?: ShutterFrameProfile | null; valanceArtId?: string | null; showTemporaryShade?: boolean; illustrationGeometry?: ShutterIllustrationGeometry; size?: "compact" | "anatomy" }) {
+export function ContractProductIllustration({ productType: savedProductType, options = [], frameProfile: selectedFrameProfile, valanceArtId, showTemporaryShade = true, illustrationGeometry, size = "compact" }: { productType: string; options?: readonly string[]; frameProfile?: ShutterFrameProfile | null; valanceArtId?: string | null; showTemporaryShade?: boolean; illustrationGeometry?: ShutterIllustrationGeometry; size?: "compact" | "anatomy" }) {
+  const productType = contractSketchProduct(savedProductType, options);
   const frameProfile = selectedFrameProfile === undefined ? shutterFrameProfile(productType, options) : selectedFrameProfile;
   const displayProductType = customerQuoteProductName(productType);
   const pencilArt = contractIllustration(displayProductType, options);

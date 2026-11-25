@@ -37,6 +37,21 @@ describe('every catalog product has a contract sketch', () => {
   });
 
 
+  it('renders the regular shutter from its recorded options on a generic contract line', () => {
+    const options = ['Shutter type: Regular', 'Material: Poly Composite', 'Panel configuration: LR', 'Louver size: 3 1/2"', 'Tilt: C - Front Center Tiltrod', 'Frame: Z Crest FS'];
+    const card = renderToStaticMarkup(createElement(QuoteLineItemCard, {
+      lineNumber: 1, room: 'Bedroom 1 1', productType: 'Window Treatment', options, price: '$868.00',
+    }));
+    for (const html of [card, render('Window Treatment', options), render('', options, 'anatomy')]) {
+      expect(html).toContain('data-shutter-layout="LR"');
+      expect(html).toContain('shutter-center-plain.webp');
+      expect(html).not.toContain('data-official-sketch-required');
+    }
+    expect(card).toContain('$868.00');
+    expect(render('Custom hardware', options)).toContain('data-official-sketch-required');
+    expect(render('', [...options, 'Shutter type: Arch'])).toContain('data-official-sketch-required');
+  });
+
   it.each(['', 'Window Treatment', 'Window treatments'])('restores imported Sundance Sheerview sketches for generic title %j', productType => {
     const options = ['Material: Sundance Sheerview - 2.5" vane, room darkening', 'Fabric: Granite (2.5" Room Darkening)', 'Fabric color: Granite', 'Operating system: Motorized', 'Motor: Rechargeable Motor with Wand', 'Mount type: Outside Mount'];
     const before = [...options];

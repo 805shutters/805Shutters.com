@@ -48,6 +48,20 @@ export function contractProductType(productType: string): string {
   return canonical[contractProductFamily(productType)] ?? productType;
 }
 
+/** Resolve generic imported lines for display without modifying the saved quote. */
+export function contractSketchProduct(productType: string, options: readonly string[]): string {
+  if (!/^(?:window treatments?)?$/.test(normalize(productType))) return productType;
+  const types = options.filter(option => /^\s*shutter\s+type\s*:/i.test(option));
+  if (!types.length || !types.every(option => /^\s*shutter\s+type\s*:\s*regular\s*$/i.test(option))) return productType;
+  const conflictingMaterial = options.some(option => {
+    const material = /^\s*material\s*:(.*)$/i.exec(option);
+    if (!material) return false;
+    const family = contractProductFamily(material[1]);
+    return family !== 'custom' && family !== 'shutters';
+  });
+  return conflictingMaterial ? productType : 'Shutters';
+}
+
 /** Imported quote lines can retain a generic title while Material identifies the
  * Sundance Sheerview product. Use that identity only for a labeled category reference;
  * never infer from fabric colors, notes, or an explicitly named custom product. */

@@ -1,5 +1,6 @@
 "use client";
 
+import { contractSketchProduct } from '@/lib/quote/contract-product-family';
 import { useId, type ReactNode } from "react";
 import { Check } from "lucide-react";
 import { customerQuoteText, customerQuoteProductName } from "@/lib/crm/customer-quote-branding";
@@ -31,9 +32,10 @@ type Props = {
 
 /** Shared staff/customer presentation. All money and mutations belong to the caller. */
 export function QuoteLineItemCard({
-  lineNumber, room, productType, optionLabel, styleName = "", options = [], valanceArtId, frameProfileId,
+  lineNumber, room, productType: savedProductType, optionLabel, styleName = "", options = [], valanceArtId, frameProfileId,
   price, priceLabel = "Item total", pricing, quantity = 1, dimensions, illustrationGeometry, actions, selection, notice,
 }: Props) {
+  const productType = contractSketchProduct(savedProductType, options);
   const headingId = useId();
   const money = (amount: number) => amount.toLocaleString("en-US", { style: "currency", currency: "USD" });
   const discounted = pricing && pricing.savings > 0;
