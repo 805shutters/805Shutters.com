@@ -125,7 +125,7 @@ function signedRequest(body: unknown, options: { skewSeconds?: number; signature
   const signature = options.signature === undefined ? `t=${timestamp},v1=${digest}` : options.signature;
   const headers = new Headers();
   if (signature !== null) headers.set("Mercury-Signature", signature);
-  return new NextRequest("https://www.805shutters.com/api/webhooks/mercury/", { method: "POST", body: raw, headers });
+  return new NextRequest("https://www.805shutters.com/api/webhooks/mercury", { method: "POST", body: raw, headers });
 }
 
 function transaction(operation: "create" | "update", id: string, mergePatch: Row) {
@@ -143,11 +143,62 @@ const deposit = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.spyOn(console, "info").mockImplementation(() => undefined);
   vi.stubEnv("MERCURY_WEBHOOK_SECRET", SECRET);
   vi.stubEnv("MIKE_805_SALES_SMS_NUMBER", OWNER);
   vi.mocked(sendSms).mockResolvedValue({ sent: true, sid: "SMfixture" });
 });
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+});
+
+it("handles the exact non-slash URL with a raw-body hex signature and logs only identity", async () => {
+  const db = memoryDb();
+  vi.mocked(getSupabaseServiceClient).mockReturnValue(db.client);
+  const raw = JSON.stringify(transaction("create", "evt-raw", deposit), null, 2) + "\n";
+  const signature = createHmac("sha256", SECRET).update(raw).digest("hex");
+  const request = signedRequest(null, { raw, signature });
+  expect(request.nextUrl.pathname).toBe("/api/webhooks/mercury");
+  const response = await POST(request);
+  expect(response.status).toBe(200);
+  expect(response.headers.get("location")).toBeNull();
+  expect(db.tables.crm_mercury_events).toHaveLength(1);
+  expect(console.info).toHaveBeenCalledExactlyOnceWith({ eventType: "transaction.created", transactionId: TRANSACTION });
+  expect(sendSms).not.toHaveBeenCalled();
+});
+
+it("rejects an invalid hex signature before parsing, database access or logging", async () => {
+  const response = await POST(signedRequest(null, { raw: "not JSON", signature: "00".repeat(32) }));
+  expect(response.status).toBe(401);
+  expect(getSupabaseServiceClient).not.toHaveBeenCalled();
+  expect(console.info).not.toHaveBeenCalled();
+  expect(sendSms).not.toHaveBeenCalled();
+});
+
+it("rejects unsigned requests without reading the body, even when configuration is absent", async () => {
+  vi.stubEnv("MERCURY_WEBHOOK_SECRET", "");
+  const request = signedRequest(null, { signature: null });
+  const readBody = vi.spyOn(request, "arrayBuffer");
+  expect((await POST(request)).status).toBe(401);
+  expect(readBody).not.toHaveBeenCalled();
+  expect(getSupabaseServiceClient).not.toHaveBeenCalled();
+  expect(console.info).not.toHaveBeenCalled();
+});
+
+it("deduplicates payments by transaction id even when Mercury uses a different event id", async () => {
+  const db = memoryDb([quote(JANE, "Jane Doe", 1250.5)]);
+  vi.mocked(getSupabaseServiceClient).mockReturnValue(db.client);
+  for (const id of ["evt-first", "evt-retry-new-id"]) {
+    const raw = JSON.stringify(transaction("update", id, { ...deposit, status: "sent", postedAt: POSTED_AT }));
+    const signature = createHmac("sha256", SECRET).update(raw).digest("hex");
+    expect((await POST(signedRequest(null, { raw, signature }))).status).toBe(200);
+  }
+  expect(db.tables.crm_bank_credits).toHaveLength(1);
+  expect(db.paymentInserts).toHaveLength(1);
+  expect(db.paymentInserts[0].external_id).toBe(TRANSACTION);
+  expect(sendSms).not.toHaveBeenCalled();
+});
 
 it("accepts a valid signature and ignores unrelated Mercury events", async () => {
   const db = memoryDb();

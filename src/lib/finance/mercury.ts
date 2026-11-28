@@ -1,6 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
-/** Mercury signs `t=<unix>,v1=<hex>` over `${t}.${rawBody}` with HMAC-SHA256. */
+/** Supports raw-body hex HMAC and Mercury's timestamped `t=<unix>,v1=<hex>` format. */
 export const MERCURY_SIGNATURE_HEADER = "mercury-signature";
 export const MERCURY_WEBHOOK_SECRET_ENV = "MERCURY_WEBHOOK_SECRET";
 const MAX_SKEW_SECONDS = 5 * 60;
@@ -45,7 +45,7 @@ export type MercuryTransactionEvent = {
 };
 
 export type MercuryRead =
-  | { kind: "ignore" }
+  | { kind: "ignore"; type: string }
   | { kind: "invalid" }
   | { kind: "transaction"; event: MercuryTransactionEvent };
 
@@ -64,12 +64,18 @@ function text(value: unknown): string | null {
  * 503 before calling this, so a configuration gap is not reported as 401.
  */
 export function verifyMercurySignature(
-  raw: string,
+  raw: string | Uint8Array,
   header: string,
   secret: string,
   now = Date.now(),
 ): boolean {
   if (!secret || !header) return false;
+  // The exact-body hex format is required by the configured caller. Keep the
+  // timestamped provider format below for existing Mercury deliveries.
+  if (/^[a-f0-9]{64}$/i.test(header)) {
+    const expected = createHmac("sha256", secret).update(raw).digest();
+    return timingSafeEqual(expected, Buffer.from(header, "hex"));
+  }
   const parts = header.split(",").map((part) => {
     const index = part.indexOf("=");
     if (index === -1) return ["", ""] as const;
@@ -78,7 +84,7 @@ export function verifyMercurySignature(
   const timestamp = parts.find(([key]) => key === "t")?.[1];
   if (!timestamp || !/^\d+$/.test(timestamp)) return false;
   if (Math.abs(now / 1000 - Number(timestamp)) > MAX_SKEW_SECONDS) return false;
-  const expected = createHmac("sha256", secret).update(`${timestamp}.${raw}`).digest();
+  const expected = createHmac("sha256", secret).update(`${timestamp}.`).update(raw).digest();
   return parts.some(([key, value]) => {
     if (key !== "v1" || !/^[a-f0-9]{64}$/i.test(value)) return false;
     const provided = Buffer.from(value, "hex");
@@ -102,7 +108,7 @@ export function readMercuryEvent(value: unknown): MercuryRead {
   if (!isPlainObject(value)) return { kind: "invalid" };
   const type = eventType(value);
   if (!type) return { kind: "invalid" };
-  if (type !== "transaction.created" && type !== "transaction.updated") return { kind: "ignore" };
+  if (type !== "transaction.created" && type !== "transaction.updated") return { kind: "ignore", type };
   const patchValue = value.mergePatch ?? value.merge_patch ?? {};
   if (!isPlainObject(patchValue)) return { kind: "invalid" };
   const id = text(value.id);

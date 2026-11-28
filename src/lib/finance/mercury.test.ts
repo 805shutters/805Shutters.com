@@ -17,6 +17,17 @@ const raw = '{"id":"evt_test"}';
 const now = 1795200000000;
 const secret = "test-mercury-webhook-secret";
 
+it("verifies hex HMAC over exact raw bytes without JSON normalization", () => {
+  const bytes = Buffer.from('{ "label": "café" }\n');
+  const hex = createHmac("sha256", secret).update(bytes).digest("hex");
+  expect(verifyMercurySignature(bytes, hex, secret)).toBe(true);
+  expect(verifyMercurySignature(bytes, hex.toUpperCase(), secret)).toBe(true);
+  expect(verifyMercurySignature(Buffer.from('{"label":"café"}'), hex, secret)).toBe(false);
+  for (const malformed of [hex.slice(2), hex + "00", "g".repeat(64), hex + "," ]) {
+    expect(verifyMercurySignature(bytes, malformed, secret)).toBe(false);
+  }
+});
+
 function signature(body = raw, timestamp = now / 1000, key = secret) {
   const digest = createHmac("sha256", key).update(`${timestamp}.${body}`).digest("hex");
   return `t=${timestamp},v1=${digest}`;

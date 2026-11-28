@@ -3,6 +3,13 @@ import { quoterServiceGuard } from "@/lib/crm/quoter-service-auth";
 import { crossesMarketingBoundary } from "@/lib/marketing-tracking";
 
 export function proxy(request: NextRequest) {
+  // Only Mercury POST bypasses the existing slash canonicalization. Keeping
+  // this method check here avoids relying on a caller-controlled header.
+  if (request.nextUrl.pathname === "/api/webhooks/mercury" && request.method !== "POST") {
+    const canonical = new URL(request.url);
+    canonical.pathname += "/";
+    return NextResponse.redirect(canonical, 308);
+  }
   const quoterDenied = quoterServiceGuard(request);
   if (quoterDenied) return quoterDenied;
 

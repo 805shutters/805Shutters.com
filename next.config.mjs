@@ -265,7 +265,9 @@ const trailingSlashRedirects = [
   },
   {
     // The end anchor prevents an already-slashed URL from matching again.
-    source: "/:notfile((?!\\.well-known(?:/.*)?)(?:[^/]+/)*[^/\\.]+$)",
+    // Mercury POST must reach its handler at the registered non-slash URL.
+    // proxy.ts preserves this exact path's redirect for every other method.
+    source: "/:notfile((?!api/webhooks/mercury$)(?!\\.well-known(?:/.*)?)(?:[^/]+/)*[^/\\.]+$)",
     destination: "/:notfile/",
     permanent: true
   }

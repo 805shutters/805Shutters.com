@@ -50,7 +50,8 @@ for (const [source, target] of [
 for (const path of [
   "/", "/about", "/about/", "/shutters/plantation", "/shutters/plantation/",
   "/drapery", "/drapery/", "/motorized-window-shades-ventura-county/",
-  "/api/example", "/api/example/", "/robots.txt", "/robots.txt/",
+  "/api/example", "/api/example/", "/api/webhooks/stripe", "/api/webhooks/mercury-next",
+  "/api/webhooks/mercury/child", "/api/webhooks/mercury/", "/robots.txt", "/robots.txt/",
   "/images/example.jpg/", "/.well-known/example", "/.well-known/example/",
   "/.well-known/example.json/"
 ]) {
@@ -64,3 +65,8 @@ for (const path of [
     assert.deepEqual(replacement?.missing, original?.missing);
   });
 }
+
+test("Mercury's exact non-slash endpoint reaches proxy for method-specific handling", () => {
+  const slashRule = compiled.find((route) => route.destination === "/:notfile/");
+  assert.equal(new RegExp(slashRule.regex).test("/api/webhooks/mercury"), false);
+});

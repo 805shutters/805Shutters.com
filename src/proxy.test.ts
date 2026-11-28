@@ -2,6 +2,23 @@ import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 import { proxy } from "./proxy";
 
+describe("Mercury's method-specific slash exception", () => {
+  it("passes the exact registered POST to its handler without a redirect", () => {
+    const response = proxy(new NextRequest("https://www.805shutters.com/api/webhooks/mercury", { method: "POST" }));
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+  it.each(["GET", "HEAD", "OPTIONS", "PUT"])("preserves %s canonicalization and query strings", (method) => {
+    const response = proxy(new NextRequest("https://www.805shutters.com/api/webhooks/mercury?check=1", { method }));
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe("https://www.805shutters.com/api/webhooks/mercury/?check=1");
+  });
+  it("does not redirect the already-slashed endpoint", () => {
+    const response = proxy(new NextRequest("https://www.805shutters.com/api/webhooks/mercury/"));
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+});
+
 describe("GTM navigation isolation", () => {
   it.each([false, true])("forces public-to-private navigation to a new document (prefetch=%s)", (prefetch) => {
     const response = proxy(new NextRequest("https://www.805shutters.com/crm/?_rsc=test", {
