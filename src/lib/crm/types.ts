@@ -581,6 +581,9 @@ export type CrmAccountabilityItem = {
   jobId?: string | null;
 };
 
+/** Display status for a sales appointment. Null means the linked job has no live quote. */
+export type CalendarQuoteStatus = "unsent" | "sent" | "sold";
+
 export type CrmCalendarEvent = {
   id: string;
   created_at: string;
@@ -606,6 +609,8 @@ export type CrmCalendarEvent = {
   quote_sent_at?: string | null;
   quote_signed_at?: string | null;
   customer_contract_signed_at?: string | null;
+  /** Set by calendar enrichment. Other readers, including the 805 Calendar bot, use this field. */
+  quoteStatus?: CalendarQuoteStatus | null;
 };
 
 export type CrmAvailabilitySlot = {

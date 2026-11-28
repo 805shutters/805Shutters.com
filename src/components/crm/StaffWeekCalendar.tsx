@@ -173,10 +173,10 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
           {layout.map(({ event, top, height, overlap }) => {
             const details = monthAppointmentDetails(event, jobs);
             const sale = calendarEventSalePresentation(event);
-            const saleLabel = sale.tone === "sold" ? "SOLD" : sale.tone === "unsold" ? "UNSOLD" : "";
+            const saleLabel = sale.bannerLabel || "";
             const time = `${losAngelesTimeString(new Date(event.start_at))}–${losAngelesTimeString(new Date(event.end_at))}`;
-            return <button type="button" key={event.id} className={styles.appointment} data-sale={sale.tone || "pending"} data-short={height / 100 * slots.length < 1.5} style={{ top: `calc(${top}% + 3px)`, height: `calc(${height}% - 6px)` }} aria-label={`${details.name}, ${date} ${time}.${saleLabel ? ` ${saleLabel}.` : ""} City: ${details.city}. Product: ${details.product}. Lead Type: ${details.leadType}.${overlap ? " Overlapping appointment times." : ""} Open appointment`} title={`${time} · ${details.name}\nCity: ${details.city}\nProduct: ${details.product}\nLead Type: ${details.leadType}`} onClick={() => onOpenEvent(event)}>
-              <span className={styles.appointmentMeta}><span className={styles.eventTime}>{time}</span>{saleLabel && <span className={styles.saleBadge}>{saleLabel}</span>}</span><strong>{details.name}</strong><span className={styles.eventDetails}>{details.city} · {details.product}</span>
+            return <button type="button" key={event.id} className={styles.appointment} data-sale={sale.tone || "pending"} data-quote-status={sale.quoteStatus || "none"} data-short={height / 100 * slots.length < 1.5} style={{ top: `calc(${top}% + 3px)`, height: `calc(${height}% - 6px)` }} aria-label={`${details.name}, ${date} ${time}.${saleLabel ? ` Quote ${saleLabel}.` : ""} City: ${details.city}. Product: ${details.product}. Lead Type: ${details.leadType}.${overlap ? " Overlapping appointment times." : ""} Open appointment`} title={`${time} · ${details.name}${saleLabel ? ` · ${saleLabel}` : ""}\nCity: ${details.city}\nProduct: ${details.product}\nLead Type: ${details.leadType}`} onClick={() => onOpenEvent(event)}>
+              <span className={styles.appointmentMeta}><span className={styles.eventTime}>{time}</span>{saleLabel && <span className={styles.saleBadge} data-quote-status={sale.quoteStatus}>{saleLabel}</span>}</span><strong>{details.name}</strong><span className={styles.eventDetails}>{details.city} · {details.product}</span>
             </button>;
           })}
           </div>
@@ -184,7 +184,7 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
       })}
     </div>
     </div>
-    <footer className={styles.footer}><div className={styles.legend}><span><i />Available</span><span><i />Booked</span><span><i />Unavailable for public booking</span><span><i className={styles.soldLegend} />Sold</span><span><i className={styles.unsoldLegend} />Unsold</span></div><span>30-minute starts · Pacific · Circle: availability · All days scroll together</span></footer>
+    <footer className={styles.footer}><div className={styles.legend}><span><i />Available</span><span><i />Booked</span><span><i />Unavailable for public booking</span><span><i className={styles.soldLegend} />Sold</span><span><i className={styles.sentLegend} />Sent</span><span><i className={styles.unsentLegend} />Unsent</span></div><span>30-minute starts · Pacific · Circle: availability · All days scroll together</span></footer>
     <dialog ref={dialog} className={styles.dialog} onCancel={closeDialog} onClose={closeDialog} aria-labelledby="week-dialog-title">
       <div className={styles.dialogHead}><h2 id="week-dialog-title">{showHours ? "Working hours" : selectedDay}</h2><button type="button" aria-label="Close calendar details" onClick={closeDialog}><X /></button></div>
       {showHours ? <JessicaWorkingRanges session={session} initialMonth={month} /> : selectedDay && <>
@@ -193,7 +193,8 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
         {saving && <p role="status">Saving day…</p>}{error && <p role="alert">{error} <button type="button" onClick={() => setReload(value => value + 1)}>Reload calendar</button></p>}
         {monthDayEvents(events, selectedDay).map(event => {
           const details = monthAppointmentDetails(event, jobs);
-          return <button type="button" key={event.id} className={styles.detailAppointment} onClick={() => { closeDialog(); onOpenEvent(event); }}><strong>{details.name}</strong><span>{losAngelesTimeString(new Date(event.start_at))}–{losAngelesTimeString(new Date(event.end_at))} · {event.assigned_to || "Unassigned"}</span><span>City: {details.city}</span><span>Product: {details.product}</span><span>Lead Type: {details.leadType}</span><b>Open appointment →</b></button>;
+          const sale = calendarEventSalePresentation(event);
+          return <button type="button" key={event.id} className={styles.detailAppointment} onClick={() => { closeDialog(); onOpenEvent(event); }}><strong>{details.name}</strong>{sale.bannerLabel ? <span className={styles.saleBadge} data-quote-status={sale.quoteStatus}>{sale.bannerLabel}</span> : null}<span>{losAngelesTimeString(new Date(event.start_at))}–{losAngelesTimeString(new Date(event.end_at))} · {event.assigned_to || "Unassigned"}</span><span>City: {details.city}</span><span>Product: {details.product}</span><span>Lead Type: {details.leadType}</span><b>Open appointment →</b></button>;
         })}
       </>}
     </dialog>

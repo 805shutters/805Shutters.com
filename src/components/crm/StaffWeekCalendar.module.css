@@ -51,20 +51,23 @@
 .appointment span { color:#b9c9bf; }
 .appointment .appointmentMeta { display:flex; align-items:center; gap:4px; overflow:visible; }
 .appointment .eventTime { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:9px; }
-.appointment .saleBadge { flex:none; display:inline-block; padding:2px 4px; border-radius:3px; color:#103b24; background:#c2f5d6; font-size:9px; line-height:1; font-weight:800; letter-spacing:.02em; }
-.appointment[data-sale=unsold] .saleBadge { color:#38290e; background:#ead09b; }
+.saleBadge { flex:none; display:inline-block; padding:2px 4px; border-radius:3px; color:#103b24; background:#c2f5d6; font-size:9px; line-height:1; font-weight:800; letter-spacing:.02em; }
+.saleBadge[data-quote-status=sent] { color:#38290e; background:#ead09b; }
+.saleBadge[data-quote-status=unsent] { color:#1d2a38; background:#d5dee8; }
 .appointment[data-sale=sold] { background:#2d6445; border-color:#7acb99; border-left-color:#b4efc9; }
 .appointment[data-sale=sold] span { color:#e1f5e8; }
-.appointment[data-sale=sold] .saleBadge { color:#103b24; }
+.appointment[data-sale=sold] .saleBadge { color:#103b24; background:#c2f5d6; }
 .appointment[data-sale=unsold] { border-left-color:#c0a16c; }
+.detailAppointment .saleBadge { align-self:flex-start; margin-top:2px; }
 .footer { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; flex:none; padding:12px 4px 6px; color:#aab9af; font-size:11px; }
 .legend { display:flex; gap:18px; flex-wrap:wrap; }
 .legend span { display:flex; align-items:center; gap:7px; }
 .legend i { display:inline-block; width:16px; height:16px; border:1px solid #42554a; border-radius:3px; background:#244b37; }
 .legend span:nth-child(2) i { background:#111a15; border-left:4px solid #72dcaf; }
 .legend span:nth-child(3) i { background:#161e19; }
-.legend .soldLegend { background:#2d6445; border-color:#7acb99; }
-.legend .unsoldLegend { background:#111a15; border-left:4px solid #c0a16c; }
+.legend .soldLegend { background:#c2f5d6; border-color:#7acb99; }
+.legend .sentLegend { background:#ead09b; border-color:#c0a16c; }
+.legend .unsentLegend { background:#d5dee8; border-color:#8ea0b3; }
 .blockDay { display:flex; align-items:center; justify-content:center; gap:4px; width:100%; margin-top:4px; height:28px; color:#efefed; border:1px solid #777; border-radius:5px; background:#292929; font-size:12px!important; }
 .dialog { box-sizing:border-box; width:min(640px,calc(100vw - 24px)); max-height:calc(100dvh - 32px); margin:auto; padding:20px; border:1px solid #484843; border-radius:14px; background:#1d1d1b; color:#fbfbfa; font-family:var(--crm-ui-font,Arial); overflow:auto; }
 .dialog::backdrop { background:#000b; }
