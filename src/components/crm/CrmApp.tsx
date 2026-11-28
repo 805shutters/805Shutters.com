@@ -14077,7 +14077,7 @@ function CalendarTimelineGrid({
           const canManage = canRescheduleCalendarEvent(event);
           const assignmentLabel = event.event_type === "block" ? "" : calendarEventAssignmentLabel(event);
           const customerPhone = cleanCalendarText(event.customer_phone);
-          const { bannerLabel } = calendarEventSalePresentation(event);
+          const { bannerLabel, quoteStatus } = calendarEventSalePresentation(event);
 
           return (
             <article
@@ -14112,7 +14112,7 @@ function CalendarTimelineGrid({
               tabIndex={canManage ? 0 : undefined}
               title={descriptionLabel}
             >
-              {bannerLabel ? <div className="crm-calendar-event-status-banner">{bannerLabel}</div> : null}
+              {bannerLabel ? <div className="crm-calendar-event-status-banner" data-quote-status={quoteStatus || undefined}>{bannerLabel}</div> : null}
               <div className="crm-calendar-event-time">
                 <span>
                   {calendarTimeFormatter.format(new Date(event.start_at))} -{" "}
@@ -14183,10 +14183,10 @@ function CalendarMonthGrid({
                 {eventPreview.map((event) => {
                   const className = `crm-calendar-month-event ${calendarEventToneClassName(event)}`;
                   const customerPhone = cleanCalendarText(event.customer_phone);
-                  const { bannerLabel } = calendarEventSalePresentation(event);
+                  const { bannerLabel, quoteStatus } = calendarEventSalePresentation(event);
                   const preview = (
                     <>
-                      {bannerLabel ? <b className="crm-calendar-event-status-banner">{bannerLabel}</b> : null}
+                      {bannerLabel ? <b className="crm-calendar-event-status-banner" data-quote-status={quoteStatus || undefined}>{bannerLabel}</b> : null}
                       <strong>{calendarTimeFormatter.format(new Date(event.start_at))}</strong>
                       <span>{calendarEventCustomerLabel(event)}</span>
                       {customerPhone ? <em>{customerPhone}</em> : null}

@@ -8479,6 +8479,14 @@ button.crm-customer-action-link {
   text-align: center;
 }
 
+.crm-calendar-event-status-banner[data-quote-status="sent"] {
+  background: #8a6a1d;
+}
+
+.crm-calendar-event-status-banner[data-quote-status="unsent"] {
+  background: #3e5164;
+}
+
 .crm-calendar-event-details {
   display: grid;
   gap: 2px;

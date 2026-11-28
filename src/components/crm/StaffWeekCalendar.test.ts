@@ -80,22 +80,26 @@ describe("full Sunday–Saturday staff calendar", () => {
     expect(regions[0].getAttribute("aria-label")).toBe("Scroll weekly appointments");
     expect(regions[0].querySelectorAll("article[data-date]")).toHaveLength(7);
   });
-  it("keeps sold and unsold badges separate from time text, including short appointments", async () => {
+  it("keeps sold, sent, and unsent badges separate from time text, including short appointments", async () => {
     const base = { event_type: "sales_consult", status: "scheduled", start_at: "2026-09-21T16:00:00Z", end_at: "2026-09-21T16:30:00Z", title: "Sample appointment" };
     const calendarEvents = [
       { ...base, id: "sold", job_status: "ordered" },
       { ...base, id: "unsold", start_at: "2026-09-22T16:00:00Z", end_at: "2026-09-22T16:30:00Z", quote_sent_at: "2026-09-01T16:00:00Z" },
+      { ...base, id: "unsent", start_at: "2026-09-24T16:00:00Z", end_at: "2026-09-24T16:30:00Z", quoteStatus: "unsent" },
       { ...base, id: "pending", start_at: "2026-09-23T16:00:00Z", end_at: "2026-09-23T17:00:00Z" },
     ] as CrmCalendarEvent[];
     await render("2026-09-24", calendarEvents);
-    for (const [tone, label] of [["sold", "SOLD"], ["unsold", "UNSOLD"]]) {
+    for (const [tone, label] of [["sold", "SOLD"], ["unsold", "SENT"]]) {
       const card = host.querySelector<HTMLButtonElement>(`button[data-sale="${tone}"]`)!;
       expect(card.dataset.short).toBe("true");
       expect([...card.querySelectorAll("span")].some(span => span.textContent === label)).toBe(true);
       expect(card.getAttribute("aria-label")).toContain(label);
     }
+    const unsent = host.querySelector<HTMLButtonElement>('button[data-quote-status="unsent"]')!;
+    expect(unsent.textContent).toContain("UNSENT");
+    expect(unsent.getAttribute("aria-label")).toContain("UNSENT");
     const pending = host.querySelector('button[data-sale="pending"]')!;
-    expect(pending.textContent).not.toMatch(/SOLD/);
+    expect(pending.textContent).not.toMatch(/SOLD|SENT|UNSENT/);
     await act(async () => host.querySelector<HTMLButtonElement>('button[data-sale="sold"]')!.click());
     expect(openEvent).toHaveBeenCalledWith(calendarEvents[0]);
   });

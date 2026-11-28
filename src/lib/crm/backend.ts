@@ -51,6 +51,8 @@ import { isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
 import { sendAppointmentConfirmation } from "@/lib/booking/confirmation-message";
 import { isBookingDeliveryEnabled } from "@/lib/booking/delivery-config";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
+import { calendarQuoteStatus } from "@/lib/crm/calendar-event-sales";
+import { loadSentDeliveryQuoteIds } from "@/lib/crm/sent-quote-deliveries";
 import {
   bookingEndIso,
   losAngelesDateString,
@@ -1105,7 +1107,8 @@ export function enrichCalendarEventsWithJobDetails(
   events: CrmCalendarEvent[],
   jobs: CrmJob[],
   quotes: CrmQuote[] = [],
-  contracts: CrmCustomerContract[] = []
+  contracts: CrmCustomerContract[] = [],
+  sentDeliveryQuoteIds: ReadonlySet<string> | readonly string[] | null = []
 ): CrmCalendarEvent[] {
   const jobsById = new Map(jobs.map((job) => [job.id, job]));
   const jobsByCustomerIdentity = new Map<string, CrmJob[]>();
@@ -1143,7 +1146,7 @@ export function enrichCalendarEventsWithJobDetails(
 
   return events.map((event) => {
     const job = event.job_id ? jobsById.get(event.job_id) : null;
-    if (!job) return event;
+    if (!job) return { ...event, quoteStatus: null };
     const relatedJobsById = new Map<string, CrmJob>([[job.id, job]]);
     for (const key of calendarCustomerIdentityKeys(job)) {
       for (const relatedJob of jobsByCustomerIdentity.get(key) || []) {
@@ -1170,6 +1173,9 @@ export function enrichCalendarEventsWithJobDetails(
     const relatedContracts = [...relatedContractsById.values()];
     const savedCustomer = jsonRecord(event.meta?.appointmentCustomer);
     const visitField = (key: string, fallback: string | null) => typeof savedCustomer[key] === "string" ? savedCustomer[key] as string : fallback;
+    const jobStatus = relatedJobs.reduce((status, relatedJob) => advanceJobStatus(status, relatedJob.status), job.status);
+    const quoteSignedAt = latestCalendarTimestamp(relatedQuotes.map((quote) => quote.signed_at));
+    const contractSignedAt = latestCalendarTimestamp(relatedContracts.map((contract) => contract.signed_at));
 
     return {
       ...event,
@@ -1180,10 +1186,19 @@ export function enrichCalendarEventsWithJobDetails(
       customer_city: visitField("city", job.city),
       product_interest: visitField("productInterest", job.product_interest) || job.product_interest,
       customer_notes: event.meta?.returnVisit ? event.notes : event.notes || job.notes,
-      job_status: relatedJobs.reduce((status, relatedJob) => advanceJobStatus(status, relatedJob.status), job.status),
+      job_status: jobStatus,
       quote_sent_at: latestCalendarTimestamp(relatedQuotes.map((quote) => quote.sent_at)),
-      quote_signed_at: latestCalendarTimestamp(relatedQuotes.map((quote) => quote.signed_at)),
-      customer_contract_signed_at: latestCalendarTimestamp(relatedContracts.map((contract) => contract.signed_at))
+      quote_signed_at: quoteSignedAt,
+      customer_contract_signed_at: contractSignedAt,
+      quoteStatus: calendarQuoteStatus({
+        eventType: event.event_type,
+        eventStatus: event.status,
+        jobStatus,
+        quoteSignedAt,
+        contractSignedAt,
+        quotes: relatedQuotes,
+        sentDeliveryQuoteIds
+      })
     };
   });
 }
@@ -1213,7 +1228,8 @@ export function buildDashboardData({
   vendorOrderTasks = [],
   openingBalance,
   payoffTarget,
-  now
+  now,
+  sentDeliveryQuoteIds = []
 }: {
   jobs: CrmJob[];
   quotes: CrmQuote[];
@@ -1240,6 +1256,7 @@ export function buildDashboardData({
   openingBalance: number;
   payoffTarget: number;
   now?: Date | string;
+  sentDeliveryQuoteIds?: ReadonlySet<string> | readonly string[] | null;
 }): CrmDashboardData {
   // Keep real evidence dates separate from legacy status projections. A typed
   // signature without a timestamp must not turn created_at into the sale date.
@@ -1313,7 +1330,7 @@ export function buildDashboardData({
     source_status: sourceJobStatusById.get(job.id) || job.status,
     quote_total: quotesByJob.get(job.id) || toMoney(job.estimated_total)
   }));
-  const calendarEvents = enrichCalendarEventsWithJobDetails(events, jobsWithQuotes, liveQuotes, contracts);
+  const calendarEvents = enrichCalendarEventsWithJobDetails(events, jobsWithQuotes, liveQuotes, contracts, sentDeliveryQuoteIds);
   const progressItems = buildJobTrackingView({ jobs: jobsWithQuotes, quotes: liveQuotes, rows: bookkeepingRows, files: customerFiles, fulfillment, ownedActions, installerOutcomes, sourceHealth, orderCogsEmails, installationInvoiceEmails });
   for (const item of progressItems) if (item.row) item.row.operationalProgress = item.progress;
 
@@ -1786,7 +1803,8 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient, options:
     ownedActionsResult,
     fulfillmentScopesResult,fulfillmentLinesResult,productMovementsResult,serviceVisitsResult,
     mtsInstallLinksResult,
-    integrationHealth
+    integrationHealth,
+    sentDeliveryResult
   ] = await Promise.all([
     // Read complete ledgers so old jobs and payments cannot fall outside a row cap.
     loadCompleteCrmTable(supabase, "crm_jobs", "created_at"),
@@ -1819,7 +1837,11 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient, options:
     loadCompleteCrmTable(supabase,"crm_product_movements","created_at"),
     loadCompleteCrmTable(supabase,"crm_service_visits","created_at"),
     loadCompleteCrmTable(supabase, "crm_job_mts_install_links", "last_verified_at", "*", "job_id"),
-    options.activeOnly ? Promise.resolve([]) : loadIntegrationHealth(supabase)
+    options.activeOnly ? Promise.resolve([]) : loadIntegrationHealth(supabase),
+    loadSentDeliveryQuoteIds(supabase).then(
+      (ids) => ({ data: ids, error: null as { message: string } | null }),
+      (error: unknown) => ({ data: null as Set<string> | null, error: { message: error instanceof Error ? error.message : "Quote delivery evidence could not be loaded." } })
+    )
   ]);
 
   if (
@@ -1876,6 +1898,10 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient, options:
 
   if (settingsResult.error) {
     console.warn("CRM settings could not be loaded.", settingsResult.error.message);
+  }
+
+  if (sentDeliveryResult.error) {
+    console.warn("CRM quote delivery evidence could not be loaded.", sentDeliveryResult.error.message);
   }
 
   // Tombstoned jobs (soft-deleted via meta.deleted_at) are hidden everywhere:
@@ -1997,7 +2023,8 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient, options:
     commissionPaymentAllocations,
     vendorOrderTasks,
     openingBalance,
-    payoffTarget
+    payoffTarget,
+    sentDeliveryQuoteIds: sentDeliveryResult.error ? null : sentDeliveryResult.data
   });
   const technicalMeasureSubmissions = (vendorOrderTasksResult.error ? [] : vendorOrderTasksResult.data || []).flatMap(value => {
     const row = objectMeta(value);

@@ -2078,7 +2078,71 @@ describe("enrichCalendarEventsWithJobDetails", () => {
 
     expect(enrichCalendarEventsWithJobDetails(events, jobs, quotes)[0]).toMatchObject({
       job_status: "sold",
-      quote_signed_at: "2026-08-12T17:56:48.646Z"
+      quote_signed_at: "2026-08-12T17:56:48.646Z",
+      quoteStatus: "sold"
+    });
+  });
+
+  it("sets quoteStatus from live quotes, sent timestamps, and sent delivery attempts", () => {
+    const appointment = (id: string, jobId: string): CrmCalendarEvent => ({
+      id,
+      created_at: "2026-08-12T16:00:00.000Z",
+      updated_at: "2026-08-12T16:00:00.000Z",
+      job_id: jobId,
+      title: id,
+      event_type: "sales_consult",
+      status: "scheduled",
+      assigned_to: "Jessica",
+      start_at: "2026-08-12T17:00:00.000Z",
+      end_at: "2026-08-12T18:00:00.000Z",
+      location: null,
+      notes: null
+    });
+    const events = [
+      appointment("none", "job-none"),
+      appointment("unsent", "job-unsent"),
+      appointment("sent-at", "job-sent-at"),
+      appointment("attempt", "job-attempt"),
+      appointment("several", "job-several"),
+      appointment("sold", "job-sold"),
+      appointment("block", "job-block")
+    ];
+    events[6] = { ...events[6], event_type: "block" };
+    const jobs = [
+      job({ id: "job-none", status: "scheduled" }),
+      job({ id: "job-unsent", status: "scheduled" }),
+      job({ id: "job-sent-at", status: "quoted" }),
+      job({ id: "job-attempt", status: "quoted" }),
+      job({ id: "job-several", status: "quoted" }),
+      job({ id: "job-sold", status: "quoted" }),
+      job({ id: "job-block", status: "sold" })
+    ];
+    const quotes = [
+      quote({ id: "deleted-only", job_id: "job-none", status: "draft", meta: { deleted_at: "2026-08-01T00:00:00.000Z" } }),
+      quote({ id: "draft", job_id: "job-unsent", status: "draft", sent_at: null, signed_at: null, sold_at: null }),
+      quote({ id: "timestamp", job_id: "job-sent-at", status: "draft", sent_at: "2026-08-12T18:00:00.000Z", signed_at: null, sold_at: null }),
+      quote({ id: "by-attempt", job_id: "job-attempt", status: "draft", sent_at: null, signed_at: null, sold_at: null }),
+      quote({ id: "several-draft", job_id: "job-several", status: "draft", sent_at: null, signed_at: null, sold_at: null }),
+      quote({ id: "several-sent", job_id: "job-several", status: "sent", sent_at: "2026-08-12T19:00:00.000Z", signed_at: null, sold_at: null }),
+      quote({ id: "won", job_id: "job-sold", status: "sold", sent_at: "2026-08-12T18:00:00.000Z", signed_at: "2026-08-12T20:00:00.000Z" })
+    ];
+
+    const labeled = Object.fromEntries(enrichCalendarEventsWithJobDetails(
+      events,
+      jobs,
+      quotes,
+      [],
+      new Set(["by-attempt"])
+    ).map((item) => [item.id, item.quoteStatus]));
+
+    expect(labeled).toEqual({
+      none: null,
+      unsent: "unsent",
+      "sent-at": "sent",
+      attempt: "sent",
+      several: "sent",
+      sold: "sold",
+      block: null
     });
   });
 });
