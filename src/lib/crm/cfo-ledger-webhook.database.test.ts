@@ -7,6 +7,8 @@ import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 const migrationName = "20261128120000_cfo_ledger_webhook_triggers.sql";
 const migrationPath = `supabase/migrations/${migrationName}`;
 const migration = readFileSync(migrationPath, "utf8");
+const signatureMigrationName = "20261128210000_cfo_ledger_webhook_signature_headers.sql";
+const signatureMigration = readFileSync(`supabase/migrations/${signatureMigrationName}`, "utf8");
 
 const JOB = "10000000-0000-4000-8000-000000000001";
 const QUOTE = "10000000-0000-4000-8000-000000000002";
@@ -139,9 +141,12 @@ function expectNoContact(row: Queued) {
   expect(dumped).not.toContain(ADDRESS);
   expect(keysOf(row.body).join(" ")).not.toMatch(/phone|email|address/i);
   const digest = createHmac("sha256", SECRET).update(row.bodyText, "utf8").digest("hex");
+  const postedBodyDigest = createHmac("sha256", SECRET).update(row.bodyText, "utf8").digest("hex");
   expect(row.headers["x-ledger-signature"]).toBe(digest);
   expect(row.headers["x-ledger-secret"]).toBe(SECRET);
   expect(row.headers["Content-Type"]).toBe("application/json");
+  expect(row.headers["X-Hub-Signature-256"]).toBe(`sha256=${postedBodyDigest}`);
+  expect(row.headers.Authorization).toBe(`Bearer ${SECRET}`);
   expect(row.url).toBe(URL);
   expect(row.timeout_milliseconds).toBe(5000);
   expect(Number.isNaN(Date.parse(String(row.body.occurred_at)))).toBe(false);
@@ -241,6 +246,7 @@ beforeAll(async () => {
     );
   `);
   await db.exec(migration);
+  await db.exec(signatureMigration);
   await db.exec(httpStub);
   await db.exec(`
     grant usage on schema public to authenticated, service_role;
@@ -269,6 +275,29 @@ afterAll(() => db.close());
 it("keeps the migration additive and free of urls, secrets, and CRM writes", async () => {
   const names = readdirSync("supabase/migrations").filter((name) => name.endsWith(".sql")).sort();
   expect(names).toContain(migrationName);
+  expect(names.at(-1)).toBe(signatureMigrationName);
+  expect(signatureMigrationName > migrationName).toBe(true);
+  expect(signatureMigrationName > "20261128200000_crm_bank_credits.sql").toBe(true);
+  const signatureExecutable = signatureMigration.replace(/--.*$/gm, "");
+  expect(signatureExecutable).toContain("v_body := p_payload::text");
+  expect(signatureExecutable).toContain("convert_to(v_body, 'utf8')");
+  expect(signatureExecutable).toContain("'Content-Type', 'application/json'");
+  expect(signatureExecutable).toContain("'x-ledger-secret', v_secret");
+  expect(signatureExecutable).toContain("'x-ledger-signature', v_sig");
+  expect(signatureExecutable).toContain("'X-Hub-Signature-256', 'sha256=' || v_sig");
+  expect(signatureExecutable).toContain("'Authorization', 'Bearer ' || v_secret");
+  expect(signatureExecutable).toContain("security definer");
+  expect(signatureExecutable).toContain("set search_path = ''");
+  expect(signatureExecutable).toContain("revoke all on function cfo_ledger.enqueue(jsonb) from public");
+  expect(signatureExecutable).not.toMatch(/\bdrop\b/i);
+  expect(signatureExecutable).not.toMatch(/\btruncate\b/i);
+  expect(signatureExecutable).not.toMatch(/\bdelete\s+from\b/i);
+  expect(signatureExecutable).not.toMatch(/\binsert\s+into\b/i);
+  expect(signatureExecutable).not.toMatch(/\bupdate\s+/i);
+  expect(signatureExecutable).not.toMatch(/create\s+trigger/i);
+  expect(signatureExecutable).not.toMatch(/alter\s+table/i);
+  expect(signatureExecutable).not.toMatch(/https?:\/\//i);
+  expect(signatureExecutable).not.toMatch(/vault\.create_secret/i);
   const executable = migration.replace(/--.*$/gm, "");
   expect(executable).toContain("create extension if not exists pg_net with schema extensions");
   expect(executable).toContain("cfo_ledger_webhook_url");
@@ -318,8 +347,34 @@ it("keeps the migration additive and free of urls, secrets, and CRM writes", asy
   }
   const enqueue = functions.rows.find((row) => row.proname === "enqueue");
   expect(enqueue?.prosecdef).toBe(true);
+  expect(enqueue?.proconfig?.join(" ") ?? "").toContain("search_path=");
   expect(enqueue?.def).toContain("cfo_ledger_webhook_url");
   expect(enqueue?.def).toContain("cfo_ledger_webhook_secret");
+  expect(enqueue?.def).toContain("v_body := p_payload::text");
+  expect(enqueue?.def).toContain("X-Hub-Signature-256");
+  expect(enqueue?.def).toContain("sha256=");
+  expect(enqueue?.def).toContain("Authorization");
+  expect(enqueue?.def).toContain("Bearer ");
+  expect(enqueue?.def).toContain("x-ledger-secret");
+  expect(enqueue?.def).toContain("x-ledger-signature");
+});
+
+it("sends hub and bearer headers signed over the exact posted body", async () => {
+  await db.query("select cfo_ledger.enqueue($1::jsonb)", [JSON.stringify({
+    event_type: "quote_sold",
+    note: "café / \"quoted\"\nline",
+    amount: 12.5,
+  })]);
+  const rows = await queued();
+  expect(rows).toHaveLength(1);
+  const posted = rows[0].bodyText;
+  const digest = createHmac("sha256", SECRET).update(Buffer.from(posted, "utf8")).digest("hex");
+  expect(rows[0].headers["X-Hub-Signature-256"]).toBe(`sha256=${digest}`);
+  expect(rows[0].headers.Authorization).toBe(`Bearer ${SECRET}`);
+  expect(rows[0].headers["x-ledger-signature"]).toBe(digest);
+  expect(rows[0].headers["x-ledger-secret"]).toBe(SECRET);
+  expect(rows[0].headers["Content-Type"]).toBe("application/json");
+  expect(JSON.parse(posted)).toMatchObject({ event_type: "quote_sold", note: "café / \"quoted\"\nline" });
 });
 
 it("fires quote_sold once when status enters sold, approved, or a later status", async () => {
