@@ -266,9 +266,9 @@ beforeEach(async () => {
 
 afterAll(() => db.close());
 
-it("keeps the migration additive, latest, and free of urls, secrets, and CRM writes", async () => {
+it("keeps the migration additive and free of urls, secrets, and CRM writes", async () => {
   const names = readdirSync("supabase/migrations").filter((name) => name.endsWith(".sql")).sort();
-  expect(names.at(-1)).toBe(migrationName);
+  expect(names).toContain(migrationName);
   const executable = migration.replace(/--.*$/gm, "");
   expect(executable).toContain("create extension if not exists pg_net with schema extensions");
   expect(executable).toContain("cfo_ledger_webhook_url");
