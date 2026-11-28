@@ -19,6 +19,7 @@ create table public.crm_staff_alerts (
   error text,
   claim_token uuid,
   claimed_at timestamptz,
+  lease_until timestamptz,
   constraint crm_staff_alerts_status_check check (
     status in ('sent', 'held', 'deduped', 'rejected', 'failed')
   ),
@@ -43,14 +44,17 @@ comment on column public.crm_staff_alerts.deliver_at is
   'When a quiet-hours alert may be sent. 7:00 AM America/Los_Angeles.';
 
 comment on column public.crm_staff_alerts.claim_token is
-  'Set when a worker claims a held row. A second claim does not send again.';
+  'Set when a worker claims a held row. A live lease blocks a second send.';
+
+comment on column public.crm_staff_alerts.lease_until is
+  'Held claims may be taken again after this time. Sent and failed rows are not claimed.';
 
 create index crm_staff_alerts_dedupe_idx
   on public.crm_staff_alerts (dedupe_key, created_at desc);
 
 create index crm_staff_alerts_held_due_idx
-  on public.crm_staff_alerts (deliver_at, id)
-  where status = 'held' and claim_token is null;
+  on public.crm_staff_alerts (deliver_at, lease_until, id)
+  where status = 'held';
 
 create trigger crm_staff_alerts_set_updated_at
   before update on public.crm_staff_alerts
@@ -79,6 +83,7 @@ as $$
   update public.crm_staff_alerts as alert
   set claim_token = gen_random_uuid(),
       claimed_at = now(),
+      lease_until = now() + interval '15 minutes',
       updated_at = now()
   where alert.id in (
     select due.id
@@ -86,7 +91,11 @@ as $$
     where due.status = 'held'
       and due.deliver_at is not null
       and due.deliver_at <= now()
-      and due.claim_token is null
+      and (
+        due.claim_token is null
+        or due.lease_until <= now()
+        or (due.lease_until is null and due.claimed_at <= now() - interval '15 minutes')
+      )
     order by due.deliver_at, due.id
     for update skip locked
     limit least(greatest(coalesce(p_limit, 25), 1), 100)

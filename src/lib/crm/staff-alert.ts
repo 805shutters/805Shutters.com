@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { readAgentStaffSmsConfig } from "@/lib/notify/agent-staff-sms";
 import { OWNER_ALERT_FROM_PHONE } from "@/lib/notify/owner-alert-routing";
 import { toE164 } from "@/lib/notify/phone";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
@@ -11,6 +12,7 @@ const MESSAGING_SERVICE_PREFIX = "MG60d4";
 const SALE_OR_SIGNING_TOKENS = new Set(["sale", "sold", "signed", "signing", "signature"]);
 const PAYMENT_TOKENS = new Set(["payment", "payments", "paid", "deposit"]);
 const DEDUPE_STATUSES = ["sent", "held"] as const;
+export const STAFF_ALERT_CLAIM_LEASE_MS = 15 * 60 * 1000;
 
 export type StaffAlertStatus = "sent" | "held" | "deduped" | "rejected" | "failed";
 
@@ -28,6 +30,8 @@ export type StaffAlertRecord = {
   twilio_sids: string[];
   error: string | null;
   claim_token: string | null;
+  claimed_at: string | null;
+  lease_until: string | null;
   created_at: string;
 };
 
@@ -157,7 +161,16 @@ export function secretsMatch(provided: string, expected: string): boolean {
   return timingSafeEqual(actual, wanted);
 }
 
-export function read805StaffAlertTwilio(env: Env):
+function explicit805TwilioPresent(env: Env): boolean {
+  return Boolean(
+    env.TWILIO_805_ACCOUNT_SID?.trim()
+    || env.TWILIO_805_AUTH_TOKEN?.trim()
+    || env.TWILIO_805_MESSAGING_SERVICE_SID?.trim()
+    || env.TWILIO_805_FROM_PHONE?.trim(),
+  );
+}
+
+function readExplicit805Twilio(env: Env):
   | { ok: true; accountSid: string; authToken: string; messagingServiceSid: string; fromPhone: string }
   | { ok: false; reason: string } {
   const accountSid = env.TWILIO_805_ACCOUNT_SID?.trim() || "";
@@ -177,6 +190,33 @@ export function read805StaffAlertTwilio(env: Env):
     return { ok: false, reason: "805 Twilio sender is not allowed." };
   }
   return { ok: true, accountSid, authToken, messagingServiceSid, fromPhone };
+}
+
+/** Prefer TWILIO_805_*. When that set is unset, use the dedicated 805 voice staff account. */
+export function read805StaffAlertTwilio(env: Env):
+  | { ok: true; accountSid: string; authToken: string; messagingServiceSid: string; fromPhone: string }
+  | { ok: false; reason: string } {
+  if (explicit805TwilioPresent(env)) return readExplicit805Twilio(env);
+  const voice = readAgentStaffSmsConfig(env);
+  if (!voice.ok) return { ok: false, reason: "805 Twilio credentials are not configured." };
+  if (voice.fromPhone === OWNER_ALERT_FROM_PHONE) return { ok: false, reason: "805 Twilio sender is not allowed." };
+  return {
+    ok: true,
+    accountSid: voice.accountSid,
+    authToken: voice.authToken,
+    messagingServiceSid: voice.messagingServiceSid,
+    fromPhone: voice.fromPhone,
+  };
+}
+
+export function staffAlertClaimIsOpen(
+  row: { claim_token: string | null; claimed_at: string | null; lease_until: string | null },
+  now: Date,
+): boolean {
+  if (!row.claim_token) return false;
+  if (row.lease_until) return Date.parse(row.lease_until) > now.getTime();
+  if (row.claimed_at) return Date.parse(row.claimed_at) + STAFF_ALERT_CLAIM_LEASE_MS > now.getTime();
+  return true;
 }
 
 export function staffAlertRecipients(env: Env): { ok: true; phones: [string, string] } | { ok: false; reason: string } {
@@ -280,6 +320,8 @@ function blankOutcome(input: ParsedAlert, dedupeKey: string, status: StaffAlertS
     twilio_sids: [],
     error: null,
     claim_token: null,
+    claimed_at: null,
+    lease_until: null,
     ...extra,
   };
 }
@@ -466,6 +508,8 @@ function recordFromRow(value: unknown): StaffAlertRecord | null {
     twilio_sids: Array.isArray(row.twilio_sids) ? row.twilio_sids.map(String) : [],
     error: row.error ? String(row.error) : null,
     claim_token: row.claim_token ? String(row.claim_token) : null,
+    claimed_at: row.claimed_at ? String(row.claimed_at) : null,
+    lease_until: row.lease_until ? String(row.lease_until) : null,
     created_at: row.created_at,
   };
 }
